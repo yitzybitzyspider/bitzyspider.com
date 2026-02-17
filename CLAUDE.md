@@ -2,6 +2,38 @@
 
 Personal portfolio site for Yitzy Rosenberg. Hosted on GitHub Pages at bitzyspider.com.
 
+## Why this site exists
+
+Yitzy's story doesn't fit on a resume. He left an insular community at 15, taught himself high school on public library Wi-Fi, went from a GED to a full scholarship at Cornell. He's worked across wildly different fields - managing a $350M water infrastructure portfolio for 10 million people, leasing commercial real estate, founding two startups. The site exists to make that non-linear path feel like a superpower, not a liability.
+
+The goal is that someone lands on the page and within a few seconds thinks: "This person is sharp, builds things, and is not boring." The spider chasing their cursor is the first signal - before they read a single word, they're experiencing something Yitzy engineered. That's the whole pitch in miniature.
+
+## The impression it should give
+
+**Competence through demonstration, not claims.** The spider isn't decoration - it's a working piece of engineering (IK legs, physics, canvas rendering) that proves technical skill before the visitor reads the About section. The site itself is the portfolio.
+
+**Unconventional is the point.** The copy leans into the weird resume: "I don't fit in boxes. I usually break them to see how they're made." The structure mirrors this - it's not a standard corporate portfolio with a timeline. It's organized by energy (how he spends it) and identity (operator, engineer, connector).
+
+**Human, not corporate.** The tone is direct and a little playful. Phone number is "(304) 44-YITZY". The CTA says "Whether you have a wicked problem that needs untangling, or you just want to know how I coded the spider chasing your mouse." There's a section about Friday Night Dinners and scuba diving. The person behind the work matters as much as the work.
+
+**Spider as brand metaphor.** This is the core creative decision. Spiders are systems engineers - they build complex, resilient structures out of nothing. That maps directly to how Yitzy describes his approach: assess the situation, hack a path, build the system. The domain is bitzyspider.com. The favicon is a spider. The interactive spider IS the cursor. The counter says "BUGS DEBUGGED." It's not a gimmick bolted on - it's the throughline of the entire brand.
+
+## Design choices and why
+
+**Black background, red accents:** Bold and technical. The dark theme signals engineering/hacker culture. Red (`#dc2626`) is the spider's accent color (fangs, joints, hourglass marking on the favicon) - it pops without being aggressive.
+
+**The spider replaces the cursor on desktop:** This is intentional and a little aggressive as a design choice. It forces engagement - you can't ignore it. It says "this site is different" within the first second. The tradeoff is some people will find it annoying, but the people Yitzy wants to talk to will think it's cool.
+
+**Mobile spider lives in a corner:** On mobile the full-screen spider was too intrusive - it followed your finger and blocked content. The corner web with the dangling spider keeps the brand present without getting in the way. The fly chase after a minute of idle is a reward for people who stick around. Tapping the spider lets you opt into the full interactive experience.
+
+**"BUGS DEBUGGED" counter:** Playful double meaning. The spider literally catches bugs on screen, and Yitzy catches bugs in production code. It's a small dopamine hit that keeps people moving their mouse. The counter is intentionally subtle (small, bottom-left, no backdrop blur) so it doesn't compete with the content.
+
+**Monospace for code-y elements, clean sans-serif for body:** The monospace (counter, tagline) reinforces the engineering angle. The body text is clean and readable - the site isn't trying to be a terminal emulator, just nodding to that world.
+
+**Content organized by identity, not chronology:** "The Operator" and "The Engineer" instead of a job timeline. "The Math of Community" instead of "Volunteer Work." "Off The Clock" instead of "Hobbies." Every section name does double duty - it describes the content AND tells you how Yitzy thinks about himself.
+
+**Friday Night Dinners, scuba, film photography, flying:** These aren't random hobbies. Each one says something: he brings people together (dinners), stays calm under pressure (scuba - "check your gauges, know your environment, don't panic"), values intention over speed (film photography), and literally has a pilot's license. The gallery is another way of saying "I'm a systems thinker who operates in the real world."
+
 ## What this site is
 
 A single-page portfolio with an interactive spider that follows your cursor (desktop) or lives in a corner web (mobile). The spider is the central brand metaphor - Yitzy "untangles wicked problems" like a spider builds webs.
