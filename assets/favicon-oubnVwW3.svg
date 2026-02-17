@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <circle cx="32" cy="32" r="14" fill="#1a1a1a" stroke="#fff" stroke-width="2"/>
+  <circle cx="32" cy="20" r="8" fill="#1a1a1a" stroke="#fff" stroke-width="2"/>
+  <!-- Eyes -->
+  <circle cx="30" cy="18" r="2.5" fill="#fff"/>
+  <circle cx="34" cy="18" r="2.5" fill="#fff"/>
+  <circle cx="30" cy="18" r="1" fill="#1a1a1a"/>
+  <circle cx="34" cy="18" r="1" fill="#1a1a1a"/>
+  <!-- Hourglass -->
+  <polygon points="28,28 32,32 28,36" fill="#dc2626"/>
+  <polygon points="36,28 32,32 36,36" fill="#dc2626"/>
+  <!-- Legs -->
+  <g stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="22,26 12,16 4,10"/>
+    <polyline points="22,30 10,28 2,24"/>
+    <polyline points="22,34 10,36 2,40"/>
+    <polyline points="22,38 12,48 4,54"/>
+    <polyline points="42,26 52,16 60,10"/>
+    <polyline points="42,30 54,28 62,24"/>
+    <polyline points="42,34 54,36 62,40"/>
+    <polyline points="42,38 52,48 60,54"/>
+  </g>
+</svg>
