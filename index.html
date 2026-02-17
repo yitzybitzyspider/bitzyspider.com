@@ -37,7 +37,6 @@
       function isMobile(){return 'ontouchstart' in window || navigator.maxTouchPoints > 0}
       if(!isMobile()) return;
 
-      var ready = false;
       var origCanvas = null;
       var counterEl = null;
 
@@ -47,20 +46,17 @@
         if(c){
           clearInterval(poll);
           origCanvas = c;
-          // Counter is the next sibling div
           counterEl = c.nextElementSibling;
           init();
         }
       }, 200);
 
       function init(){
-        // Hide the full-screen spider & counter on mobile
         origCanvas.style.display = 'none';
         if(counterEl) counterEl.style.display = 'none';
         document.body.style.cursor = 'auto';
 
-        // Corner canvas - top-right
-        var W = 140, H = 180;
+        var W = 160, H = 200;
         var dpr = window.devicePixelRatio || 1;
         var cvs = document.createElement('canvas');
         cvs.id = 'corner-spider';
@@ -79,57 +75,70 @@
         setTimeout(function(){ hint.style.opacity = '0'; }, 4000);
         setTimeout(function(){ hint.remove(); }, 5500);
 
-        // State
-        var anchorX = W - 12, anchorY = 0;
-        var threadLen = 55;
-        var sway = 0, swaySpeed = 0.015, swayAmp = 5;
+        // Web config - originates from top-right corner
+        var webCX = W, webCY = 0;
+        var webSpokes = 8;
+        var webRings = 5;
+        var webMaxR = 65;
+
+        // Anchor point: where the outermost spoke meets the last ring (bottom-left of web)
+        // Use spoke in the middle of the range (PI * 0.75 = 135 degrees)
+        var anchorAngle = Math.PI * 0.78;
+        var anchorR = webMaxR * 0.85;
+        var anchorX = webCX + Math.cos(anchorAngle) * anchorR;
+        var anchorY = webCY + Math.sin(anchorAngle) * anchorR;
+
+        var threadLen = 50;
+        var sway = 0, swaySpeed = 0.015, swayAmp = 4;
         var spX = anchorX, spY = anchorY + threadLen;
-        var idle = true;
         var idleStart = Date.now();
-        var FLY_DELAY = 60000; // 1 min
+        var FLY_DELAY = 60000;
+
+        // Silk trail (matching the interactive spider's web trail)
+        var trailPoints = [];
+        var trailLifetime = 5000;
+        var lastTrailPos = {x: spX, y: spY};
 
         // Fly state
         var flyActive = false;
         var flyX = 0, flyY = 0, flyVx = 0, flyVy = 0;
-        var flyAngle = 0;
+        var flyWing = 0;
         var chasing = false;
         var chaseSp = {x: spX, y: spY};
-        var catchCount = 0;
         var catchFlash = 0;
         var flyRespawnTimer = 0;
 
-        // Full-screen mode state
         var fullscreen = false;
         var returnTimer = null;
+        var RETURN_TIMEOUT = 5000; // 5 seconds
 
-        // Draw web in corner
-        function drawWeb(ctx){
-          var cx = W, cy = 0; // top-right corner
-          var rings = 4;
-          var spokes = 7;
-          var maxR = 50;
+        // Scale factor: original spider body is Md=20 wide, we draw at ~0.45x
+        var SC = 0.45;
 
-          ctx.strokeStyle = 'rgba(255,255,255,0.12)';
-          ctx.lineWidth = 0.7;
+        // Draw web in corner (matches the silk trail aesthetic)
+        function drawWeb(){
+          ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+          ctx.lineWidth = 1;
 
           // Spokes
-          for(var s = 0; s < spokes; s++){
-            var a = (Math.PI / 2) + (s / (spokes - 1)) * (Math.PI / 2); // PI/2 to PI
+          for(var s = 0; s < webSpokes; s++){
+            var a = (Math.PI / 2) + (s / (webSpokes - 1)) * (Math.PI / 2);
             ctx.beginPath();
-            ctx.moveTo(cx, cy);
-            ctx.lineTo(cx + Math.cos(a) * maxR, cy + Math.sin(a) * maxR);
+            ctx.moveTo(webCX, webCY);
+            ctx.lineTo(webCX + Math.cos(a) * webMaxR, webCY + Math.sin(a) * webMaxR);
             ctx.stroke();
           }
 
-          // Rings
-          for(var r = 1; r <= rings; r++){
-            var rad = (r / rings) * maxR;
+          // Spiral rings with slight wobble
+          for(var r = 1; r <= webRings; r++){
+            var rad = (r / webRings) * webMaxR;
             ctx.beginPath();
-            for(var s = 0; s <= spokes * 4; s++){
-              var a = (Math.PI / 2) + (s / (spokes * 4)) * (Math.PI / 2);
-              var wobble = Math.sin(s * 2.5 + r) * 2;
-              var px = cx + Math.cos(a) * (rad + wobble);
-              var py = cy + Math.sin(a) * (rad + wobble);
+            var segs = webSpokes * 5;
+            for(var s = 0; s <= segs; s++){
+              var a = (Math.PI / 2) + (s / segs) * (Math.PI / 2);
+              var wobble = Math.sin(s * 2.3 + r * 1.7) * 1.5;
+              var px = webCX + Math.cos(a) * (rad + wobble);
+              var py = webCY + Math.sin(a) * (rad + wobble);
               if(s === 0) ctx.moveTo(px, py);
               else ctx.lineTo(px, py);
             }
@@ -137,101 +146,211 @@
           }
         }
 
-        // Draw mini spider
-        function drawSpider(ctx, x, y, angle){
+        // Draw the SAME spider as the interactive one, scaled down
+        // Original: body at (-5,0) ellipse(20,16), head at (15,0) arc(12),
+        // eyes at (19,+-5), fangs, etc. Spider faces RIGHT (+x direction).
+        // For dangling, we rotate so head points DOWN.
+        function drawSpider(x, y, rotation, targetX, targetY){
           ctx.save();
           ctx.translate(x, y);
-          ctx.rotate(angle || 0);
+          ctx.rotate(rotation);
+          ctx.scale(SC, SC);
 
-          // Body
-          ctx.fillStyle = '#555';
+          // 8 Legs - white with red joints (matching original)
+          var legOffsets = [
+            {hip: -12, side: 1},  {hip: -6, side: 1},
+            {hip: 2, side: 1},    {hip: 10, side: 1},
+            {hip: -12, side: -1}, {hip: -6, side: -1},
+            {hip: 2, side: -1},   {hip: 10, side: -1}
+          ];
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+          var t = Date.now() * 0.003;
+          for(var i = 0; i < legOffsets.length; i++){
+            var lo = legOffsets[i];
+            var wave = Math.sin(t + i * 0.9) * 6;
+            var hipX = lo.hip, hipY = 0;
+            var jointX = lo.hip + lo.side * (18 + wave);
+            var jointY = lo.side * 12;
+            var footX = lo.hip + lo.side * (25 + wave * 0.5);
+            var footY = lo.side * 24;
+
+            ctx.beginPath();
+            ctx.moveTo(hipX, hipY);
+            ctx.lineTo(jointX, jointY);
+            ctx.lineTo(footX, footY);
+            ctx.stroke();
+
+            // Red joint circles
+            ctx.fillStyle = '#ff4444';
+            ctx.beginPath();
+            ctx.arc(hipX, hipY, 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(jointX, jointY, 1.5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+
+          // Body - dark with white stroke
+          ctx.fillStyle = '#1a1a1a';
+          ctx.strokeStyle = 'white';
+          ctx.lineWidth = 2;
           ctx.beginPath();
-          ctx.ellipse(0, 0, 5, 6, 0, 0, Math.PI * 2);
+          ctx.ellipse(-5, 0, 20, 16, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          // Fangs - red
+          ctx.fillStyle = '#ff4444';
+          ctx.beginPath();
+          ctx.moveTo(-10, -5);
+          ctx.lineTo(-2, 0);
+          ctx.lineTo(-10, 5);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.moveTo(4, -5);
+          ctx.lineTo(-4, 0);
+          ctx.lineTo(4, 5);
           ctx.fill();
 
           // Head
+          ctx.fillStyle = '#1a1a1a';
+          ctx.beginPath();
+          ctx.arc(15, 0, 12, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          // Eyes - track target direction
+          var eyePupilX = 0, eyePupilY = 0;
+          if(targetX !== undefined && targetY !== undefined){
+            var edx = targetX - x, edy = targetY - y;
+            var ea = Math.atan2(edy, edx) - rotation;
+            eyePupilX = Math.cos(ea) * 2.5;
+            eyePupilY = Math.sin(ea) * 2.5;
+          }
+
+          // White sclera
+          ctx.fillStyle = 'white';
+          ctx.beginPath();
+          ctx.arc(19, -5, 4.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(19, 5, 4.5, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Dark pupils
+          ctx.fillStyle = '#1a1a1a';
+          ctx.beginPath();
+          ctx.arc(19 + eyePupilX, -5 + eyePupilY, 2, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(19 + eyePupilX, 5 + eyePupilY, 2, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Eye highlights
+          ctx.fillStyle = 'white';
+          ctx.beginPath();
+          ctx.arc(20, -6, 1, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(20, 4, 1, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Mouth
+          ctx.strokeStyle = 'white';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.arc(17, 0, 3, 0.8, -0.8, true);
+          ctx.stroke();
+
+          ctx.restore();
+        }
+
+        // Draw fly (matching the interactive one)
+        function drawFly(x, y){
+          ctx.save();
+          ctx.translate(x, y);
+          flyWing += 0.3;
+
+          var wf = Math.sin(flyWing) * 0.4;
+          // Wings
+          ctx.fillStyle = 'rgba(255,255,255,0.6)';
+          ctx.save();
+          ctx.scale(1, 0.7 + Math.sin(flyWing * 2) * 0.3);
+          ctx.beginPath();
+          ctx.ellipse(-2, -6, 4, 8, 0.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.ellipse(-2, 6, 4, 8, -0.5, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+
+          // Body
           ctx.fillStyle = '#333';
           ctx.beginPath();
-          ctx.arc(0, -7, 3.5, 0, Math.PI * 2);
+          ctx.ellipse(0, 0, 6, 4, 0, 0, Math.PI * 2);
           ctx.fill();
 
           // Eyes
-          ctx.fillStyle = '#fff';
+          ctx.fillStyle = 'red';
           ctx.beginPath();
-          ctx.arc(-1.5, -8, 1.2, 0, Math.PI * 2);
-          ctx.arc(1.5, -8, 1.2, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = '#000';
-          ctx.beginPath();
-          ctx.arc(-1.5, -8.2, 0.6, 0, Math.PI * 2);
-          ctx.arc(1.5, -8.2, 0.6, 0, Math.PI * 2);
-          ctx.fill();
-
-          // Legs (4 per side)
-          ctx.strokeStyle = '#555';
-          ctx.lineWidth = 1;
-          var legAngles = [-0.8, -0.4, 0.1, 0.5];
-          for(var i = 0; i < legAngles.length; i++){
-            var la = legAngles[i];
-            var wave = Math.sin(Date.now() * 0.003 + i * 1.5) * 2;
-            // Right
-            ctx.beginPath();
-            ctx.moveTo(3, la * 8);
-            ctx.quadraticCurveTo(10 + wave, la * 8 - 3, 13 + wave, la * 8 + 4);
-            ctx.stroke();
-            // Left
-            ctx.beginPath();
-            ctx.moveTo(-3, la * 8);
-            ctx.quadraticCurveTo(-10 - wave, la * 8 - 3, -13 - wave, la * 8 + 4);
-            ctx.stroke();
-          }
-
-          // Fangs
-          ctx.fillStyle = '#c33';
-          ctx.beginPath();
-          ctx.moveTo(-1, -10);
-          ctx.lineTo(-0.3, -12);
-          ctx.lineTo(0.4, -10);
+          ctx.arc(3, -2, 1.5, 0, Math.PI * 2);
           ctx.fill();
           ctx.beginPath();
-          ctx.moveTo(1, -10);
-          ctx.lineTo(1.7, -12);
-          ctx.lineTo(2.4, -10);
+          ctx.arc(3, 2, 1.5, 0, Math.PI * 2);
           ctx.fill();
 
           ctx.restore();
         }
 
-        // Draw fly
-        function drawFly(ctx, x, y){
-          ctx.save();
-          ctx.translate(x, y);
-          flyAngle += 0.3;
+        // Draw silk trail (matching the interactive spider's web trail)
+        function drawTrail(){
+          var now = Date.now();
+          trailPoints = trailPoints.filter(function(p){ return now - p.time < trailLifetime; });
 
-          // Wings
-          var wf = Math.sin(flyAngle) * 0.4;
-          ctx.fillStyle = 'rgba(255,255,255,0.25)';
-          ctx.beginPath();
-          ctx.ellipse(-3, -1, 4, 2, -0.5 + wf, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.beginPath();
-          ctx.ellipse(3, -1, 4, 2, 0.5 - wf, 0, Math.PI * 2);
-          ctx.fill();
+          ctx.globalCompositeOperation = 'destination-over';
+          ctx.lineWidth = 1;
 
-          // Body
-          ctx.fillStyle = '#888';
-          ctx.beginPath();
-          ctx.ellipse(0, 0, 2, 3, 0, 0, Math.PI * 2);
-          ctx.fill();
+          var curX = chasing ? chaseSp.x : spX;
+          var curY = chasing ? chaseSp.y : spY;
 
-          // Eyes
-          ctx.fillStyle = '#c33';
-          ctx.beginPath();
-          ctx.arc(-1, -3, 0.8, 0, Math.PI * 2);
-          ctx.arc(1, -3, 0.8, 0, Math.PI * 2);
-          ctx.fill();
+          for(var i = 0; i < trailPoints.length; i++){
+            var p = trailPoints[i];
+            var age = 1 - (now - p.time) / trailLifetime;
 
-          ctx.restore();
+            // Line from current pos to trail point (if close enough)
+            var d = Math.hypot(curX - p.x, curY - p.y);
+            if(d < 80){
+              ctx.beginPath();
+              ctx.strokeStyle = 'rgba(255,255,255,' + (0.15 * age) + ')';
+              ctx.moveTo(curX, curY);
+              ctx.lineTo(p.x, p.y);
+              ctx.stroke();
+            }
+
+            // Lines between nearby trail points
+            for(var j = i + 1; j < trailPoints.length && j - i < 10; j++){
+              var q = trailPoints[j];
+              if(Math.hypot(p.x - q.x, p.y - q.y) < 50){
+                var qa = 1 - (now - q.time) / trailLifetime;
+                ctx.beginPath();
+                ctx.strokeStyle = 'rgba(255,255,255,' + (0.2 * (age + qa) / 2) + ')';
+                ctx.moveTo(p.x, p.y);
+                ctx.lineTo(q.x, q.y);
+                ctx.stroke();
+              }
+            }
+          }
+          ctx.globalCompositeOperation = 'source-over';
+        }
+
+        function addTrailPoint(x, y){
+          if(Math.hypot(x - lastTrailPos.x, y - lastTrailPos.y) > 10){
+            trailPoints.push({x: x, y: y, time: Date.now()});
+            lastTrailPos = {x: x, y: y};
+          }
         }
 
         function spawnFly(){
@@ -247,31 +366,34 @@
           if(fullscreen) return;
 
           ctx.clearRect(0, 0, W, H);
-          drawWeb(ctx);
+          drawWeb();
 
           sway += swaySpeed;
 
-          // Check if fly should appear
-          if(!flyActive && Date.now() - idleStart > FLY_DELAY){
+          if(!flyActive && !flyRespawnTimer && Date.now() - idleStart > FLY_DELAY){
             spawnFly();
           }
 
           if(!flyActive && !chasing){
-            // Idle: spider dangles from web
+            // Idle: spider dangles from anchor point on the web
             var swayOffset = Math.sin(sway) * swayAmp;
             spX = anchorX + swayOffset;
             spY = anchorY + threadLen;
 
-            // Draw thread
+            // Silk thread from web anchor to spider
             ctx.strokeStyle = 'rgba(255,255,255,0.25)';
-            ctx.lineWidth = 0.8;
+            ctx.lineWidth = 1;
             ctx.beginPath();
             ctx.moveTo(anchorX, anchorY);
-            // Slight curve
-            ctx.quadraticCurveTo(anchorX + swayOffset * 0.5, anchorY + threadLen * 0.5, spX, spY - 7);
+            ctx.quadraticCurveTo(
+              anchorX + swayOffset * 0.4,
+              anchorY + threadLen * 0.5,
+              spX, spY - 5 * SC
+            );
             ctx.stroke();
 
-            drawSpider(ctx, spX, spY, 0);
+            // Spider faces down when dangling (rotate 90 deg clockwise from default right-facing)
+            drawSpider(spX, spY, Math.PI / 2, flyX || spX, flyY || spY + 30);
           } else if(flyActive){
             // Move fly erratically
             flyVx += (Math.random() - 0.5) * 0.4;
@@ -281,68 +403,63 @@
             flyX += flyVx;
             flyY += flyVy;
 
-            // Bounce fly
-            if(flyX < 5 || flyX > W - 5) flyVx *= -1;
-            if(flyY < 5 || flyY > H - 5) flyVy *= -1;
-            flyX = Math.max(5, Math.min(W - 5, flyX));
-            flyY = Math.max(5, Math.min(H - 5, flyY));
+            if(flyX < 10 || flyX > W - 10) flyVx *= -1;
+            if(flyY < 10 || flyY > H - 10) flyVy *= -1;
+            flyX = Math.max(10, Math.min(W - 10, flyX));
+            flyY = Math.max(10, Math.min(H - 10, flyY));
 
-            drawFly(ctx, flyX, flyY);
+            drawFly(flyX, flyY);
 
-            // Spider starts chasing after a moment
             if(!chasing){
               chasing = true;
               chaseSp.x = spX;
               chaseSp.y = spY;
             }
 
-            // Chase the fly
             var dx = flyX - chaseSp.x;
             var dy = flyY - chaseSp.y;
             var dist = Math.sqrt(dx * dx + dy * dy);
-            var speed = 1.2;
             if(dist > 2){
-              chaseSp.x += (dx / dist) * speed;
-              chaseSp.y += (dy / dist) * speed;
+              chaseSp.x += (dx / dist) * 1.2;
+              chaseSp.y += (dy / dist) * 1.2;
             }
 
+            addTrailPoint(chaseSp.x, chaseSp.y);
+
             // Thread from anchor to spider
-            ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-            ctx.lineWidth = 0.6;
+            ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+            ctx.lineWidth = 1;
             ctx.beginPath();
             ctx.moveTo(anchorX, anchorY);
-            ctx.lineTo(chaseSp.x, chaseSp.y - 7);
+            ctx.lineTo(chaseSp.x, chaseSp.y);
             ctx.stroke();
 
-            var angle = Math.atan2(dy, dx) - Math.PI / 2;
-            drawSpider(ctx, chaseSp.x, chaseSp.y, angle);
+            var angle = Math.atan2(dy, dx);
+            drawSpider(chaseSp.x, chaseSp.y, angle, flyX, flyY);
 
-            // Catch detection
-            if(dist < 12){
+            if(dist < 15){
               flyActive = false;
               chasing = false;
-              catchCount++;
-              catchFlash = 15;
-              // Reset position back to dangle
+              catchFlash = 20;
               spX = anchorX;
               spY = anchorY + threadLen;
-              // Respawn fly after a delay
-              flyRespawnTimer = Date.now() + 8000;
+              flyRespawnTimer = Date.now() + 6000;
             }
           }
 
-          // Respawn fly
           if(!flyActive && flyRespawnTimer && Date.now() > flyRespawnTimer){
             spawnFly();
             flyRespawnTimer = 0;
           }
 
-          // Catch flash
+          // Draw the silk trail behind everything
+          drawTrail();
+
           if(catchFlash > 0){
-            ctx.fillStyle = 'rgba(220,38,38,' + (catchFlash / 15 * 0.5) + ')';
-            ctx.font = 'bold 10px monospace';
+            ctx.fillStyle = 'rgba(220,38,38,' + (catchFlash / 20 * 0.6) + ')';
+            ctx.font = 'bold 11px monospace';
             ctx.textAlign = 'center';
-            ctx.fillText('+1', anchorX, anchorY + threadLen + 20);
+            ctx.fillText('+1', anchorX, anchorY + threadLen + 22);
             catchFlash--;
           }
 
@@ -356,7 +473,6 @@
           e.preventDefault();
           e.stopPropagation();
 
-          // Check if tap is near the spider
           var rect = cvs.getBoundingClientRect();
           var tx = e.touches[0].clientX - rect.left;
           var ty = e.touches[0].clientY - rect.top;
@@ -364,7 +480,7 @@
           var curSpY = chasing ? chaseSp.y : spY;
           var d = Math.sqrt((tx - curSpX) * (tx - curSpX) + (ty - curSpY) * (ty - curSpY));
 
-          if(d < 40){
+          if(d < 45){
             enterFullscreen();
           }
         });
@@ -372,24 +488,22 @@
         function enterFullscreen(){
           fullscreen = true;
           cvs.style.display = 'none';
-
           origCanvas.style.display = '';
           if(counterEl) counterEl.style.display = '';
 
-          // Auto-return to corner after 15s of no touch
           clearTimeout(returnTimer);
-          var touchActive = false;
+          var touchHandler, moveHandler;
 
-          function onTouch(){
-            touchActive = true;
+          function resetTimer(){
             clearTimeout(returnTimer);
-            returnTimer = setTimeout(function(){
-              if(!touchActive) exitFullscreen();
-              touchActive = false;
-            }, 15000);
+            returnTimer = setTimeout(exitFullscreen, RETURN_TIMEOUT);
           }
 
           function exitFullscreen(){
+            clearTimeout(returnTimer);
+            document.removeEventListener('touchstart', touchHandler);
+            document.removeEventListener('touchmove', moveHandler);
+
             origCanvas.style.display = 'none';
             if(counterEl) counterEl.style.display = 'none';
             document.body.style.cursor = 'auto';
@@ -399,22 +513,21 @@
             idleStart = Date.now();
             flyActive = false;
             chasing = false;
+            flyRespawnTimer = 0;
             sway = 0;
+            trailPoints = [];
 
-            document.removeEventListener('touchstart', onTouch);
-            document.removeEventListener('touchmove', onTouchMove);
             animate();
           }
 
-          function onTouchMove(){ onTouch(); }
+          touchHandler = function(){ resetTimer(); };
+          moveHandler = function(){ resetTimer(); };
 
-          document.addEventListener('touchstart', onTouch);
-          document.addEventListener('touchmove', onTouchMove);
+          document.addEventListener('touchstart', touchHandler);
+          document.addEventListener('touchmove', moveHandler);
 
           // Start the inactivity timer
-          returnTimer = setTimeout(function(){
-            exitFullscreen();
-          }, 15000);
+          resetTimer();
         }
       }
     })();
