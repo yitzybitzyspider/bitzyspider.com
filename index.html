@@ -7,13 +7,13 @@
     <meta name="description" content="Systems Engineer. 2x Founder. Growth Strategist. From water infrastructure for 10M people to optimizing startup operations." />
 
     <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="/assets/favicon-oubnVwW3.svg" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 
     <!-- Open Graph / Social Sharing -->
     <meta property="og:type" content="website" />
     <meta property="og:title" content="Yitzy Rosenberg | I Untangle Wicked Problems" />
     <meta property="og:description" content="Systems Engineer. 2x Founder. Growth Strategist. From water infrastructure for 10M people to optimizing startup operations." />
-    <meta property="og:image" content="/assets/professional-headshot-Cj85sluL.jpg" />
+    <meta property="og:image" content="/photos/professional-headshot.jpg" />
     <meta property="og:url" content="https://bitzyspider.com" />
     <meta property="og:site_name" content="BitzySpider.com" />
 
@@ -21,12 +21,31 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Yitzy Rosenberg | I Untangle Wicked Problems" />
     <meta name="twitter:description" content="Systems Engineer. 2x Founder. Growth Strategist. From water infrastructure for 10M people to optimizing startup operations." />
-    <meta name="twitter:image" content="/assets/professional-headshot-Cj85sluL.jpg" />
+    <meta name="twitter:image" content="/photos/professional-headshot.jpg" />
 
     <!-- Theme Color -->
-    <meta name="theme-color" content="#000000" />
-    <script type="module" crossorigin src="/assets/index-Bx58OJkB.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-DRvshR8T.css">
+    <meta name="theme-color" content="#000000" />
+    <script type="module" crossorigin src="/assets/index-ZZwLr-Wf.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-Cn99QLM1.css">
+    <!-- Spider layer kill switch: ?spider=0 or localStorage spider=off hides spider only; site content unchanged -->
+    <script>
+    (function(){
+      function spiderDisabled() {
+        if (typeof URLSearchParams !== 'undefined' && new URLSearchParams(location.search).get('spider') === '0') return true;
+        try { return localStorage.getItem('spider') === 'off'; } catch (e) { return false; }
+      }
+      function hideSpiderLayer() {
+        var c = document.querySelector('canvas');
+        if (c) { c.style.display = 'none'; document.body.style.cursor = 'auto'; }
+        var n = c && c.nextElementSibling;
+        if (n && n.textContent && n.textContent.indexOf('CAUGHT') !== -1) n.style.display = 'none';
+      }
+      if (spiderDisabled()) {
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function(){ setTimeout(hideSpiderLayer, 500); });
+        else setTimeout(hideSpiderLayer, 500);
+      }
+    })();
+    </script>
   </head>
 
   <body>
