@@ -27,6 +27,25 @@
     <meta name="theme-color" content="#000000" />
     <script type="module" crossorigin src="/assets/index-ZZwLr-Wf.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-Cn99QLM1.css">
+    <!-- Spider layer kill switch: ?spider=0 or localStorage spider=off hides spider only; site content unchanged -->
+    <script>
+    (function(){
+      function spiderDisabled() {
+        if (typeof URLSearchParams !== 'undefined' && new URLSearchParams(location.search).get('spider') === '0') return true;
+        try { return localStorage.getItem('spider') === 'off'; } catch (e) { return false; }
+      }
+      function hideSpiderLayer() {
+        var c = document.querySelector('canvas');
+        if (c) { c.style.display = 'none'; document.body.style.cursor = 'auto'; }
+        var n = c && c.nextElementSibling;
+        if (n && n.textContent && n.textContent.indexOf('CAUGHT') !== -1) n.style.display = 'none';
+      }
+      if (spiderDisabled()) {
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function(){ setTimeout(hideSpiderLayer, 500); });
+        else setTimeout(hideSpiderLayer, 500);
+      }
+    })();
+    </script>
   </head>
 
   <body>
