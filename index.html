@@ -311,6 +311,128 @@
     </script>
 
     <script>
+    // Current Projects section: inject above the Work section with Astrid app demo
+    (function(){
+      var poll = setInterval(function(){
+        var work = document.getElementById('work');
+        if (!work) return;
+        clearInterval(poll);
+        injectSection(work);
+      }, 200);
+
+      function injectSection(workSection) {
+        // ----- Styles for the iPhone frame -----
+        var style = document.createElement('style');
+        style.textContent =
+          '.iphone-frame {' +
+            '--phone-width: 280px;' +
+            '--phone-radius: 40px;' +
+            'width: var(--phone-width);' +
+            'height: calc(var(--phone-width) * 2.16);' +
+            'background: #1a1a1a;' +
+            'border: 6px solid #333;' +
+            'border-radius: var(--phone-radius);' +
+            'position: relative;' +
+            'margin: 0 auto;' +
+            'box-shadow: 0 20px 50px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05);' +
+          '}' +
+          '.iphone-frame .speaker {' +
+            'position: absolute;' +
+            'top: 15px;' +
+            'left: 50%;' +
+            'transform: translateX(-50%);' +
+            'width: 60px;' +
+            'height: 5px;' +
+            'background: #222;' +
+            'border-radius: 10px;' +
+            'z-index: 10;' +
+          '}' +
+          '.iphone-frame .screen-content {' +
+            'position: absolute;' +
+            'top: 5px;' +
+            'left: 5px;' +
+            'right: 5px;' +
+            'bottom: 5px;' +
+            'background: #000;' +
+            'border-radius: calc(var(--phone-radius) - 8px);' +
+            'overflow: hidden;' +
+          '}' +
+          '.iphone-frame .screen-content iframe {' +
+            'width: 100%;' +
+            'height: 100%;' +
+            'border: none;' +
+          '}' +
+          '.iphone-frame .home-bar {' +
+            'position: absolute;' +
+            'bottom: 12px;' +
+            'left: 50%;' +
+            'transform: translateX(-50%);' +
+            'width: 100px;' +
+            'height: 4px;' +
+            'background: rgba(255,255,255,0.2);' +
+            'border-radius: 10px;' +
+          '}' +
+          '@media (min-width: 768px) {' +
+            '.iphone-frame { --phone-width: 320px; }' +
+          '}';
+        document.head.appendChild(style);
+
+        // ----- Build the section -----
+        var section = document.createElement('section');
+        section.id = 'projects';
+        section.className = 'py-32 px-4';
+
+        section.innerHTML =
+          '<div class="max-w-7xl mx-auto">' +
+
+            // Heading (matches site pattern: text-center mb-20, h2 + subtitle)
+            '<div class="text-center mb-16">' +
+              '<h2 class="text-4xl md:text-5xl font-bold mb-6">What I\u2019m Building Now</h2>' +
+              '<p class="text-lg" style="color:#9ca3af;max-width:42rem;margin:0 auto">' +
+                'The best way to understand how I think is to see what I ship.' +
+              '</p>' +
+            '</div>' +
+
+            // Phone frame + project description
+            '<div style="display:flex;flex-direction:column;align-items:center;gap:2.5rem">' +
+
+              // iPhone frame with YouTube Short
+              '<div class="iphone-frame">' +
+                '<div class="speaker"></div>' +
+                '<div class="screen-content">' +
+                  '<iframe ' +
+                    'src="https://www.youtube-nocookie.com/embed/DjVovCBWpB8?rel=0&modestbranding=1&iv_load_policy=3&autoplay=0" ' +
+                    'title="Astrid App Demo" ' +
+                    'frameborder="0" ' +
+                    'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" ' +
+                    'allowfullscreen>' +
+                  '</iframe>' +
+                '</div>' +
+                '<div class="home-bar"></div>' +
+              '</div>' +
+
+              // Project info below the phone
+              '<div style="text-align:center;max-width:32rem">' +
+                '<h3 class="text-2xl font-bold mb-2" style="color:white">Astrid</h3>' +
+                '<p class="font-mono text-xs mb-4" style="color:#dc2626;letter-spacing:0.1em">' +
+                  'CO-FOUNDER &middot; HEALTH TECH' +
+                '</p>' +
+                '<p class="text-sm leading-relaxed" style="color:#9ca3af">' +
+                  'A health-tracking app designed for people with PMDD. ' +
+                  'Because the hardest bugs to fix are the ones nobody\u2019s even looking for.' +
+                '</p>' +
+              '</div>' +
+
+            '</div>' +
+          '</div>';
+
+        // Insert right before the Work section
+        workSection.parentNode.insertBefore(section, workSection);
+      }
+    })();
+    </script>
+
+    <script>
     // Work section: Replace 2-column Operator/Engineer grid with 4 experience cards
     (function(){
       var experiences = [
