@@ -51,390 +51,389 @@
   <body>
     <div id="root"></div>
     <script>
-    // Mobile Spider: corner web, dangle, fly chase, tap-to-interact
+    // Mobile spider: corner web + dangle + fly chase + tap to go fullscreen
     (function(){
-      function isMobile(){return 'ontouchstart' in window || navigator.maxTouchPoints > 0}
-      if(!isMobile()) return;
+      if(!('ontouchstart' in window) && !navigator.maxTouchPoints) return;
 
-      var ready = false;
-      var origCanvas = null;
-      var counterEl = null;
-
-      // Wait for React to render the spider canvas
+      var origCanvas, counterEl;
       var poll = setInterval(function(){
         var c = document.querySelector('canvas');
-        if(c){
-          clearInterval(poll);
-          origCanvas = c;
-          // Counter is the next sibling div
-          counterEl = c.nextElementSibling;
-          init();
-        }
+        if(!c) return;
+        clearInterval(poll);
+        origCanvas = c;
+        counterEl = c.nextElementSibling;
+        init();
       }, 200);
 
       function init(){
-        // Hide the full-screen spider & counter on mobile
-        origCanvas.style.display = 'none';
-        if(counterEl) counterEl.style.display = 'none';
+        hide(origCanvas); hide(counterEl);
         document.body.style.cursor = 'auto';
 
-        // Corner canvas - top-right
-        var W = 140, H = 180;
-        var dpr = window.devicePixelRatio || 1;
+        // Canvas setup
+        var W = 160, H = 200, PI = Math.PI, TAU = PI * 2;
+        var dpr = devicePixelRatio || 1;
         var cvs = document.createElement('canvas');
-        cvs.id = 'corner-spider';
-        cvs.width = W * dpr;
-        cvs.height = H * dpr;
-        cvs.style.cssText = 'position:fixed;top:0;right:0;width:'+W+'px;height:'+H+'px;z-index:55;touch-action:none;';
+        cvs.width = W * dpr; cvs.height = H * dpr;
+        cvs.style.cssText = 'position:fixed;top:0;right:0;width:'+W+'px;height:'+H+'px;z-index:55;touch-action:none';
         document.body.appendChild(cvs);
         var ctx = cvs.getContext('2d');
         ctx.scale(dpr, dpr);
 
-        // Tap hint
+        // Fade-out tap hint
         var hint = document.createElement('div');
         hint.textContent = 'tap the spider';
-        hint.style.cssText = 'position:fixed;top:'+(H+4)+'px;right:8px;z-index:55;font-family:monospace;font-size:10px;color:rgba(255,255,255,0.3);pointer-events:none;transition:opacity 1s;';
+        hint.style.cssText = 'position:fixed;top:'+(H+4)+'px;right:8px;z-index:55;font:10px monospace;color:rgba(255,255,255,.3);pointer-events:none;transition:opacity 1s';
         document.body.appendChild(hint);
-        setTimeout(function(){ hint.style.opacity = '0'; }, 4000);
-        setTimeout(function(){ hint.remove(); }, 5500);
+        setTimeout(function(){ hint.style.opacity = 0 }, 4000);
+        setTimeout(function(){ hint.remove() }, 5500);
+
+        // Web: 8 spokes + 5 rings from top-right corner
+        var webR = 65, spokes = 8, rings = 5;
+
+        // Spider dangles from this point on the web
+        var anchorA = PI * 0.78, anchorD = webR * 0.85;
+        var anchorX = W + Math.cos(anchorA) * anchorD;
+        var anchorY = Math.sin(anchorA) * anchorD;
 
         // State
-        var anchorX = W - 12, anchorY = 0;
-        var threadLen = 55;
-        var sway = 0, swaySpeed = 0.015, swayAmp = 5;
-        var spX = anchorX, spY = anchorY + threadLen;
-        var idle = true;
+        var SC = 0.45;                              // spider scale (matches original at 0.45x)
+        var threadLen = 50, sway = 0;
+        var sp = {x: anchorX, y: anchorY + threadLen};
+        var fly = {active: false, x:0, y:0, vx:0, vy:0, wing:0};
+        var chase = {on: false, x: sp.x, y: sp.y};
+        var trail = [], lastTrail = {x: sp.x, y: sp.y};
+        var catchFlash = 0, respawnAt = 0;
         var idleStart = Date.now();
-        var FLY_DELAY = 60000; // 1 min
+        var fullscreen = false, returnTimer = null;
 
-        // Fly state
-        var flyActive = false;
-        var flyX = 0, flyY = 0, flyVx = 0, flyVy = 0;
-        var flyAngle = 0;
-        var chasing = false;
-        var chaseSp = {x: spX, y: spY};
-        var catchCount = 0;
-        var catchFlash = 0;
-        var flyRespawnTimer = 0;
+        // --- Canvas helpers ---
+        function dot(x, y, r){ ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill() }
+        function show(el){ if(el) el.style.display = '' }
+        function hide(el){ if(el) el.style.display = 'none' }
+        function clamp(v, lo, hi){ return v < lo ? lo : v > hi ? hi : v }
 
-        // Full-screen mode state
-        var fullscreen = false;
-        var returnTimer = null;
+        // --- Draw functions ---
 
-        // Draw web in corner
-        function drawWeb(ctx){
-          var cx = W, cy = 0; // top-right corner
-          var rings = 4;
-          var spokes = 7;
-          var maxR = 50;
-
-          ctx.strokeStyle = 'rgba(255,255,255,0.12)';
-          ctx.lineWidth = 0.7;
-
-          // Spokes
+        function drawWeb(){
+          ctx.strokeStyle = 'rgba(255,255,255,.15)';
+          ctx.lineWidth = 1;
           for(var s = 0; s < spokes; s++){
-            var a = (Math.PI / 2) + (s / (spokes - 1)) * (Math.PI / 2); // PI/2 to PI
-            ctx.beginPath();
-            ctx.moveTo(cx, cy);
-            ctx.lineTo(cx + Math.cos(a) * maxR, cy + Math.sin(a) * maxR);
+            var a = PI/2 + (s/(spokes-1)) * PI/2;
+            ctx.beginPath(); ctx.moveTo(W, 0);
+            ctx.lineTo(W + Math.cos(a)*webR, Math.sin(a)*webR);
             ctx.stroke();
           }
-
-          // Rings
           for(var r = 1; r <= rings; r++){
-            var rad = (r / rings) * maxR;
+            var rad = (r/rings) * webR;
             ctx.beginPath();
-            for(var s = 0; s <= spokes * 4; s++){
-              var a = (Math.PI / 2) + (s / (spokes * 4)) * (Math.PI / 2);
-              var wobble = Math.sin(s * 2.5 + r) * 2;
-              var px = cx + Math.cos(a) * (rad + wobble);
-              var py = cy + Math.sin(a) * (rad + wobble);
-              if(s === 0) ctx.moveTo(px, py);
-              else ctx.lineTo(px, py);
+            for(var s = 0, segs = spokes*5; s <= segs; s++){
+              var a = PI/2 + (s/segs) * PI/2;
+              var w = Math.sin(s*2.3 + r*1.7) * 1.5;
+              var px = W + Math.cos(a)*(rad+w), py = Math.sin(a)*(rad+w);
+              s ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
             }
             ctx.stroke();
           }
         }
 
-        // Draw mini spider
-        function drawSpider(ctx, x, y, angle){
+        // Matches the interactive spider: body(-5,0) 20x16, head(15,0) r12, eyes(19,+-5)
+        function drawSpider(x, y, rot, tx, ty){
           ctx.save();
-          ctx.translate(x, y);
-          ctx.rotate(angle || 0);
+          ctx.translate(x, y); ctx.rotate(rot); ctx.scale(SC, SC);
 
-          // Body
-          ctx.fillStyle = '#555';
-          ctx.beginPath();
-          ctx.ellipse(0, 0, 5, 6, 0, 0, Math.PI * 2);
-          ctx.fill();
-
-          // Head
-          ctx.fillStyle = '#333';
-          ctx.beginPath();
-          ctx.arc(0, -7, 3.5, 0, Math.PI * 2);
-          ctx.fill();
-
-          // Eyes
-          ctx.fillStyle = '#fff';
-          ctx.beginPath();
-          ctx.arc(-1.5, -8, 1.2, 0, Math.PI * 2);
-          ctx.arc(1.5, -8, 1.2, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = '#000';
-          ctx.beginPath();
-          ctx.arc(-1.5, -8.2, 0.6, 0, Math.PI * 2);
-          ctx.arc(1.5, -8.2, 0.6, 0, Math.PI * 2);
-          ctx.fill();
-
-          // Legs (4 per side)
-          ctx.strokeStyle = '#555';
-          ctx.lineWidth = 1;
-          var legAngles = [-0.8, -0.4, 0.1, 0.5];
-          for(var i = 0; i < legAngles.length; i++){
-            var la = legAngles[i];
-            var wave = Math.sin(Date.now() * 0.003 + i * 1.5) * 2;
-            // Right
-            ctx.beginPath();
-            ctx.moveTo(3, la * 8);
-            ctx.quadraticCurveTo(10 + wave, la * 8 - 3, 13 + wave, la * 8 + 4);
-            ctx.stroke();
-            // Left
-            ctx.beginPath();
-            ctx.moveTo(-3, la * 8);
-            ctx.quadraticCurveTo(-10 - wave, la * 8 - 3, -13 - wave, la * 8 + 4);
-            ctx.stroke();
+          // 8 legs: 4 hip positions x 2 sides
+          var t = Date.now() * 0.003;
+          ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+          ctx.lineCap = ctx.lineJoin = 'round';
+          var hips = [-12, -6, 2, 10];
+          for(var i = 0; i < 8; i++){
+            var h = hips[i & 3], side = i < 4 ? 1 : -1;
+            var w = Math.sin(t + i*0.9) * 6;
+            var jx = h + side*(18+w), jy = side*12;
+            var fx = h + side*(25+w*0.5), fy = side*24;
+            ctx.beginPath(); ctx.moveTo(h, 0); ctx.lineTo(jx, jy); ctx.lineTo(fx, fy); ctx.stroke();
+            ctx.fillStyle = '#ff4444';
+            dot(h, 0, 2); dot(jx, jy, 1.5);
           }
 
-          // Fangs
-          ctx.fillStyle = '#c33';
-          ctx.beginPath();
-          ctx.moveTo(-1, -10);
-          ctx.lineTo(-0.3, -12);
-          ctx.lineTo(0.4, -10);
-          ctx.fill();
-          ctx.beginPath();
-          ctx.moveTo(1, -10);
-          ctx.lineTo(1.7, -12);
-          ctx.lineTo(2.4, -10);
-          ctx.fill();
-
-          ctx.restore();
-        }
-
-        // Draw fly
-        function drawFly(ctx, x, y){
-          ctx.save();
-          ctx.translate(x, y);
-          flyAngle += 0.3;
-
-          // Wings
-          var wf = Math.sin(flyAngle) * 0.4;
-          ctx.fillStyle = 'rgba(255,255,255,0.25)';
-          ctx.beginPath();
-          ctx.ellipse(-3, -1, 4, 2, -0.5 + wf, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.beginPath();
-          ctx.ellipse(3, -1, 4, 2, 0.5 - wf, 0, Math.PI * 2);
-          ctx.fill();
-
           // Body
-          ctx.fillStyle = '#888';
-          ctx.beginPath();
-          ctx.ellipse(0, 0, 2, 3, 0, 0, Math.PI * 2);
-          ctx.fill();
+          ctx.fillStyle = '#1a1a1a'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.ellipse(-5, 0, 20, 16, 0, 0, TAU); ctx.fill(); ctx.stroke();
 
-          // Eyes
-          ctx.fillStyle = '#c33';
-          ctx.beginPath();
-          ctx.arc(-1, -3, 0.8, 0, Math.PI * 2);
-          ctx.arc(1, -3, 0.8, 0, Math.PI * 2);
-          ctx.fill();
+          // Fangs
+          ctx.fillStyle = '#ff4444';
+          ctx.beginPath(); ctx.moveTo(-10,-5); ctx.lineTo(-2,0); ctx.lineTo(-10,5); ctx.fill();
+          ctx.beginPath(); ctx.moveTo(4,-5); ctx.lineTo(-4,0); ctx.lineTo(4,5); ctx.fill();
+
+          // Head
+          ctx.fillStyle = '#1a1a1a';
+          ctx.beginPath(); ctx.arc(15, 0, 12, 0, TAU); ctx.fill(); ctx.stroke();
+
+          // Eyes track target
+          var px = 0, py = 0;
+          if(tx != null){
+            var ea = Math.atan2(ty - y, tx - x) - rot;
+            px = Math.cos(ea) * 2.5; py = Math.sin(ea) * 2.5;
+          }
+          ctx.fillStyle = '#fff'; dot(19, -5, 4.5); dot(19, 5, 4.5);
+          ctx.fillStyle = '#1a1a1a'; dot(19+px, -5+py, 2); dot(19+px, 5+py, 2);
+          ctx.fillStyle = '#fff'; dot(20, -6, 1); dot(20, 4, 1);
+
+          // Mouth
+          ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5;
+          ctx.beginPath(); ctx.arc(17, 0, 3, 0.8, -0.8, true); ctx.stroke();
 
           ctx.restore();
         }
 
-        function spawnFly(){
-          flyActive = true;
-          flyX = Math.random() * (W - 40) + 20;
-          flyY = Math.random() * (H - 60) + 40;
-          flyVx = (Math.random() - 0.5) * 1.5;
-          flyVy = (Math.random() - 0.5) * 1.5;
-          chasing = false;
+        function drawFly(x, y){
+          ctx.save(); ctx.translate(x, y);
+          fly.wing += 0.3;
+          // Wings
+          ctx.fillStyle = 'rgba(255,255,255,.6)';
+          ctx.save(); ctx.scale(1, 0.7 + Math.sin(fly.wing*2)*0.3);
+          ctx.beginPath(); ctx.ellipse(-2,-6, 4,8, 0.5, 0,TAU); ctx.fill();
+          ctx.beginPath(); ctx.ellipse(-2, 6, 4,8,-0.5, 0,TAU); ctx.fill();
+          ctx.restore();
+          // Body + eyes
+          ctx.fillStyle = '#333';
+          ctx.beginPath(); ctx.ellipse(0,0, 6,4, 0, 0,TAU); ctx.fill();
+          ctx.fillStyle = 'red'; dot(3,-2, 1.5); dot(3,2, 1.5);
+          ctx.restore();
         }
+
+        function drawTrail(){
+          var now = Date.now();
+          trail = trail.filter(function(p){ return now - p.t < 5000 });
+          var cx = chase.on ? chase.x : sp.x, cy = chase.on ? chase.y : sp.y;
+          ctx.globalCompositeOperation = 'destination-over';
+          ctx.lineWidth = 1;
+          for(var i = 0; i < trail.length; i++){
+            var p = trail[i], age = 1 - (now - p.t) / 5000;
+            if(Math.hypot(cx-p.x, cy-p.y) < 80){
+              ctx.strokeStyle = 'rgba(255,255,255,'+(0.15*age)+')';
+              ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(p.x,p.y); ctx.stroke();
+            }
+          }
+          ctx.globalCompositeOperation = 'source-over';
+        }
+
+        // --- Main loop ---
 
         function animate(){
           if(fullscreen) return;
-
+          var now = Date.now();
           ctx.clearRect(0, 0, W, H);
-          drawWeb(ctx);
+          drawWeb();
+          sway += 0.015;
 
-          sway += swaySpeed;
+          // Spawn fly after 60s idle
+          if(!fly.active && !respawnAt && now - idleStart > 60000) spawnFly();
+          if(!fly.active && respawnAt && now > respawnAt){ spawnFly(); respawnAt = 0; }
 
-          // Check if fly should appear
-          if(!flyActive && Date.now() - idleStart > FLY_DELAY){
-            spawnFly();
-          }
-
-          if(!flyActive && !chasing){
-            // Idle: spider dangles from web
-            var swayOffset = Math.sin(sway) * swayAmp;
-            spX = anchorX + swayOffset;
-            spY = anchorY + threadLen;
-
-            // Draw thread
-            ctx.strokeStyle = 'rgba(255,255,255,0.25)';
-            ctx.lineWidth = 0.8;
-            ctx.beginPath();
-            ctx.moveTo(anchorX, anchorY);
-            // Slight curve
-            ctx.quadraticCurveTo(anchorX + swayOffset * 0.5, anchorY + threadLen * 0.5, spX, spY - 7);
+          if(!fly.active && !chase.on){
+            // Idle dangle
+            var sw = Math.sin(sway) * 4;
+            sp.x = anchorX + sw; sp.y = anchorY + threadLen;
+            ctx.strokeStyle = 'rgba(255,255,255,.25)'; ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(anchorX, anchorY);
+            ctx.quadraticCurveTo(anchorX + sw*0.4, anchorY + threadLen*0.5, sp.x, sp.y - 5*SC);
             ctx.stroke();
+            drawSpider(sp.x, sp.y, PI/2, fly.x || sp.x, fly.y || sp.y+30);
 
-            drawSpider(ctx, spX, spY, 0);
-          } else if(flyActive){
-            // Move fly erratically
-            flyVx += (Math.random() - 0.5) * 0.4;
-            flyVy += (Math.random() - 0.5) * 0.4;
-            flyVx = Math.max(-2, Math.min(2, flyVx));
-            flyVy = Math.max(-2, Math.min(2, flyVy));
-            flyX += flyVx;
-            flyY += flyVy;
+          } else if(fly.active){
+            // Fly physics
+            fly.vx = clamp(fly.vx + (Math.random()-.5)*.4, -2, 2);
+            fly.vy = clamp(fly.vy + (Math.random()-.5)*.4, -2, 2);
+            fly.x += fly.vx; fly.y += fly.vy;
+            if(fly.x < 10 || fly.x > W-10) fly.vx *= -1;
+            if(fly.y < 10 || fly.y > H-10) fly.vy *= -1;
+            fly.x = clamp(fly.x, 10, W-10); fly.y = clamp(fly.y, 10, H-10);
+            drawFly(fly.x, fly.y);
 
-            // Bounce fly
-            if(flyX < 5 || flyX > W - 5) flyVx *= -1;
-            if(flyY < 5 || flyY > H - 5) flyVy *= -1;
-            flyX = Math.max(5, Math.min(W - 5, flyX));
-            flyY = Math.max(5, Math.min(H - 5, flyY));
+            // Spider chases
+            if(!chase.on){ chase.on = true; chase.x = sp.x; chase.y = sp.y; }
+            var dx = fly.x - chase.x, dy = fly.y - chase.y;
+            var dist = Math.hypot(dx, dy);
+            if(dist > 2){ chase.x += dx/dist * 1.2; chase.y += dy/dist * 1.2; }
 
-            drawFly(ctx, flyX, flyY);
-
-            // Spider starts chasing after a moment
-            if(!chasing){
-              chasing = true;
-              chaseSp.x = spX;
-              chaseSp.y = spY;
+            // Trail
+            if(Math.hypot(chase.x-lastTrail.x, chase.y-lastTrail.y) > 10){
+              trail.push({x:chase.x, y:chase.y, t:now}); lastTrail = {x:chase.x, y:chase.y};
             }
 
-            // Chase the fly
-            var dx = flyX - chaseSp.x;
-            var dy = flyY - chaseSp.y;
-            var dist = Math.sqrt(dx * dx + dy * dy);
-            var speed = 1.2;
-            if(dist > 2){
-              chaseSp.x += (dx / dist) * speed;
-              chaseSp.y += (dy / dist) * speed;
-            }
+            // Thread + spider
+            ctx.strokeStyle = 'rgba(255,255,255,.2)'; ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(anchorX,anchorY); ctx.lineTo(chase.x,chase.y); ctx.stroke();
+            drawSpider(chase.x, chase.y, Math.atan2(dy,dx), fly.x, fly.y);
 
-            // Thread from anchor to spider
-            ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-            ctx.lineWidth = 0.6;
-            ctx.beginPath();
-            ctx.moveTo(anchorX, anchorY);
-            ctx.lineTo(chaseSp.x, chaseSp.y - 7);
-            ctx.stroke();
-
-            var angle = Math.atan2(dy, dx) - Math.PI / 2;
-            drawSpider(ctx, chaseSp.x, chaseSp.y, angle);
-
-            // Catch detection
-            if(dist < 12){
-              flyActive = false;
-              chasing = false;
-              catchCount++;
-              catchFlash = 15;
-              // Reset position back to dangle
-              spX = anchorX;
-              spY = anchorY + threadLen;
-              // Respawn fly after a delay
-              flyRespawnTimer = Date.now() + 8000;
+            // Catch
+            if(dist < 15){
+              fly.active = false; chase.on = false; catchFlash = 20;
+              sp.x = anchorX; sp.y = anchorY + threadLen;
+              respawnAt = now + 6000;
             }
           }
 
-          // Respawn fly
-          if(!flyActive && flyRespawnTimer && Date.now() > flyRespawnTimer){
-            spawnFly();
-            flyRespawnTimer = 0;
-          }
+          drawTrail();
 
-          // Catch flash
           if(catchFlash > 0){
-            ctx.fillStyle = 'rgba(220,38,38,' + (catchFlash / 15 * 0.5) + ')';
-            ctx.font = 'bold 10px monospace';
-            ctx.textAlign = 'center';
-            ctx.fillText('+1', anchorX, anchorY + threadLen + 20);
+            ctx.fillStyle = 'rgba(220,38,38,'+(catchFlash/20*0.6)+')';
+            ctx.font = 'bold 11px monospace'; ctx.textAlign = 'center';
+            ctx.fillText('+1', anchorX, anchorY + threadLen + 22);
             catchFlash--;
           }
-
           requestAnimationFrame(animate);
+        }
+
+        function spawnFly(){
+          fly.active = true; chase.on = false;
+          fly.x = Math.random()*(W-40)+20; fly.y = Math.random()*(H-60)+40;
+          fly.vx = (Math.random()-.5)*1.5; fly.vy = (Math.random()-.5)*1.5;
         }
 
         animate();
 
-        // Tap spider to go fullscreen interactive
+        // --- Tap to toggle fullscreen interactive mode ---
+
         cvs.addEventListener('touchstart', function(e){
-          e.preventDefault();
-          e.stopPropagation();
-
-          // Check if tap is near the spider
           var rect = cvs.getBoundingClientRect();
-          var tx = e.touches[0].clientX - rect.left;
-          var ty = e.touches[0].clientY - rect.top;
-          var curSpX = chasing ? chaseSp.x : spX;
-          var curSpY = chasing ? chaseSp.y : spY;
-          var d = Math.sqrt((tx - curSpX) * (tx - curSpX) + (ty - curSpY) * (ty - curSpY));
-
-          if(d < 40){
+          var tx = e.touches[0].clientX - rect.left, ty = e.touches[0].clientY - rect.top;
+          var sx = chase.on ? chase.x : sp.x, sy = chase.on ? chase.y : sp.y;
+          if(Math.hypot(tx-sx, ty-sy) < 45){
+            e.preventDefault(); e.stopPropagation();
             enterFullscreen();
           }
         });
 
         function enterFullscreen(){
-          fullscreen = true;
-          cvs.style.display = 'none';
-
-          origCanvas.style.display = '';
-          if(counterEl) counterEl.style.display = '';
-
-          // Auto-return to corner after 15s of no touch
+          fullscreen = true; hide(cvs); show(origCanvas); show(counterEl);
           clearTimeout(returnTimer);
-          var touchActive = false;
-
-          function onTouch(){
-            touchActive = true;
+          var reset = function(){ clearTimeout(returnTimer); returnTimer = setTimeout(exit, 5000); };
+          var exit = function(){
             clearTimeout(returnTimer);
-            returnTimer = setTimeout(function(){
-              if(!touchActive) exitFullscreen();
-              touchActive = false;
-            }, 15000);
-          }
-
-          function exitFullscreen(){
-            origCanvas.style.display = 'none';
-            if(counterEl) counterEl.style.display = 'none';
+            document.removeEventListener('touchstart', reset);
+            document.removeEventListener('touchmove', reset);
+            hide(origCanvas); hide(counterEl);
             document.body.style.cursor = 'auto';
-
-            fullscreen = false;
-            cvs.style.display = '';
-            idleStart = Date.now();
-            flyActive = false;
-            chasing = false;
-            sway = 0;
-
-            document.removeEventListener('touchstart', onTouch);
-            document.removeEventListener('touchmove', onTouchMove);
+            fullscreen = false; show(cvs);
+            idleStart = Date.now(); fly.active = false; chase.on = false;
+            respawnAt = 0; sway = 0; trail = [];
             animate();
-          }
-
-          function onTouchMove(){ onTouch(); }
-
-          document.addEventListener('touchstart', onTouch);
-          document.addEventListener('touchmove', onTouchMove);
-
-          // Start the inactivity timer
-          returnTimer = setTimeout(function(){
-            exitFullscreen();
-          }, 15000);
+          };
+          document.addEventListener('touchstart', reset);
+          document.addEventListener('touchmove', reset);
+          reset();
         }
+      }
+    })();
+    </script>
+
+    <script>
+    // Work section: Replace 2-column Operator/Engineer grid with 4 experience cards
+    (function(){
+      var experiences = [
+        {
+          title: 'The Real Estate Turnaround',
+          role: 'Head of Special Projects',
+          company: 'Woolbright Development',
+          dates: 'Dec 2024 \u2013 Dec 2025',
+          color: '#dc2626',
+          problem: 'How do you modernize a legacy industry that still runs on gut instinct and spreadsheets?',
+          fix: 'I treated a shopping center portfolio like a systems engineering challenge.',
+          bullets: [
+            { label: 'The \u201CMoneyball\u201D Approach', text: 'Built AI workflows to analyze 100+ prospective deals, automating the risk analysis that used to take weeks.' },
+            { label: 'The Revenue Engine', text: 'Redeveloped the leasing operations, personally leasing 14 vacancies in six months to generate over $14M in actualized value.' },
+            { label: 'The Heavy Lift', text: 'Managed the engineering, permitting, and construction for a $10M+ Publix-anchored center, proving that digital strategy can drive physical concrete.' }
+          ]
+        },
+        {
+          title: 'The Startup Scale-Up',
+          role: 'Director of Operations',
+          company: 'Gearsupply',
+          dates: 'Mar 2023 \u2013 Nov 2024',
+          color: '#3b82f6',
+          problem: 'A high-growth startup trying to scale without breaking its own infrastructure.',
+          fix: 'I rewired the company\u2019s nervous system while we were running at full speed.',
+          bullets: [
+            { label: 'The Architecture', text: 'Built the company\u2019s first integrated inventory and logistics systems, allowing us to stratify sales teams and stop \u201Cguessing\u201D where the gear was.' },
+            { label: 'The Growth', text: 'Optimized finance and IT processes that supported growth to $15M+ in revenue.' },
+            { label: 'The Capital', text: 'Designed the financial models and acquisition strategies that secured a multi-million dollar investment round during a brutally difficult fundraising market.' }
+          ]
+        },
+        {
+          title: 'The \u201C100-Year\u201D Infrastructure',
+          role: 'District Resiliency Project Manager',
+          company: 'South Florida Water Management District',
+          dates: 'Nov 2021 \u2013 Feb 2023',
+          color: '#dc2626',
+          problem: 'How do you protect 10 million people from sea-level rise when the water has nowhere to go?',
+          fix: 'I moved the district from \u201Creacting\u201D to \u201Cmodeling.\u201D',
+          bullets: [
+            { label: 'The Scale', text: 'Managed budgeting and risk for $350M+ in infrastructure projects.' },
+            { label: 'The Innovation', text: 'Spearheaded and funded a multi-million dollar water innovation program to test new technologies in the field.' },
+            { label: 'The Model', text: 'Developed the first water supply models that explicitly incorporated climate change data for 10M+ constituents, ensuring we weren\u2019t just building for today, but for the next century.' }
+          ]
+        },
+        {
+          title: 'The Venture Capital Lens',
+          role: 'Venture Capital Analyst',
+          company: 'Chloe Capital',
+          dates: 'May 2021 \u2013 Aug 2021',
+          color: '#3b82f6',
+          problem: 'How do you separate a good slide deck from a scalable business model (especially in overlooked markets)?',
+          fix: 'I applied rigorous stress-testing to the \u201Coptimism\u201D of early-stage founders.',
+          bullets: [
+            { label: 'The Filter', text: 'Conducted deep due diligence on 50+ pre-seed and seed-stage companies, looking for the operational flaws that kill startups before they start.' },
+            { label: 'The Thesis', text: 'Authored the investment memos that dictated capital allocation, focusing on women-led tech companies that were statistically undervalued by the broader market.' },
+            { label: 'The Insight', text: 'This role taught me exactly what investors look for, which I later used to raise millions for Gearsupply.' }
+          ]
+        }
+      ];
+
+      // Poll for the React work section to render, then replace the grid
+      var poll = setInterval(function(){
+        var work = document.getElementById('work');
+        if (!work) return;
+        var container = work.firstElementChild;
+        if (!container || container.children.length < 2) return;
+        var grid = container.children[1];
+        if (!grid || grid.className.indexOf('gap-12') === -1) return;
+        clearInterval(poll);
+        replaceGrid(grid);
+      }, 200);
+
+      function replaceGrid(grid) {
+        grid.innerHTML = '';
+
+        experiences.forEach(function(exp) {
+          var card = document.createElement('div');
+          card.className = 'p-8 rounded-2xl';
+          card.style.cssText = 'background:rgba(24,24,27,0.2);border:1px solid #27272a;transition:border-color 0.3s';
+          card.onmouseenter = function(){ card.style.borderColor = exp.color + '4d'; };
+          card.onmouseleave = function(){ card.style.borderColor = '#27272a'; };
+
+          card.innerHTML =
+            '<h3 class="text-2xl font-bold mb-2" style="color:white">' + exp.title + '</h3>' +
+            '<p class="font-mono text-xs mb-6" style="color:#6b7280;letter-spacing:0.1em">' +
+              exp.role + ' @ ' + exp.company + ' &middot; ' + exp.dates + '</p>' +
+            '<p class="text-lg italic pl-4 mb-4" style="color:white;border-left:4px solid ' + exp.color + '">' +
+              exp.problem + '</p>' +
+            '<p class="text-sm mb-4" style="color:#9ca3af">' + exp.fix + '</p>' +
+            buildBullets(exp.bullets, exp.color);
+
+          grid.appendChild(card);
+        });
+      }
+
+      function buildBullets(bullets, color) {
+        return '<div style="display:flex;flex-direction:column;gap:0.5rem">' +
+          bullets.map(function(b) {
+            return '<p class="text-sm leading-relaxed" style="color:#9ca3af;padding-left:1rem">' +
+              '<span class="font-semibold" style="color:' + color + '">' + b.label + ':</span> ' +
+              b.text + '</p>';
+          }).join('') +
+        '</div>';
       }
     })();
     </script>
