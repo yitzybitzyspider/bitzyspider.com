@@ -309,5 +309,114 @@
       }
     })();
     </script>
+
+    <script>
+    // Work section: Replace 2-column Operator/Engineer grid with 4 experience cards
+    (function(){
+      var experiences = [
+        {
+          title: 'The Real Estate Turnaround',
+          role: 'Head of Special Projects',
+          company: 'Woolbright Development',
+          dates: 'Dec 2024 \u2013 Dec 2025',
+          color: '#dc2626',
+          problem: 'How do you modernize a legacy industry that still runs on gut instinct and spreadsheets?',
+          fix: 'I treated a shopping center portfolio like a systems engineering challenge.',
+          bullets: [
+            { label: 'The \u201CMoneyball\u201D Approach', text: 'Built AI workflows to analyze 100+ prospective deals, automating the risk analysis that used to take weeks.' },
+            { label: 'The Revenue Engine', text: 'Redeveloped the leasing operations, personally leasing 14 vacancies in six months to generate over $14M in actualized value.' },
+            { label: 'The Heavy Lift', text: 'Managed the engineering, permitting, and construction for a $10M+ Publix-anchored center, proving that digital strategy can drive physical concrete.' }
+          ]
+        },
+        {
+          title: 'The Startup Scale-Up',
+          role: 'Director of Operations',
+          company: 'Gearsupply',
+          dates: 'Mar 2023 \u2013 Nov 2024',
+          color: '#3b82f6',
+          problem: 'A high-growth startup trying to scale without breaking its own infrastructure.',
+          fix: 'I rewired the company\u2019s nervous system while we were running at full speed.',
+          bullets: [
+            { label: 'The Architecture', text: 'Built the company\u2019s first integrated inventory and logistics systems, allowing us to stratify sales teams and stop \u201Cguessing\u201D where the gear was.' },
+            { label: 'The Growth', text: 'Optimized finance and IT processes that supported growth to $15M+ in revenue.' },
+            { label: 'The Capital', text: 'Designed the financial models and acquisition strategies that secured a multi-million dollar investment round during a brutally difficult fundraising market.' }
+          ]
+        },
+        {
+          title: 'The \u201C100-Year\u201D Infrastructure',
+          role: 'District Resiliency Project Manager',
+          company: 'South Florida Water Management District',
+          dates: 'Nov 2021 \u2013 Feb 2023',
+          color: '#dc2626',
+          problem: 'How do you protect 10 million people from sea-level rise when the water has nowhere to go?',
+          fix: 'I moved the district from \u201Creacting\u201D to \u201Cmodeling.\u201D',
+          bullets: [
+            { label: 'The Scale', text: 'Managed budgeting and risk for $350M+ in infrastructure projects.' },
+            { label: 'The Innovation', text: 'Spearheaded and funded a multi-million dollar water innovation program to test new technologies in the field.' },
+            { label: 'The Model', text: 'Developed the first water supply models that explicitly incorporated climate change data for 10M+ constituents, ensuring we weren\u2019t just building for today, but for the next century.' }
+          ]
+        },
+        {
+          title: 'The Venture Capital Lens',
+          role: 'Venture Capital Analyst',
+          company: 'Chloe Capital',
+          dates: 'May 2021 \u2013 Aug 2021',
+          color: '#3b82f6',
+          problem: 'How do you separate a good slide deck from a scalable business model (especially in overlooked markets)?',
+          fix: 'I applied rigorous stress-testing to the \u201Coptimism\u201D of early-stage founders.',
+          bullets: [
+            { label: 'The Filter', text: 'Conducted deep due diligence on 50+ pre-seed and seed-stage companies, looking for the operational flaws that kill startups before they start.' },
+            { label: 'The Thesis', text: 'Authored the investment memos that dictated capital allocation, focusing on women-led tech companies that were statistically undervalued by the broader market.' },
+            { label: 'The Insight', text: 'This role taught me exactly what investors look for, which I later used to raise millions for Gearsupply.' }
+          ]
+        }
+      ];
+
+      // Poll for the React work section to render, then replace the grid
+      var poll = setInterval(function(){
+        var work = document.getElementById('work');
+        if (!work) return;
+        var container = work.firstElementChild;
+        if (!container || container.children.length < 2) return;
+        var grid = container.children[1];
+        if (!grid || grid.className.indexOf('gap-12') === -1) return;
+        clearInterval(poll);
+        replaceGrid(grid);
+      }, 200);
+
+      function replaceGrid(grid) {
+        grid.innerHTML = '';
+
+        experiences.forEach(function(exp) {
+          var card = document.createElement('div');
+          card.className = 'p-8 rounded-2xl';
+          card.style.cssText = 'background:rgba(24,24,27,0.2);border:1px solid #27272a;transition:border-color 0.3s';
+          card.onmouseenter = function(){ card.style.borderColor = exp.color + '4d'; };
+          card.onmouseleave = function(){ card.style.borderColor = '#27272a'; };
+
+          card.innerHTML =
+            '<h3 class="text-2xl font-bold mb-2" style="color:white">' + exp.title + '</h3>' +
+            '<p class="font-mono text-xs mb-6" style="color:#6b7280;letter-spacing:0.1em">' +
+              exp.role + ' @ ' + exp.company + ' &middot; ' + exp.dates + '</p>' +
+            '<p class="text-lg italic pl-4 mb-4" style="color:white;border-left:4px solid ' + exp.color + '">' +
+              exp.problem + '</p>' +
+            '<p class="text-sm mb-4" style="color:#9ca3af">' + exp.fix + '</p>' +
+            buildBullets(exp.bullets, exp.color);
+
+          grid.appendChild(card);
+        });
+      }
+
+      function buildBullets(bullets, color) {
+        return '<div style="display:flex;flex-direction:column;gap:0.5rem">' +
+          bullets.map(function(b) {
+            return '<p class="text-sm leading-relaxed" style="color:#9ca3af;padding-left:1rem">' +
+              '<span class="font-semibold" style="color:' + color + '">' + b.label + ':</span> ' +
+              b.text + '</p>';
+          }).join('') +
+        '</div>';
+      }
+    })();
+    </script>
   </body>
 </html>
