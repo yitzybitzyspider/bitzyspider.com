@@ -333,7 +333,7 @@
     // Current Projects section: inject above the Work section with Astrid app demo
     (function(){
       var poll = setInterval(function(){
-        var work = document.getElementById('work');
+        var work = document.getElementById('track_record');
         if (!work) return;
         clearInterval(poll);
         injectSection(work);
@@ -398,7 +398,7 @@
 
         // ----- Build the section -----
         var section = document.createElement('section');
-        section.id = 'projects';
+        section.id = 'current_work';
         section.className = 'py-32 px-4';
 
         section.innerHTML =
@@ -536,7 +536,7 @@
 
       // Poll for the React work section to render, then replace the grid
       var poll = setInterval(function(){
-        var work = document.getElementById('work');
+        var work = document.getElementById('track_record');
         if (!work) return;
         var container = work.firstElementChild;
         if (!container || container.children.length < 2) return;
@@ -617,7 +617,7 @@
       ];
 
       var poll = setInterval(function(){
-        var work = document.getElementById('work');
+        var work = document.getElementById('track_record');
         if (!work) return;
         // The toolkit is the last child of the work section's container - the div with "The Toolkit" heading
         var container = work.firstElementChild;
@@ -665,10 +665,10 @@
         clearInterval(poll);
 
         var buttons = [
-          { label: 'My Track Record', href: '#work' },
-          { label: 'What I\u2019m Building', href: '#astrid-section' },
+          { label: 'What I\u2019m Building', href: '#current_work' },
+          { label: 'My Track Record', href: '#track_record' },
           { label: 'Community', href: '#community' },
-          { label: 'Off the Clock', href: '#gallery' },
+          { label: 'Off the Clock', href: '#off_the_clock' },
           { label: 'Get in Touch', href: '#contact' }
         ];
 
