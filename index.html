@@ -149,7 +149,7 @@
     // Current Projects section: inject above the Work section with Astrid app demo
     (function(){
       var poll = setInterval(function(){
-        var work = document.getElementById('work');
+        var work = document.getElementById('track_record');
         if (!work) return;
         clearInterval(poll);
         injectSection(work);
@@ -214,7 +214,7 @@
 
         // ----- Build the section -----
         var section = document.createElement('section');
-        section.id = 'projects';
+        section.id = 'current_work';
         section.className = 'py-32 px-4';
 
         section.innerHTML =
@@ -352,7 +352,7 @@
 
       // Poll for the React work section to render, then replace the grid
       var poll = setInterval(function(){
-        var work = document.getElementById('work');
+        var work = document.getElementById('track_record');
         if (!work) return;
         var container = work.firstElementChild;
         if (!container || container.children.length < 2) return;
@@ -433,7 +433,7 @@
       ];
 
       var poll = setInterval(function(){
-        var work = document.getElementById('work');
+        var work = document.getElementById('track_record');
         if (!work) return;
         // The toolkit is the last child of the work section's container - the div with "The Toolkit" heading
         var container = work.firstElementChild;
@@ -469,6 +469,57 @@
         html += '</div>';
         el.innerHTML = html;
       }
+    })();
+    </script>
+
+    <script>
+    // Add section navigation buttons in the hero (before About)
+    (function(){
+      var poll = setInterval(function(){
+        var nav = document.getElementById('hero-nav');
+        if (!nav) return;
+        clearInterval(poll);
+
+        var buttons = [
+          { label: 'What I\u2019m Building', href: '#current_work' },
+          { label: 'My Track Record', href: '#track_record' },
+          { label: 'Community', href: '#community' },
+          { label: 'Off the Clock', href: '#off_the_clock' },
+          { label: 'Get in Touch', href: '#contact' }
+        ];
+
+        buttons.forEach(function(btn) {
+          var a = document.createElement('a');
+          a.href = btn.href;
+          a.textContent = btn.label;
+          a.className = 'font-bold cursor-none';
+          a.style.cssText = 'display:inline-flex;align-items:center;gap:0.5rem;padding:0.75rem 1.5rem;border-radius:9999px;font-size:0.875rem;border:1px solid #3f3f46;color:#d4d4d8;background:transparent;transition:all 0.3s;text-decoration:none';
+          a.onmouseenter = function(){ a.style.borderColor='#dc2626'; a.style.color='#fff'; };
+          a.onmouseleave = function(){ a.style.borderColor='#3f3f46'; a.style.color='#d4d4d8'; };
+          nav.appendChild(a);
+        });
+      }, 200);
+    })();
+    </script>
+
+    <script>
+    // Add Download CV button to the Contact section
+    (function(){
+      var poll = setInterval(function(){
+        var contact = document.getElementById('contact');
+        if (!contact) return;
+        var rows = contact.querySelectorAll('.flex.flex-col.md\\:flex-row.gap-4');
+        if (rows.length < 2) return;
+        clearInterval(poll);
+
+        // Add to the second row (LinkedIn / Save Contact row)
+        var cvBtn = document.createElement('a');
+        cvBtn.href = '/Yitzy_Rosenberg_CV.pdf';
+        cvBtn.download = true;
+        cvBtn.className = 'bg-zinc-900 text-white border border-zinc-800 text-lg px-8 py-4 rounded-full font-bold hover:border-white transition-all flex items-center justify-center gap-2 cursor-none';
+        cvBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download CV';
+        rows[1].appendChild(cvBtn);
+      }, 200);
     })();
     </script>
 
