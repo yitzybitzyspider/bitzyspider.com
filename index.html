@@ -393,6 +393,7 @@
           '}' +
           '@media (min-width: 768px) {' +
             '.iphone-frame { --phone-width: 320px; }' +
+            '.projects-row { flex-direction: row !important; align-items: start !important; justify-content: center; }' +
           '}';
         document.head.appendChild(style);
 
@@ -413,7 +414,7 @@
             '</div>' +
 
             // Phone frame + project description
-            '<div style="display:flex;flex-direction:column;align-items:center;gap:3.5rem">' +
+            '<div class="projects-row" style="display:flex;flex-direction:column;align-items:center;gap:3.5rem">' +
 
               // iPhone frame with YouTube Short
               '<div class="iphone-frame">' +
@@ -666,6 +667,83 @@
         clearInterval(poll);
         img.style.objectPosition = 'center 20%';
       }, 200);
+    })();
+    </script>
+
+    <script>
+    // Community section: remove icon, remove photo text overlays, add AguaClara card
+    (function(){
+      var poll = setInterval(function(){
+        var community = document.getElementById('community');
+        if (!community) return;
+        var container = community.firstElementChild;
+        if (!container || container.children.length < 3) return;
+        clearInterval(poll);
+        modifyCommunity(container);
+      }, 200);
+
+      function modifyCommunity(container) {
+        // 1. Remove the icon from the header (the rounded-full div with the icon)
+        var header = container.children[0]; // text-center mb-16
+        var iconDiv = header.querySelector('.rounded-full');
+        if (iconDiv) iconDiv.remove();
+
+        // 2. Remove text overlay labels from photo cards
+        var photoGrid = container.children[1]; // grid md:grid-cols-2 gap-8 mb-12
+        var overlays = photoGrid.querySelectorAll('.absolute.bottom-4');
+        for (var i = 0; i < overlays.length; i++) {
+          overlays[i].remove();
+        }
+        // Also remove the dark overlay divs on hover
+        var darkOverlays = photoGrid.querySelectorAll('.absolute.inset-0');
+        for (var i = 0; i < darkOverlays.length; i++) {
+          darkOverlays[i].remove();
+        }
+
+        // 3. Make grid 3-column on desktop and add AguaClara card
+        photoGrid.style.cssText = 'display:grid;grid-template-columns:1fr;gap:2rem;margin-bottom:3rem';
+        var mq = window.matchMedia('(min-width: 768px)');
+        function updateCols() {
+          photoGrid.style.gridTemplateColumns = mq.matches ? 'repeat(3, 1fr)' : '1fr';
+        }
+        mq.addListener(updateCols);
+        updateCols();
+
+        // 4. Create AguaClara card
+        var card = document.createElement('a');
+        card.href = 'https://www.aguaclarareach.org/';
+        card.target = '_blank';
+        card.rel = 'noopener noreferrer';
+        card.className = 'relative rounded-2xl overflow-hidden group';
+        card.style.cssText = 'display:block;text-decoration:none';
+        card.innerHTML =
+          '<img src="/photos/aguaclara.jpg" alt="AguaClara Reach" ' +
+            'style="width:100%;height:18rem;object-fit:cover;transition:transform 0.7s" ' +
+            'onmouseover="this.style.transform=\'scale(1.05)\'" ' +
+            'onmouseout="this.style.transform=\'scale(1)\'">';
+        photoGrid.appendChild(card);
+      }
+    })();
+    </script>
+
+    <script>
+    // Reduce and unify section spacing
+    (function(){
+      var poll = setInterval(function(){
+        var sections = document.querySelectorAll('section.py-32');
+        if (sections.length < 2) return;
+        clearInterval(poll);
+        for (var i = 0; i < sections.length; i++) {
+          sections[i].style.paddingTop = '5rem';
+          sections[i].style.paddingBottom = '5rem';
+        }
+        // Also fix the injected projects section
+        var proj = document.getElementById('projects');
+        if (proj) {
+          proj.style.paddingTop = '5rem';
+          proj.style.paddingBottom = '5rem';
+        }
+      }, 300);
     })();
     </script>
 
