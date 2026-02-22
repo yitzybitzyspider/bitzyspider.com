@@ -657,19 +657,16 @@
     </script>
 
     <script>
-    // Add section navigation buttons after About section
+    // Add section navigation buttons in the hero (before About)
     (function(){
       var poll = setInterval(function(){
-        var about = document.getElementById('about');
-        if (!about) return;
+        var nav = document.getElementById('hero-nav');
+        if (!nav) return;
         clearInterval(poll);
 
-        var nav = document.createElement('div');
-        nav.style.cssText = 'display:flex;flex-wrap:wrap;gap:1rem;justify-content:center;padding:3rem 1rem 0';
-
         var buttons = [
-          { label: 'See My Track Record', href: '#work' },
-          { label: 'Explore What I\u2019m Building', href: '#astrid-section' },
+          { label: 'My Track Record', href: '#work' },
+          { label: 'What I\u2019m Building', href: '#astrid-section' },
           { label: 'Community', href: '#community' },
           { label: 'Off the Clock', href: '#gallery' },
           { label: 'Get in Touch', href: '#contact' }
@@ -685,9 +682,6 @@
           a.onmouseleave = function(){ a.style.borderColor='#3f3f46'; a.style.color='#d4d4d8'; };
           nav.appendChild(a);
         });
-
-        // Insert at the end of the about section
-        about.firstElementChild.appendChild(nav);
       }, 200);
     })();
     </script>
