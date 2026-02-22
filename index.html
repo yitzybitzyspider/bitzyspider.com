@@ -209,7 +209,6 @@
           '}' +
           '@media (min-width: 768px) {' +
             '.iphone-frame { --phone-width: 320px; }' +
-            '.projects-row { flex-direction: row !important; align-items: start !important; justify-content: center; }' +
           '}';
         document.head.appendChild(style);
 
@@ -229,46 +228,46 @@
               '</p>' +
             '</div>' +
 
-            // Phone frame + project description
-            '<div class="projects-row" style="display:flex;flex-direction:column;align-items:center;gap:3.5rem">' +
+            // Astrid card (same styling as work experience cards)
+            '<div class="p-8 rounded-2xl" id="astrid-card" style="background:rgba(24,24,27,0.2);border:1px solid #27272a;transition:border-color 0.3s">' +
 
-              // iPhone frame with YouTube Short
-              '<div class="iphone-frame">' +
-                '<div class="speaker"></div>' +
-                '<div class="screen-content">' +
-                  '<iframe ' +
-                    'src="https://www.youtube-nocookie.com/embed/DjVovCBWpB8?rel=0&modestbranding=1&iv_load_policy=3&autoplay=0" ' +
-                    'title="Astrid App Demo" ' +
-                    'frameborder="0" ' +
-                    'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" ' +
-                    'allowfullscreen>' +
-                  '</iframe>' +
+              // Phone frame centered inside the card
+              '<div style="display:flex;justify-content:center;margin-bottom:2rem">' +
+                '<div class="iphone-frame">' +
+                  '<div class="speaker"></div>' +
+                  '<div class="screen-content">' +
+                    '<iframe ' +
+                      'src="https://www.youtube-nocookie.com/embed/DjVovCBWpB8?rel=0&modestbranding=1&iv_load_policy=3&autoplay=0" ' +
+                      'title="Astrid App Demo" ' +
+                      'frameborder="0" ' +
+                      'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" ' +
+                      'allowfullscreen>' +
+                    '</iframe>' +
+                  '</div>' +
+                  '<div class="home-bar"></div>' +
                 '</div>' +
-                '<div class="home-bar"></div>' +
               '</div>' +
 
-              // Project info below the phone
-              '<div style="text-align:left;max-width:36rem">' +
-                '<h3 class="text-2xl font-bold mb-2" style="color:white">Astrid</h3>' +
-                '<p class="font-mono text-xs mb-6" style="color:#dc2626;letter-spacing:0.1em">' +
-                  'CO-FOUNDER &middot; HEALTH TECH' +
+              // Card text content (matches work card format)
+              '<h3 class="text-2xl font-bold mb-2" style="color:white">Astrid</h3>' +
+              '<p class="font-mono text-xs mb-6" style="color:#6b7280;letter-spacing:0.1em">' +
+                'Co-Founder @ Astrid &middot; Health Tech' +
+              '</p>' +
+              '<p class="font-mono text-xs mb-2" style="color:#dc2626;letter-spacing:0.1em">THE WICKED PROBLEM</p>' +
+              '<p class="text-lg italic pl-4 mb-4" style="color:white;border-left:4px solid #dc2626">' +
+                'PMDD is a moving target where biological and systemic variables are so intertwined that diagnosis is currently invisible to modern medicine, leaving patients misdiagnosed and gaslit.' +
+              '</p>' +
+              '<p class="text-sm mb-4" style="color:#9ca3af">Built a diagnostic bridge to automate behavioral tracking and eliminate the misdiagnosis loop.</p>' +
+              '<div style="display:flex;flex-direction:column;gap:0.5rem">' +
+                '<p class="text-sm leading-relaxed" style="color:#9ca3af;padding-left:1rem">' +
+                  '<span class="font-semibold" style="color:#dc2626">The Diagnostic Bridge:</span> Automating the months of behavioral tracking required for formal diagnosis to eliminate the \u201Cdata fatigue\u201D barrier.' +
                 '</p>' +
-                '<p class="font-mono text-xs mb-2" style="color:#dc2626;letter-spacing:0.1em">THE WICKED PROBLEM</p>' +
-                '<p class="text-lg italic pl-4 mb-6" style="color:white;border-left:4px solid #dc2626">' +
-                  'PMDD is a moving target where biological and systemic variables are so intertwined that diagnosis is currently invisible to modern medicine, leaving patients misdiagnosed and gaslit.' +
+                '<p class="text-sm leading-relaxed" style="color:#9ca3af;padding-left:1rem">' +
+                  '<span class="font-semibold" style="color:#dc2626">Pattern Recognition:</span> Moving beyond \u201Cone-size-fits-all\u201D medicine by mapping how the condition interacts with neurodivergence and external stress.' +
                 '</p>' +
-                '<p class="font-mono text-xs mb-3" style="color:#dc2626;letter-spacing:0.1em">THE FIX</p>' +
-                '<div style="display:flex;flex-direction:column;gap:0.75rem;padding-left:1rem">' +
-                  '<p class="text-sm leading-relaxed" style="color:#9ca3af">' +
-                    '<span class="font-semibold" style="color:#dc2626">The Diagnostic Bridge:</span> Automating the months of behavioral tracking required for formal diagnosis to eliminate the \u201Cdata fatigue\u201D barrier.' +
-                  '</p>' +
-                  '<p class="text-sm leading-relaxed" style="color:#9ca3af">' +
-                    '<span class="font-semibold" style="color:#dc2626">Pattern Recognition:</span> Moving beyond \u201Cone-size-fits-all\u201D medicine by mapping how the condition interacts with neurodivergence and external stress.' +
-                  '</p>' +
-                  '<p class="text-sm leading-relaxed" style="color:#9ca3af">' +
-                    '<span class="font-semibold" style="color:#dc2626">Ending the Misdiagnosis Loop:</span> Providing objective, cyclical data that prevents the incorrect long-term prescriptions that often mask the root cause.' +
-                  '</p>' +
-                '</div>' +
+                '<p class="text-sm leading-relaxed" style="color:#9ca3af;padding-left:1rem">' +
+                  '<span class="font-semibold" style="color:#dc2626">Ending the Misdiagnosis Loop:</span> Providing objective, cyclical data that prevents the incorrect long-term prescriptions that often mask the root cause.' +
+                '</p>' +
               '</div>' +
 
             '</div>' +
@@ -276,6 +275,13 @@
 
         // Insert right before the Work section
         workSection.parentNode.insertBefore(section, workSection);
+
+        // Add hover effect matching work cards
+        var astridCard = document.getElementById('astrid-card');
+        if (astridCard) {
+          astridCard.onmouseenter = function(){ astridCard.style.borderColor = '#dc26264d'; };
+          astridCard.onmouseleave = function(){ astridCard.style.borderColor = '#27272a'; };
+        }
       }
     })();
     </script>
@@ -395,8 +401,24 @@
     (function(){
       var categories = [
         {
+          title: 'Statistics',
+          items: ['ANOVA', 'FMEA', 'MonteCarlo Simulations', 'Uncertainty, Descriptive, Sensitivity and Risk Analysis']
+        },
+        {
+          title: 'Finance',
+          items: ['Fund, Project, and Investment Finance', 'Debt, Pricing, Forecasting', 'DCF', 'LBO', 'Real Estate Underwriting']
+        },
+        {
+          title: 'Systems',
+          items: ['Linear and Dynamic Programming', 'Multi-Objective Optimization', 'Civil and Environmental Engineering']
+        },
+        {
           title: 'Coding',
-          items: ['Python', 'R', 'SQL', 'C++', 'Java', 'Matlab']
+          items: ['Advanced Excel', 'Python', 'Auto Lisp', 'R', 'MATLAB', 'VBA', 'VBScript', 'SQL', 'JavaScript', 'SysML', 'C', 'C++']
+        },
+        {
+          title: 'Software',
+          items: ['HubSpot', 'Salesforce', 'PowerBI', 'AutoCAD', 'ArcGIS', 'Jira', 'Trello', 'AirTable', 'Odoo', 'Argus', 'Procore', 'Wrike', 'SAP']
         },
         {
           title: 'Languages',
@@ -405,32 +427,6 @@
         {
           title: 'Certifications',
           items: ['Associate Systems Engineering Professional (ASEP)', 'Fundamentals of Engineering (FE/EIT)', 'Lean Six Sigma Black Belt']
-        },
-        {
-          title: 'Superpowers',
-          items: [
-            'Fund, Project, and Investment Finance',
-            'Technical, Financial, and Legal Real Estate Evaluations',
-            'DCF, LBO, and MonteCarlo Simulations',
-            'Uncertainty, Descriptive, Sensitivity and Risk Analysis',
-            'Linear, Dynamic, and Multi-Objective Optimization',
-            'Civil and Environmental Engineering'
-          ]
-        },
-        {
-          title: 'Domains',
-          items: [
-            'Asset and Product Management',
-            'Commercial Real Estate',
-            'Public Sector Infrastructure & Resiliency',
-            'Early Stage Venture Capital',
-            'High-Growth Startups',
-            'Education'
-          ]
-        },
-        {
-          title: 'Software',
-          items: ['HubSpot', 'Salesforce', 'AutoCAD', 'ArcGIS', 'Jira', 'Trello', 'AirTable', 'Odoo', 'Argus', 'Procore', 'Wrike', 'SAP']
         }
       ];
 
