@@ -412,11 +412,11 @@
               '</p>' +
             '</div>' +
 
-            // Phone centered, full-width card below
-            '<div style="display:flex;flex-direction:column;align-items:center;gap:2.5rem">' +
+            // Phone left, card right — same grid as work cards
+            '<div class="grid lg:grid-cols-2 gap-12" style="align-items:start">' +
 
-              // Phone (centered)
-              '<div style="flex-shrink:0">' +
+              // Phone (left column, centered)
+              '<div style="display:flex;justify-content:center">' +
                 '<div class="iphone-frame">' +
                   '<div class="speaker"></div>' +
                   '<div class="screen-content">' +
@@ -432,8 +432,8 @@
                 '</div>' +
               '</div>' +
 
-              // Card (full width, matching work cards)
-              '<div class="p-8 rounded-2xl" id="astrid-card" style="width:100%;background:rgba(24,24,27,0.2);border:1px solid #27272a;transition:border-color 0.3s">' +
+              // Card (right column, same width as work cards)
+              '<div class="p-8 rounded-2xl" id="astrid-card" style="background:rgba(24,24,27,0.2);border:1px solid #27272a;transition:border-color 0.3s">' +
                 '<h3 class="text-2xl font-bold mb-2" style="color:white">Astrid</h3>' +
                 '<p class="font-mono text-xs mb-6" style="color:#6b7280;letter-spacing:0.1em">' +
                   'Co-Founder @ Astrid &middot; Health Tech' +
