@@ -51,281 +51,97 @@
   <body>
     <div id="root"></div>
     <script>
-    // Mobile spider: corner web + dangle + fly chase + tap to go fullscreen
+    // Spider instructions: inject under "Growth Strategist" in the hero
+    (function(){
+      function findAndInject(){
+        var walk = function(el){
+          if (!el || el.nodeType !== 1) return null;
+          if (el.textContent && el.textContent.indexOf('Growth Strategist') !== -1) {
+            if (el.id === 'spider-instructions') return null;
+            return el;
+          }
+          for (var i = 0; i < el.childNodes.length; i++) {
+            var r = walk(el.childNodes[i]);
+            if (r) return r;
+          }
+          return null;
+        };
+        var root = document.getElementById('root');
+        if (!root) return;
+        var target = walk(root);
+        if (!target || document.getElementById('spider-instructions')) return;
+        var block = target.closest ? target.closest('p') || target.closest('div') || target : target;
+        var div = document.createElement('p');
+        div.id = 'spider-instructions';
+        div.className = 'text-sm mt-3';
+        div.style.cssText = 'color:rgba(255,255,255,0.5);max-width:28rem;margin-left:auto;margin-right:auto;text-align:center;';
+        div.textContent = 'Tap the spider to start debugging. Double tap the spider to return to the web.';
+        block.parentNode.insertBefore(div, block.nextSibling);
+        return true;
+      }
+      function poll(){
+        if (findAndInject()) return;
+        setTimeout(poll, 300);
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', poll);
+      else poll();
+    })();
+    </script>
+    <script>
+    // Mobile: canvas always fullscreen (same as web). Touch = spider follows finger (mousemove). Double-tap = spider returns to corner. pointer-events:none so page scrolls.
     (function(){
       if(!('ontouchstart' in window) && !navigator.maxTouchPoints) return;
 
-      var origCanvas, counterEl;
+      var touchX = 0, touchY = 0;
+      var cornerScreenX = 0, cornerScreenY = 100;
+      var lastTapTime = 0, lastTapX = 0, lastTapY = 0;
+      var returnStartTime = 0, returnStartX = 0, returnStartY = 0, returnDuration = 500;
+      var returning = false;
+
+      function dispatchMouseMove(x, y){
+        try { window.dispatchEvent(new MouseEvent('mousemove', { clientX: x, clientY: y, bubbles: true })); } catch(e) {}
+      }
+
+      function onTouchMove(e){
+        if(returning || !e.touches.length) return;
+        touchX = e.touches[0].clientX; touchY = e.touches[0].clientY;
+        dispatchMouseMove(touchX, touchY);
+      }
+      function onTouchStart(e){
+        if(!e.touches.length) return;
+        var x = e.touches[0].clientX, y = e.touches[0].clientY, t = Date.now();
+        if(t - lastTapTime < 400 && Math.hypot(x - lastTapX, y - lastTapY) < 60){
+          lastTapTime = 0;
+          returning = true;
+          returnStartTime = Date.now();
+          returnStartX = touchX; returnStartY = touchY;
+          returnAnim();
+          return;
+        }
+        lastTapTime = t; lastTapX = x; lastTapY = y;
+      }
+
+      function returnAnim(){
+        if(!returning) return;
+        var now = Date.now();
+        var t = Math.min((now - returnStartTime) / returnDuration, 1);
+        var ease = 1 - Math.pow(1 - t, 2);
+        var x = returnStartX + (cornerScreenX - returnStartX) * ease;
+        var y = returnStartY + (cornerScreenY - returnStartY) * ease;
+        dispatchMouseMove(x, y);
+        if(t >= 1){ returning = false; return; }
+        requestAnimationFrame(returnAnim);
+      }
+
       var poll = setInterval(function(){
         var c = document.querySelector('canvas');
         if(!c) return;
         clearInterval(poll);
-        origCanvas = c;
-        counterEl = c.nextElementSibling;
-        init();
+        cornerScreenX = window.innerWidth - 80;
+        c.style.cssText = (c.style.cssText || '') + ';pointer-events:none;';
+        document.addEventListener('touchmove', onTouchMove, { passive: true });
+        document.addEventListener('touchstart', onTouchStart, { passive: true });
       }, 200);
-
-      function init(){
-        hide(origCanvas); hide(counterEl);
-        document.body.style.cursor = 'auto';
-
-        // Canvas setup
-        var W = 160, H = 200, PI = Math.PI, TAU = PI * 2;
-        var dpr = devicePixelRatio || 1;
-        var cvs = document.createElement('canvas');
-        cvs.width = W * dpr; cvs.height = H * dpr;
-        cvs.style.cssText = 'position:fixed;top:0;right:0;width:'+W+'px;height:'+H+'px;z-index:55;touch-action:none';
-        document.body.appendChild(cvs);
-        var ctx = cvs.getContext('2d');
-        ctx.scale(dpr, dpr);
-
-        // Fade-out tap hint
-        var hint = document.createElement('div');
-        hint.textContent = 'tap the spider';
-        hint.style.cssText = 'position:fixed;top:'+(H+4)+'px;right:8px;z-index:55;font:10px monospace;color:rgba(255,255,255,.3);pointer-events:none;transition:opacity 1s';
-        document.body.appendChild(hint);
-        setTimeout(function(){ hint.style.opacity = 0 }, 4000);
-        setTimeout(function(){ hint.remove() }, 5500);
-
-        // Web: 8 spokes + 5 rings from top-right corner
-        var webR = 65, spokes = 8, rings = 5;
-
-        // Spider dangles from this point on the web
-        var anchorA = PI * 0.78, anchorD = webR * 0.85;
-        var anchorX = W + Math.cos(anchorA) * anchorD;
-        var anchorY = Math.sin(anchorA) * anchorD;
-
-        // State
-        var SC = 0.45;                              // spider scale (matches original at 0.45x)
-        var threadLen = 50, sway = 0;
-        var sp = {x: anchorX, y: anchorY + threadLen};
-        var fly = {active: false, x:0, y:0, vx:0, vy:0, wing:0};
-        var chase = {on: false, x: sp.x, y: sp.y};
-        var trail = [], lastTrail = {x: sp.x, y: sp.y};
-        var catchFlash = 0, respawnAt = 0;
-        var idleStart = Date.now();
-        var fullscreen = false, returnTimer = null;
-
-        // --- Canvas helpers ---
-        function dot(x, y, r){ ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill() }
-        function show(el){ if(el) el.style.display = '' }
-        function hide(el){ if(el) el.style.display = 'none' }
-        function clamp(v, lo, hi){ return v < lo ? lo : v > hi ? hi : v }
-
-        // --- Draw functions ---
-
-        function drawWeb(){
-          ctx.strokeStyle = 'rgba(255,255,255,.15)';
-          ctx.lineWidth = 1;
-          for(var s = 0; s < spokes; s++){
-            var a = PI/2 + (s/(spokes-1)) * PI/2;
-            ctx.beginPath(); ctx.moveTo(W, 0);
-            ctx.lineTo(W + Math.cos(a)*webR, Math.sin(a)*webR);
-            ctx.stroke();
-          }
-          for(var r = 1; r <= rings; r++){
-            var rad = (r/rings) * webR;
-            ctx.beginPath();
-            for(var s = 0, segs = spokes*5; s <= segs; s++){
-              var a = PI/2 + (s/segs) * PI/2;
-              var w = Math.sin(s*2.3 + r*1.7) * 1.5;
-              var px = W + Math.cos(a)*(rad+w), py = Math.sin(a)*(rad+w);
-              s ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
-            }
-            ctx.stroke();
-          }
-        }
-
-        // Matches the interactive spider: body(-5,0) 20x16, head(15,0) r12, eyes(19,+-5)
-        function drawSpider(x, y, rot, tx, ty){
-          ctx.save();
-          ctx.translate(x, y); ctx.rotate(rot); ctx.scale(SC, SC);
-
-          // 8 legs: 4 hip positions x 2 sides
-          var t = Date.now() * 0.003;
-          ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
-          ctx.lineCap = ctx.lineJoin = 'round';
-          var hips = [-12, -6, 2, 10];
-          for(var i = 0; i < 8; i++){
-            var h = hips[i & 3], side = i < 4 ? 1 : -1;
-            var w = Math.sin(t + i*0.9) * 6;
-            var jx = h + side*(18+w), jy = side*12;
-            var fx = h + side*(25+w*0.5), fy = side*24;
-            ctx.beginPath(); ctx.moveTo(h, 0); ctx.lineTo(jx, jy); ctx.lineTo(fx, fy); ctx.stroke();
-            ctx.fillStyle = '#ff4444';
-            dot(h, 0, 2); dot(jx, jy, 1.5);
-          }
-
-          // Body
-          ctx.fillStyle = '#1a1a1a'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
-          ctx.beginPath(); ctx.ellipse(-5, 0, 20, 16, 0, 0, TAU); ctx.fill(); ctx.stroke();
-
-          // Fangs
-          ctx.fillStyle = '#ff4444';
-          ctx.beginPath(); ctx.moveTo(-10,-5); ctx.lineTo(-2,0); ctx.lineTo(-10,5); ctx.fill();
-          ctx.beginPath(); ctx.moveTo(4,-5); ctx.lineTo(-4,0); ctx.lineTo(4,5); ctx.fill();
-
-          // Head
-          ctx.fillStyle = '#1a1a1a';
-          ctx.beginPath(); ctx.arc(15, 0, 12, 0, TAU); ctx.fill(); ctx.stroke();
-
-          // Eyes track target
-          var px = 0, py = 0;
-          if(tx != null){
-            var ea = Math.atan2(ty - y, tx - x) - rot;
-            px = Math.cos(ea) * 2.5; py = Math.sin(ea) * 2.5;
-          }
-          ctx.fillStyle = '#fff'; dot(19, -5, 4.5); dot(19, 5, 4.5);
-          ctx.fillStyle = '#1a1a1a'; dot(19+px, -5+py, 2); dot(19+px, 5+py, 2);
-          ctx.fillStyle = '#fff'; dot(20, -6, 1); dot(20, 4, 1);
-
-          // Mouth
-          ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5;
-          ctx.beginPath(); ctx.arc(17, 0, 3, 0.8, -0.8, true); ctx.stroke();
-
-          ctx.restore();
-        }
-
-        function drawFly(x, y){
-          ctx.save(); ctx.translate(x, y);
-          fly.wing += 0.3;
-          // Wings
-          ctx.fillStyle = 'rgba(255,255,255,.6)';
-          ctx.save(); ctx.scale(1, 0.7 + Math.sin(fly.wing*2)*0.3);
-          ctx.beginPath(); ctx.ellipse(-2,-6, 4,8, 0.5, 0,TAU); ctx.fill();
-          ctx.beginPath(); ctx.ellipse(-2, 6, 4,8,-0.5, 0,TAU); ctx.fill();
-          ctx.restore();
-          // Body + eyes
-          ctx.fillStyle = '#333';
-          ctx.beginPath(); ctx.ellipse(0,0, 6,4, 0, 0,TAU); ctx.fill();
-          ctx.fillStyle = 'red'; dot(3,-2, 1.5); dot(3,2, 1.5);
-          ctx.restore();
-        }
-
-        function drawTrail(){
-          var now = Date.now();
-          trail = trail.filter(function(p){ return now - p.t < 5000 });
-          var cx = chase.on ? chase.x : sp.x, cy = chase.on ? chase.y : sp.y;
-          ctx.globalCompositeOperation = 'destination-over';
-          ctx.lineWidth = 1;
-          for(var i = 0; i < trail.length; i++){
-            var p = trail[i], age = 1 - (now - p.t) / 5000;
-            if(Math.hypot(cx-p.x, cy-p.y) < 80){
-              ctx.strokeStyle = 'rgba(255,255,255,'+(0.15*age)+')';
-              ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(p.x,p.y); ctx.stroke();
-            }
-          }
-          ctx.globalCompositeOperation = 'source-over';
-        }
-
-        // --- Main loop ---
-
-        function animate(){
-          if(fullscreen) return;
-          var now = Date.now();
-          ctx.clearRect(0, 0, W, H);
-          drawWeb();
-          sway += 0.015;
-
-          // Spawn fly after 60s idle
-          if(!fly.active && !respawnAt && now - idleStart > 60000) spawnFly();
-          if(!fly.active && respawnAt && now > respawnAt){ spawnFly(); respawnAt = 0; }
-
-          if(!fly.active && !chase.on){
-            // Idle dangle
-            var sw = Math.sin(sway) * 4;
-            sp.x = anchorX + sw; sp.y = anchorY + threadLen;
-            ctx.strokeStyle = 'rgba(255,255,255,.25)'; ctx.lineWidth = 1;
-            ctx.beginPath(); ctx.moveTo(anchorX, anchorY);
-            ctx.quadraticCurveTo(anchorX + sw*0.4, anchorY + threadLen*0.5, sp.x, sp.y - 5*SC);
-            ctx.stroke();
-            drawSpider(sp.x, sp.y, PI/2, fly.x || sp.x, fly.y || sp.y+30);
-
-          } else if(fly.active){
-            // Fly physics
-            fly.vx = clamp(fly.vx + (Math.random()-.5)*.4, -2, 2);
-            fly.vy = clamp(fly.vy + (Math.random()-.5)*.4, -2, 2);
-            fly.x += fly.vx; fly.y += fly.vy;
-            if(fly.x < 10 || fly.x > W-10) fly.vx *= -1;
-            if(fly.y < 10 || fly.y > H-10) fly.vy *= -1;
-            fly.x = clamp(fly.x, 10, W-10); fly.y = clamp(fly.y, 10, H-10);
-            drawFly(fly.x, fly.y);
-
-            // Spider chases
-            if(!chase.on){ chase.on = true; chase.x = sp.x; chase.y = sp.y; }
-            var dx = fly.x - chase.x, dy = fly.y - chase.y;
-            var dist = Math.hypot(dx, dy);
-            if(dist > 2){ chase.x += dx/dist * 1.2; chase.y += dy/dist * 1.2; }
-
-            // Trail
-            if(Math.hypot(chase.x-lastTrail.x, chase.y-lastTrail.y) > 10){
-              trail.push({x:chase.x, y:chase.y, t:now}); lastTrail = {x:chase.x, y:chase.y};
-            }
-
-            // Thread + spider
-            ctx.strokeStyle = 'rgba(255,255,255,.2)'; ctx.lineWidth = 1;
-            ctx.beginPath(); ctx.moveTo(anchorX,anchorY); ctx.lineTo(chase.x,chase.y); ctx.stroke();
-            drawSpider(chase.x, chase.y, Math.atan2(dy,dx), fly.x, fly.y);
-
-            // Catch
-            if(dist < 15){
-              fly.active = false; chase.on = false; catchFlash = 20;
-              sp.x = anchorX; sp.y = anchorY + threadLen;
-              respawnAt = now + 6000;
-            }
-          }
-
-          drawTrail();
-
-          if(catchFlash > 0){
-            ctx.fillStyle = 'rgba(220,38,38,'+(catchFlash/20*0.6)+')';
-            ctx.font = 'bold 11px monospace'; ctx.textAlign = 'center';
-            ctx.fillText('+1', anchorX, anchorY + threadLen + 22);
-            catchFlash--;
-          }
-          requestAnimationFrame(animate);
-        }
-
-        function spawnFly(){
-          fly.active = true; chase.on = false;
-          fly.x = Math.random()*(W-40)+20; fly.y = Math.random()*(H-60)+40;
-          fly.vx = (Math.random()-.5)*1.5; fly.vy = (Math.random()-.5)*1.5;
-        }
-
-        animate();
-
-        // --- Tap to toggle fullscreen interactive mode ---
-
-        cvs.addEventListener('touchstart', function(e){
-          var rect = cvs.getBoundingClientRect();
-          var tx = e.touches[0].clientX - rect.left, ty = e.touches[0].clientY - rect.top;
-          var sx = chase.on ? chase.x : sp.x, sy = chase.on ? chase.y : sp.y;
-          if(Math.hypot(tx-sx, ty-sy) < 45){
-            e.preventDefault(); e.stopPropagation();
-            enterFullscreen();
-          }
-        });
-
-        function enterFullscreen(){
-          fullscreen = true; hide(cvs); show(origCanvas); show(counterEl);
-          clearTimeout(returnTimer);
-          var reset = function(){ clearTimeout(returnTimer); returnTimer = setTimeout(exit, 5000); };
-          var exit = function(){
-            clearTimeout(returnTimer);
-            document.removeEventListener('touchstart', reset);
-            document.removeEventListener('touchmove', reset);
-            hide(origCanvas); hide(counterEl);
-            document.body.style.cursor = 'auto';
-            fullscreen = false; show(cvs);
-            idleStart = Date.now(); fly.active = false; chase.on = false;
-            respawnAt = 0; sway = 0; trail = [];
-            animate();
-          };
-          document.addEventListener('touchstart', reset);
-          document.addEventListener('touchmove', reset);
-          reset();
-        }
-      }
     })();
     </script>
 
