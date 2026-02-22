@@ -503,7 +503,7 @@
     </script>
 
     <script>
-    // Add Download CV button to the Contact section
+    // Redesign Contact section: Row 1 = Email, Phone, Save Contact; Row 2 = LinkedIn, Download CV
     (function(){
       var poll = setInterval(function(){
         var contact = document.getElementById('contact');
@@ -512,12 +512,53 @@
         if (rows.length < 2) return;
         clearInterval(poll);
 
-        // Add to the second row (LinkedIn / Save Contact row)
+        // SVG icons
+        var icons = {
+          email: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>',
+          phone: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>',
+          contact: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>',
+          linkedin: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>',
+          download: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>'
+        };
+
+        // Clear both existing rows
+        rows[0].innerHTML = '';
+        rows[1].innerHTML = '';
+
+        // Row 1: Email, Phone, Save Contact (primary actions with personal info)
+        var emailBtn = document.createElement('a');
+        emailBtn.href = 'mailto:yitzy@bitzyspider.com';
+        emailBtn.className = 'bg-white text-black text-lg px-8 py-4 rounded-full font-bold hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-2 cursor-none';
+        emailBtn.innerHTML = icons.email + ' yitzy@bitzyspider.com';
+        rows[0].appendChild(emailBtn);
+
+        var phoneBtn = document.createElement('a');
+        phoneBtn.href = 'tel:3044494899';
+        phoneBtn.className = 'bg-white text-black text-lg px-8 py-4 rounded-full font-bold hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-2 cursor-none';
+        phoneBtn.innerHTML = icons.phone + ' <span class="font-mono">(304) 44-YITZY</span>';
+        rows[0].appendChild(phoneBtn);
+
+        var saveBtn = document.createElement('a');
+        saveBtn.href = '/yitzy-rosenberg.vcf';
+        saveBtn.download = true;
+        saveBtn.className = 'bg-white text-black text-lg px-8 py-4 rounded-full font-bold hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-2 cursor-none';
+        saveBtn.innerHTML = icons.contact + ' Save Contact';
+        rows[0].appendChild(saveBtn);
+
+        // Row 2: LinkedIn, Download CV (external links)
+        var linkedinBtn = document.createElement('a');
+        linkedinBtn.href = 'https://www.linkedin.com/in/yitzyrosenberg/';
+        linkedinBtn.target = '_blank';
+        linkedinBtn.rel = 'noopener noreferrer';
+        linkedinBtn.className = 'bg-[#0A66C2] text-white text-lg px-8 py-4 rounded-full font-bold hover:bg-[#004182] transition-all flex items-center justify-center gap-2 cursor-none';
+        linkedinBtn.innerHTML = icons.linkedin + ' LinkedIn';
+        rows[1].appendChild(linkedinBtn);
+
         var cvBtn = document.createElement('a');
         cvBtn.href = '/Yitzy_Rosenberg_CV.pdf';
         cvBtn.download = true;
-        cvBtn.className = 'bg-zinc-900 text-white border border-zinc-800 text-lg px-8 py-4 rounded-full font-bold hover:border-white transition-all flex items-center justify-center gap-2 cursor-none';
-        cvBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Download CV';
+        cvBtn.className = 'bg-red-600 text-white text-lg px-8 py-4 rounded-full font-bold hover:bg-red-700 transition-all flex items-center justify-center gap-2 cursor-none';
+        cvBtn.innerHTML = icons.download + ' Download CV';
         rows[1].appendChild(cvBtn);
       }, 200);
     })();
