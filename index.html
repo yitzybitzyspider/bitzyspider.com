@@ -393,6 +393,7 @@
           '}' +
           '@media (min-width: 768px) {' +
             '.iphone-frame { --phone-width: 320px; }' +
+            '.astrid-row { flex-direction: row !important; align-items: start !important; }' +
           '}';
         document.head.appendChild(style);
 
@@ -412,11 +413,11 @@
               '</p>' +
             '</div>' +
 
-            // Astrid card (same styling as work experience cards)
-            '<div class="p-8 rounded-2xl" id="astrid-card" style="background:rgba(24,24,27,0.2);border:1px solid #27272a;transition:border-color 0.3s">' +
+            // Side-by-side: phone left, card right
+            '<div class="astrid-row" style="display:flex;flex-direction:column;align-items:center;gap:2.5rem">' +
 
-              // Phone frame centered inside the card
-              '<div style="display:flex;justify-content:center;margin-bottom:2rem">' +
+              // Phone frame (left on desktop)
+              '<div style="flex-shrink:0">' +
                 '<div class="iphone-frame">' +
                   '<div class="speaker"></div>' +
                   '<div class="screen-content">' +
@@ -432,26 +433,28 @@
                 '</div>' +
               '</div>' +
 
-              // Card text content (matches work card format)
-              '<h3 class="text-2xl font-bold mb-2" style="color:white">Astrid</h3>' +
-              '<p class="font-mono text-xs mb-6" style="color:#6b7280;letter-spacing:0.1em">' +
-                'Co-Founder @ Astrid &middot; Health Tech' +
-              '</p>' +
-              '<p class="font-mono text-xs mb-2" style="color:#dc2626;letter-spacing:0.1em">THE WICKED PROBLEM</p>' +
-              '<p class="text-lg italic pl-4 mb-4" style="color:white;border-left:4px solid #dc2626">' +
-                'PMDD is a moving target where biological and systemic variables are so intertwined that diagnosis is currently invisible to modern medicine, leaving patients misdiagnosed and gaslit.' +
-              '</p>' +
-              '<p class="text-sm mb-4" style="color:#9ca3af">Built a diagnostic bridge to automate behavioral tracking and eliminate the misdiagnosis loop.</p>' +
-              '<div style="display:flex;flex-direction:column;gap:0.5rem">' +
-                '<p class="text-sm leading-relaxed" style="color:#9ca3af;padding-left:1rem">' +
-                  '<span class="font-semibold" style="color:#dc2626">The Diagnostic Bridge:</span> Automating the months of behavioral tracking required for formal diagnosis to eliminate the \u201Cdata fatigue\u201D barrier.' +
+              // Card (right on desktop, same format as work cards)
+              '<div class="p-8 rounded-2xl" id="astrid-card" style="flex:1;background:rgba(24,24,27,0.2);border:1px solid #27272a;transition:border-color 0.3s">' +
+                '<h3 class="text-2xl font-bold mb-2" style="color:white">Astrid</h3>' +
+                '<p class="font-mono text-xs mb-6" style="color:#6b7280;letter-spacing:0.1em">' +
+                  'Co-Founder @ Astrid &middot; Health Tech' +
                 '</p>' +
-                '<p class="text-sm leading-relaxed" style="color:#9ca3af;padding-left:1rem">' +
-                  '<span class="font-semibold" style="color:#dc2626">Pattern Recognition:</span> Moving beyond \u201Cone-size-fits-all\u201D medicine by mapping how the condition interacts with neurodivergence and external stress.' +
+                '<p class="font-mono text-xs mb-2" style="color:#dc2626;letter-spacing:0.1em">THE WICKED PROBLEM</p>' +
+                '<p class="text-lg italic pl-4 mb-4" style="color:white;border-left:4px solid #dc2626">' +
+                  'PMDD is a moving target where biological and systemic variables are so intertwined that diagnosis is currently invisible to modern medicine, leaving patients misdiagnosed and gaslit.' +
                 '</p>' +
-                '<p class="text-sm leading-relaxed" style="color:#9ca3af;padding-left:1rem">' +
-                  '<span class="font-semibold" style="color:#dc2626">Ending the Misdiagnosis Loop:</span> Providing objective, cyclical data that prevents the incorrect long-term prescriptions that often mask the root cause.' +
-                '</p>' +
+                '<p class="text-sm mb-4" style="color:#9ca3af">Built a diagnostic bridge to automate behavioral tracking and eliminate the misdiagnosis loop.</p>' +
+                '<div style="display:flex;flex-direction:column;gap:0.5rem">' +
+                  '<p class="text-sm leading-relaxed" style="color:#9ca3af;padding-left:1rem">' +
+                    '<span class="font-semibold" style="color:#dc2626">The Diagnostic Bridge:</span> Automating the months of behavioral tracking required for formal diagnosis to eliminate the \u201Cdata fatigue\u201D barrier.' +
+                  '</p>' +
+                  '<p class="text-sm leading-relaxed" style="color:#9ca3af;padding-left:1rem">' +
+                    '<span class="font-semibold" style="color:#dc2626">Pattern Recognition:</span> Moving beyond \u201Cone-size-fits-all\u201D medicine by mapping how the condition interacts with neurodivergence and external stress.' +
+                  '</p>' +
+                  '<p class="text-sm leading-relaxed" style="color:#9ca3af;padding-left:1rem">' +
+                    '<span class="font-semibold" style="color:#dc2626">Ending the Misdiagnosis Loop:</span> Providing objective, cyclical data that prevents the incorrect long-term prescriptions that often mask the root cause.' +
+                  '</p>' +
+                '</div>' +
               '</div>' +
 
             '</div>' +
