@@ -31,14 +31,13 @@
     <!-- Fix hero heading: responsive size, hide stray <br>, mobile fixes -->
     <style>
       h1 { font-size: clamp(2.8rem, 7vw, 5.5rem) !important; line-height: 1.1 !important; }
-      /* The React h1 starts with an empty "" + <br> that wastes a full line, pushing
-         "I UNTANGLE" behind the nav bar. Hide that first <br>. */
+      /* The React h1 starts with an empty "" + <br>. Hide it so text starts immediately. */
       h1 > br:first-of-type { display: none !important; }
+      /* Hero section needs more top padding to clear the fixed nav */
+      section:first-of-type { padding-top: 10rem !important; }
       @media (max-width: 767px) {
         /* Disable sticky headshot on mobile */
         .sticky.top-32 { position: relative !important; top: auto !important; }
-        /* Extra breathing room below nav on mobile */
-        section:first-of-type { padding-top: 7rem !important; }
       }
     </style>
     <!-- Spider layer kill switch: ?spider=0 or localStorage spider=off hides spider only; site content unchanged -->
