@@ -28,10 +28,13 @@
     <script type="module" crossorigin src="/assets/index-ZZwLr-Wf.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-Cn99QLM1.css">
 
-    <!-- Fix hero heading: responsive size so it never clips -->
+    <!-- Fix hero heading: responsive size so it never clips on desktop, stays big on mobile -->
     <style>
-      h1 { font-size: clamp(2.5rem, 7vw, 5.5rem) !important; line-height: 1.1 !important; }
-      .overflow-x-hidden { overflow-x: clip !important; overflow-y: visible !important; }
+      h1 { font-size: clamp(2.8rem, 7vw, 5.5rem) !important; line-height: 1.1 !important; }
+      /* Disable sticky headshot on mobile — it overlays scrolling content */
+      @media (max-width: 767px) {
+        .sticky.top-32 { position: relative !important; top: auto !important; }
+      }
     </style>
     <!-- Spider layer kill switch: ?spider=0 or localStorage spider=off hides spider only; site content unchanged -->
     <script>
