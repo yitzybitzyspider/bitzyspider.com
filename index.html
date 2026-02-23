@@ -28,12 +28,17 @@
     <script type="module" crossorigin src="/assets/index-ZZwLr-Wf.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-Cn99QLM1.css">
 
-    <!-- Fix hero heading: responsive size so it never clips on desktop, stays big on mobile -->
+    <!-- Fix hero heading: responsive size, hide stray <br>, mobile fixes -->
     <style>
       h1 { font-size: clamp(2.8rem, 7vw, 5.5rem) !important; line-height: 1.1 !important; }
-      /* Disable sticky headshot on mobile — it overlays scrolling content */
+      /* The React h1 starts with an empty "" + <br> that wastes a full line, pushing
+         "I UNTANGLE" behind the nav bar. Hide that first <br>. */
+      h1 > br:first-of-type { display: none !important; }
       @media (max-width: 767px) {
+        /* Disable sticky headshot on mobile */
         .sticky.top-32 { position: relative !important; top: auto !important; }
+        /* Extra breathing room below nav on mobile */
+        section:first-of-type { padding-top: 7rem !important; }
       }
     </style>
     <!-- Spider layer kill switch: ?spider=0 or localStorage spider=off hides spider only; site content unchanged -->
@@ -781,7 +786,7 @@
             '<img src="/photos/longboard.jpg" alt="Longboard" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">' +
           '</div>' +
           '<div style="padding:2rem;flex:1;display:flex;flex-direction:column">' +
-            '<div class="text-red-500 text-xs font-bold uppercase tracking-widest" style="margin-bottom:0.5rem">Former Professional Longboarder</div>' +
+            '<div class="text-red-500 text-xs font-bold uppercase tracking-widest" style="margin-bottom:0.5rem">Professional Longboarder</div>' +
             '<h3 class="text-2xl font-bold" style="margin-bottom:1rem">Board Meeting</h3>' +
             '<p class="text-gray-400 text-sm leading-relaxed" style="flex:1">Rode with the Polaroid Action team. Gravity is just another system to work with. Read the hill, commit to the line, and stay low through the turns.</p>' +
           '</div>';
