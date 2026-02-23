@@ -525,23 +525,28 @@
         rows[0].innerHTML = '';
         rows[1].innerHTML = '';
 
-        // Row 1: Email, Phone, Save Contact (primary actions with personal info)
+        // Row 1: Email, Phone, Save Contact — alternating white / grey / white
+        var baseRow1 = 'text-lg px-8 py-4 rounded-full font-bold transition-all flex items-center justify-center gap-2 cursor-none';
+
         var emailBtn = document.createElement('a');
         emailBtn.href = 'mailto:yitzy@bitzyspider.com';
-        emailBtn.className = 'bg-white text-black text-lg px-8 py-4 rounded-full font-bold hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-2 cursor-none';
+        emailBtn.className = 'bg-white text-black hover:bg-red-500 hover:text-white ' + baseRow1;
         emailBtn.innerHTML = icons.email + ' yitzy@bitzyspider.com';
         rows[0].appendChild(emailBtn);
 
         var phoneBtn = document.createElement('a');
         phoneBtn.href = 'tel:3044494899';
-        phoneBtn.className = 'bg-white text-black text-lg px-8 py-4 rounded-full font-bold hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-2 cursor-none';
+        phoneBtn.className = baseRow1;
+        phoneBtn.style.cssText = 'background:#3f3f46;color:white;';
+        phoneBtn.onmouseenter = function(){ this.style.background='#dc2626'; };
+        phoneBtn.onmouseleave = function(){ this.style.background='#3f3f46'; };
         phoneBtn.innerHTML = icons.phone + ' <span class="font-mono">(304) 44-YITZY</span>';
         rows[0].appendChild(phoneBtn);
 
         var saveBtn = document.createElement('a');
         saveBtn.href = '/yitzy-rosenberg.vcf';
         saveBtn.download = true;
-        saveBtn.className = 'bg-white text-black text-lg px-8 py-4 rounded-full font-bold hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-2 cursor-none';
+        saveBtn.className = 'bg-white text-black hover:bg-red-500 hover:text-white ' + baseRow1;
         saveBtn.innerHTML = icons.contact + ' Save Contact';
         rows[0].appendChild(saveBtn);
 
@@ -565,6 +570,52 @@
     </script>
 
     <script>
+    // Add Longboard card to Off The Clock gallery
+    (function(){
+      var poll = setInterval(function(){
+        var gallery = document.getElementById('off_the_clock');
+        if (!gallery) return;
+        var grid = gallery.querySelector('.grid');
+        if (!grid || grid.children.length < 4) return;
+        clearInterval(poll);
+
+        // Create the longboard card matching the existing Js component style
+        var card = document.createElement('div');
+        card.style.cssText = 'transition:transform 0.3s';
+        card.onmouseenter = function(){ this.style.transform='translateY(-10px)'; };
+        card.onmouseleave = function(){ this.style.transform='translateY(0)'; };
+        card.className = 'group bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden hover:border-gray-600 transition-all h-full flex flex-col';
+        card.innerHTML =
+          '<div class="h-64 overflow-hidden relative">' +
+            '<div class="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors z-10"></div>' +
+            '<img src="/photos/longboard.jpg" alt="Longboard" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">' +
+          '</div>' +
+          '<div style="padding:2rem;flex:1;display:flex;flex-direction:column">' +
+            '<div class="text-red-500 text-xs font-bold uppercase tracking-widest" style="margin-bottom:0.5rem">Polaroid Action</div>' +
+            '<h3 class="text-2xl font-bold" style="margin-bottom:1rem">Board Meeting</h3>' +
+            '<p class="text-gray-400 text-sm leading-relaxed" style="flex:1">Former professional longboarder. Gravity is just another system to work with — read the hill, commit to the line, and stay low through the turns.</p>' +
+          '</div>';
+        grid.appendChild(card);
+
+        // Adjust grid: 5 cards — use 3+2 layout on large screens, 2 cols on md
+        grid.style.cssText = 'display:grid;grid-template-columns:1fr;gap:2rem';
+        var updateGrid = function(){
+          var w = window.innerWidth;
+          if (w >= 1024) {
+            grid.style.gridTemplateColumns = 'repeat(3, 1fr)';
+          } else if (w >= 768) {
+            grid.style.gridTemplateColumns = 'repeat(2, 1fr)';
+          } else {
+            grid.style.gridTemplateColumns = '1fr';
+          }
+        };
+        window.addEventListener('resize', updateGrid);
+        updateGrid();
+      }, 200);
+    })();
+    </script>
+
+    <script>
     // Shift travel image up to show handstand
     (function(){
       var poll = setInterval(function(){
@@ -577,7 +628,7 @@
     </script>
 
     <script>
-    // Community section: remove icon, remove photo text overlays, add AguaClara card
+    // Community section: 3 photo cards with content overlays and buttons
     (function(){
       var poll = setInterval(function(){
         var community = document.getElementById('community');
@@ -585,49 +636,108 @@
         var container = community.firstElementChild;
         if (!container || container.children.length < 3) return;
         clearInterval(poll);
-        modifyCommunity(container);
+        rebuildCommunity(container);
       }, 200);
 
-      function modifyCommunity(container) {
-        // 1. Remove the icon from the header (the rounded-full div with the icon)
-        var header = container.children[0]; // text-center mb-16
+      function rebuildCommunity(container) {
+        // 1. Remove the icon from the header
+        var header = container.children[0];
         var iconDiv = header.querySelector('.rounded-full');
         if (iconDiv) iconDiv.remove();
 
-        // 2. Remove text overlay labels from photo cards
-        var photoGrid = container.children[1]; // grid md:grid-cols-2 gap-8 mb-12
-        var overlays = photoGrid.querySelectorAll('.absolute.bottom-4');
-        for (var i = 0; i < overlays.length; i++) {
-          overlays[i].remove();
-        }
-        // Also remove the dark overlay divs on hover
-        var darkOverlays = photoGrid.querySelectorAll('.absolute.inset-0');
-        for (var i = 0; i < darkOverlays.length; i++) {
-          darkOverlays[i].remove();
-        }
+        // 2. Remove old photo grid and text block
+        var photoGrid = container.children[1];
+        var textBlock = container.children[2];
+        if (photoGrid) photoGrid.remove();
+        if (textBlock) textBlock.remove();
 
-        // 3. Make grid 3-column on desktop and add AguaClara card
-        photoGrid.style.cssText = 'display:grid;grid-template-columns:1fr;gap:2rem;margin-bottom:3rem';
+        // 3. Create new card grid
+        var grid = document.createElement('div');
+        grid.style.cssText = 'display:grid;grid-template-columns:1fr;gap:2rem';
         var mq = window.matchMedia('(min-width: 768px)');
-        function updateCols() {
-          photoGrid.style.gridTemplateColumns = mq.matches ? 'repeat(3, 1fr)' : '1fr';
-        }
+        function updateCols() { grid.style.gridTemplateColumns = mq.matches ? 'repeat(3, 1fr)' : '1fr'; }
         mq.addListener(updateCols);
         updateCols();
 
-        // 4. Create AguaClara card
-        var card = document.createElement('a');
-        card.href = 'https://www.aguaclarareach.org/';
-        card.target = '_blank';
-        card.rel = 'noopener noreferrer';
-        card.className = 'relative rounded-2xl overflow-hidden group';
-        card.style.cssText = 'display:block;text-decoration:none';
-        card.innerHTML =
-          '<img src="/photos/aguaclara.jpg" alt="AguaClara Reach" ' +
-            'style="width:100%;height:18rem;object-fit:cover;transition:transform 0.7s" ' +
-            'onmouseover="this.style.transform=\'scale(1.05)\'" ' +
-            'onmouseout="this.style.transform=\'scale(1)\'">';
-        photoGrid.appendChild(card);
+        // --- Card builder helper ---
+        function makeCard(opts) {
+          var card = document.createElement('div');
+          card.className = 'group rounded-2xl overflow-hidden';
+          card.style.cssText = 'position:relative;display:flex;flex-direction:column;border:1px solid #27272a;transition:border-color 0.3s;background:#18181b';
+          card.onmouseenter = function(){ card.style.borderColor='#71717a'; };
+          card.onmouseleave = function(){ card.style.borderColor='#27272a'; };
+
+          // Photo area with gradient overlay and button
+          var photoWrap = document.createElement('div');
+          photoWrap.style.cssText = 'position:relative;height:14rem;overflow:hidden';
+
+          var img = document.createElement('img');
+          img.src = opts.image;
+          img.alt = opts.title;
+          img.style.cssText = 'width:100%;height:100%;object-fit:cover;transition:transform 0.7s';
+          card.onmouseenter = function(){ img.style.transform='scale(1.05)'; card.style.borderColor='#71717a'; };
+          card.onmouseleave = function(){ img.style.transform='scale(1)'; card.style.borderColor='#27272a'; };
+
+          // Dark gradient at bottom of photo for readability
+          var gradient = document.createElement('div');
+          gradient.style.cssText = 'position:absolute;bottom:0;left:0;right:0;height:50%;background:linear-gradient(transparent,rgba(0,0,0,0.7));z-index:1;pointer-events:none';
+
+          // Button in lower-left of photo
+          var btn = document.createElement('div');
+          btn.style.cssText = 'position:absolute;bottom:0.75rem;left:0.75rem;z-index:2;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);padding:0.35rem 0.85rem;border-radius:0.5rem;display:flex;align-items:center;gap:0.4rem';
+          btn.innerHTML = '<span style="color:white;font-size:0.8rem;font-weight:700">' + opts.title + '</span>';
+
+          // Badge (optional, for AguaClara)
+          if (opts.badge) {
+            var badge = document.createElement('a');
+            badge.href = opts.badgeLink || '#';
+            badge.target = '_blank';
+            badge.rel = 'noopener noreferrer';
+            badge.style.cssText = 'position:absolute;top:0.75rem;right:0.75rem;z-index:2;background:#dc2626;color:white;font-size:0.65rem;font-weight:700;padding:0.25rem 0.6rem;border-radius:9999px;text-decoration:none;letter-spacing:0.05em;text-transform:uppercase';
+            badge.textContent = opts.badge;
+            photoWrap.appendChild(badge);
+          }
+
+          photoWrap.appendChild(img);
+          photoWrap.appendChild(gradient);
+          photoWrap.appendChild(btn);
+          card.appendChild(photoWrap);
+
+          // Content area below photo
+          var content = document.createElement('div');
+          content.style.cssText = 'padding:1.5rem;flex:1;display:flex;flex-direction:column';
+          content.innerHTML = '<p style="color:#d4d4d8;font-size:0.9rem;line-height:1.7">' + opts.text + '</p>';
+          card.appendChild(content);
+
+          return card;
+        }
+
+        // --- Build the 3 cards ---
+
+        // 1. Friday Night Dinners
+        grid.appendChild(makeCard({
+          image: '/photos/community.jpg',
+          title: 'Friday Night Dinners',
+          text: 'Over the last few years, I\u2019ve hosted nearly 100 Friday Night Dinners, often squeezing 30 strangers into my living room. The only rule? <strong style="color:white">Bring someone who thinks differently than you do.</strong> The strongest networks aren\u2019t built around transactions \u2014 they\u2019re built around tables.'
+        }));
+
+        // 2. Local Volunteering
+        grid.appendChild(makeCard({
+          image: '/photos/volunteering.jpg',
+          title: 'Local Volunteering',
+          text: 'As the son of a rabbi, I\u2019ve seen firsthand how a strong local community can transform lives. I believe it\u2019s essential to contribute where you live \u2014 to show up, roll up your sleeves, and invest in the people and places right around you. That\u2019s where change starts.'
+        }));
+
+        // 3. AguaClara Reach
+        grid.appendChild(makeCard({
+          image: '/photos/aguaclara.jpg',
+          title: 'AguaClara Reach',
+          badge: 'AguaClara Reach',
+          badgeLink: 'https://www.aguaclarareach.org/',
+          text: 'A global focus matters just as much as a local one. Safe water is the most fundamental resource \u2014 and AguaClara has been able to provide it for over <strong style="color:white">100,000 people</strong> across Honduras, India, and Nicaragua. We\u2019re still growing, because the need doesn\u2019t stop.'
+        }));
+
+        container.appendChild(grid);
       }
     })();
     </script>
@@ -650,6 +760,28 @@
           proj.style.paddingBottom = '5rem';
         }
       }, 300);
+    })();
+    </script>
+
+    <script>
+    // Fix hero heading cut-off: the root container has overflow-x-hidden which clips the large heading
+    (function(){
+      var poll = setInterval(function(){
+        var h1 = document.querySelector('h1.text-5xl');
+        if (!h1) return;
+        clearInterval(poll);
+        // Remove the leading <br> that wastes a full line of vertical space
+        var firstBr = h1.querySelector('br');
+        if (firstBr && h1.firstChild && h1.firstChild.textContent === '') {
+          h1.removeChild(h1.firstChild); // remove empty text node
+          h1.removeChild(firstBr);       // remove the <br>
+        }
+        // Ensure the heading section and parents don't clip
+        var section = h1.closest('section');
+        if (section) section.style.overflow = 'visible';
+        // Scale down slightly on mid-size screens so it never clips
+        h1.style.cssText = 'font-size:clamp(3rem, 8vw, 6rem);line-height:1.1;letter-spacing:-0.03em;font-weight:900;margin-bottom:2rem;';
+      }, 200);
     })();
     </script>
 
