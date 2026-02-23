@@ -536,10 +536,7 @@
 
         var phoneBtn = document.createElement('a');
         phoneBtn.href = 'tel:3044494899';
-        phoneBtn.className = baseRow1;
-        phoneBtn.style.cssText = 'background:#3f3f46;color:white;';
-        phoneBtn.onmouseenter = function(){ this.style.background='#dc2626'; };
-        phoneBtn.onmouseleave = function(){ this.style.background='#3f3f46'; };
+        phoneBtn.className = 'bg-white text-black hover:bg-red-500 hover:text-white ' + baseRow1;
         phoneBtn.innerHTML = icons.phone + ' <span class="font-mono">(304) 44-YITZY</span>';
         rows[0].appendChild(phoneBtn);
 
@@ -591,26 +588,30 @@
             '<img src="/photos/longboard.jpg" alt="Longboard" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">' +
           '</div>' +
           '<div style="padding:2rem;flex:1;display:flex;flex-direction:column">' +
-            '<div class="text-red-500 text-xs font-bold uppercase tracking-widest" style="margin-bottom:0.5rem">Polaroid Action</div>' +
+            '<div class="text-red-500 text-xs font-bold uppercase tracking-widest" style="margin-bottom:0.5rem">Former Professional Longboarder</div>' +
             '<h3 class="text-2xl font-bold" style="margin-bottom:1rem">Board Meeting</h3>' +
-            '<p class="text-gray-400 text-sm leading-relaxed" style="flex:1">Former professional longboarder. Gravity is just another system to work with — read the hill, commit to the line, and stay low through the turns.</p>' +
+            '<p class="text-gray-400 text-sm leading-relaxed" style="flex:1">Rode with the Polaroid Action team. Gravity is just another system to work with. Read the hill, commit to the line, and stay low through the turns.</p>' +
           '</div>';
         grid.appendChild(card);
 
-        // Adjust grid: 5 cards — use 3+2 layout on large screens, 2 cols on md
-        grid.style.cssText = 'display:grid;grid-template-columns:1fr;gap:2rem';
-        var updateGrid = function(){
+        // Adjust grid: 5 cards — 3 on top, 2 centered on bottom (large screens)
+        // Use flexbox instead of grid so we can center the bottom row
+        grid.style.cssText = 'display:flex;flex-wrap:wrap;gap:2rem;justify-content:center';
+        var cards = grid.children;
+        var updateCards = function(){
           var w = window.innerWidth;
-          if (w >= 1024) {
-            grid.style.gridTemplateColumns = 'repeat(3, 1fr)';
-          } else if (w >= 768) {
-            grid.style.gridTemplateColumns = 'repeat(2, 1fr)';
-          } else {
-            grid.style.gridTemplateColumns = '1fr';
+          for (var i = 0; i < cards.length; i++) {
+            if (w >= 1024) {
+              cards[i].style.width = 'calc(33.333% - 1.34rem)';
+            } else if (w >= 768) {
+              cards[i].style.width = 'calc(50% - 1rem)';
+            } else {
+              cards[i].style.width = '100%';
+            }
           }
         };
-        window.addEventListener('resize', updateGrid);
-        updateGrid();
+        window.addEventListener('resize', updateCards);
+        updateCards();
       }, 200);
     })();
     </script>
@@ -718,23 +719,23 @@
         grid.appendChild(makeCard({
           image: '/photos/community.jpg',
           title: 'Friday Night Dinners',
-          text: 'Over the last few years, I\u2019ve hosted nearly 100 Friday Night Dinners, often squeezing 30 strangers into my living room. The only rule? <strong style="color:white">Bring someone who thinks differently than you do.</strong> The strongest networks aren\u2019t built around transactions \u2014 they\u2019re built around tables.'
+          text: 'Over the last few years, I\u2019ve hosted nearly 100 Friday Night Dinners, often squeezing 30 strangers into my living room. The only rule? <strong style="color:white">Bring someone who thinks differently than you do.</strong> The strongest networks aren\u2019t built around transactions. They\u2019re built around tables.'
         }));
 
         // 2. Local Volunteering
         grid.appendChild(makeCard({
           image: '/photos/volunteering.jpg',
           title: 'Local Volunteering',
-          text: 'As the son of a rabbi, I\u2019ve seen firsthand how a strong local community can transform lives. I believe it\u2019s essential to contribute where you live \u2014 to show up, roll up your sleeves, and invest in the people and places right around you. That\u2019s where change starts.'
+          text: 'As the son of a rabbi, I\u2019ve seen firsthand how a strong local community can transform lives. I believe it\u2019s essential to contribute where you live. Show up, roll up your sleeves, and invest in the people and places right around you. That\u2019s where change starts.'
         }));
 
         // 3. AguaClara Reach
         grid.appendChild(makeCard({
           image: '/photos/aguaclara.jpg',
           title: 'AguaClara Reach',
-          badge: 'AguaClara Reach',
+          badge: 'Link',
           badgeLink: 'https://www.aguaclarareach.org/',
-          text: 'A global focus matters just as much as a local one. Safe water is the most fundamental resource \u2014 and AguaClara has been able to provide it for over <strong style="color:white">100,000 people</strong> across Honduras, India, and Nicaragua. We\u2019re still growing, because the need doesn\u2019t stop.'
+          text: 'A global focus matters just as much as a local one. Safe water is the most fundamental resource, and AguaClara has been able to provide it for over <strong style="color:white">100,000 people</strong> across Honduras, India, and Nicaragua. We\u2019re still growing, because the need doesn\u2019t stop.'
         }));
 
         container.appendChild(grid);
@@ -764,23 +765,18 @@
     </script>
 
     <script>
-    // Fix hero heading cut-off: the root container has overflow-x-hidden which clips the large heading
+    // Fix hero heading cut-off: replace heading entirely to avoid clip issues
     (function(){
       var poll = setInterval(function(){
-        var h1 = document.querySelector('h1.text-5xl');
+        var h1 = document.querySelector('h1');
         if (!h1) return;
         clearInterval(poll);
-        // Remove the leading <br> that wastes a full line of vertical space
-        var firstBr = h1.querySelector('br');
-        if (firstBr && h1.firstChild && h1.firstChild.textContent === '') {
-          h1.removeChild(h1.firstChild); // remove empty text node
-          h1.removeChild(firstBr);       // remove the <br>
-        }
-        // Ensure the heading section and parents don't clip
-        var section = h1.closest('section');
-        if (section) section.style.overflow = 'visible';
-        // Scale down slightly on mid-size screens so it never clips
-        h1.style.cssText = 'font-size:clamp(3rem, 8vw, 6rem);line-height:1.1;letter-spacing:-0.03em;font-weight:900;margin-bottom:2rem;';
+        // Replace the h1 innerHTML to avoid the empty <br> and clip-text issues
+        h1.innerHTML = 'I <span style="background:linear-gradient(to right,#ef4444,#991b1b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">UNTANGLE</span><br>WICKED PROBLEMS.';
+        h1.style.cssText = 'font-size:clamp(2.5rem,7vw,5.5rem);line-height:1.1;letter-spacing:-0.03em;font-weight:900;margin-bottom:2rem;overflow:visible';
+        // Also fix root container overflow
+        var root = document.querySelector('.overflow-x-hidden');
+        if (root) root.style.overflowX = 'visible';
       }, 200);
     })();
     </script>
