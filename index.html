@@ -27,6 +27,12 @@
     <meta name="theme-color" content="#000000" />
     <script type="module" crossorigin src="/assets/index-ZZwLr-Wf.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-Cn99QLM1.css">
+
+    <!-- Fix hero heading: responsive size so it never clips -->
+    <style>
+      h1 { font-size: clamp(2.5rem, 7vw, 5.5rem) !important; line-height: 1.1 !important; }
+      .overflow-x-hidden { overflow-x: clip !important; overflow-y: visible !important; }
+    </style>
     <!-- Spider layer kill switch: ?spider=0 or localStorage spider=off hides spider only; site content unchanged -->
     <script>
     (function(){
@@ -948,22 +954,6 @@
     })();
     </script>
 
-    <script>
-    // Fix hero heading cut-off: replace heading entirely to avoid clip issues
-    (function(){
-      var poll = setInterval(function(){
-        var h1 = document.querySelector('h1');
-        if (!h1) return;
-        clearInterval(poll);
-        // Replace the h1 innerHTML to avoid the empty <br> and clip-text issues
-        h1.innerHTML = 'I <span style="background:linear-gradient(to right,#ef4444,#991b1b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">UNTANGLE</span><br>WICKED PROBLEMS.';
-        h1.style.cssText = 'font-size:clamp(2.5rem,7vw,5.5rem);line-height:1.1;letter-spacing:-0.03em;font-weight:900;margin-bottom:2rem;overflow:visible';
-        // Also fix root container overflow
-        var root = document.querySelector('.overflow-x-hidden');
-        if (root) root.style.overflowX = 'visible';
-      }, 200);
-    })();
-    </script>
 
     <script>
     // Spider interaction instructions (desktop only)
