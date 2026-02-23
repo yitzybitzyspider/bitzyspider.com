@@ -42,12 +42,26 @@ A single-page portfolio with an interactive spider that follows your cursor (des
 
 This repo is a **production build only** - there is no source code. The React app was built with Vite and the output was committed directly. If you need to change React components, you have to edit the minified JS. If you need to add new behavior, add it as a plain script in `index.html`.
 
+**The majority of the site's customization now lives in `index.html` as plain JS scripts** that inject into or replace the React-rendered DOM. The minified React bundle provides the skeleton (nav, hero heading, section containers, spider canvas) and the scripts in `index.html` override content, add new sections, and fix layout issues.
+
 ### Files
 
 ```
-index.html              Entry point. Loads the React bundle and contains
-                        the mobile spider script (plain JS, not minified).
-                        This is the easiest file to edit.
+index.html              Entry point. Loads the React bundle and contains:
+                        - <style> block: CSS overrides for heading size,
+                          nav clearance, mobile fixes
+                        - Spider kill switch script (?spider=0)
+                        - Mobile spider script (corner web + dangle)
+                        - Current Projects section injection (Astrid)
+                        - Work section card replacement (4 experience cards)
+                        - Toolkit section replacement (7-category grid)
+                        - Section nav buttons injection (hero)
+                        - Contact section redesign (icons, rows)
+                        - Longboard gallery card injection
+                        - Community section redesign (3 photo cards)
+                        - Section spacing unifier
+                        - Desktop spider hint text
+                        This is the easiest and preferred file to edit.
 
 assets/
   index-ZZwLr-Wf.js    Minified React app (~296KB). Contains ALL components,
@@ -65,17 +79,19 @@ favicon.svg             Spider icon (SVG). Dark body, white eyes, red
 
 photos/                 All images used on the site:
   professional-headshot.jpg   OG/social sharing image
-  headshot.jpg                About section (sticky, grayscale on hover)
+  headshot.jpg                About section (sticky on desktop, static on mobile)
   community.jpg               Friday Night Dinners card
-  volunteering.jpg            Community Volunteering card
+  volunteering.jpg            Local Volunteering card
+  aguaclara.jpg               AguaClara Reach card
   scuba.jpg                   Gallery - Scuba Diving
-  travel.jpg                  Gallery - Handstand/Travel
+  travel.jpg                  Gallery - Handstand/Travel (object-position: center 20%)
   film-collage.jpg            Gallery - Film Photography
   film-headshot.jpg           Small film photo
   flight.jpg                  Gallery - Private Pilot
+  longboard.jpg               Gallery - Board Meeting (longboard)
   Yitzy_Rosenberg_CV.pdf      Duplicate of root CV (used in some links)
 
-Yitzy_Rosenberg_CV.pdf  Resume download (linked from hero section)
+Yitzy_Rosenberg_CV.pdf  Resume download (linked from contact section)
 yitzy-rosenberg.vcf     vCard contact file (linked from contact section)
 CNAME                   GitHub Pages custom domain: bitzyspider.com
 .nojekyll               Tells GitHub Pages not to run Jekyll
@@ -83,18 +99,31 @@ CNAME                   GitHub Pages custom domain: bitzyspider.com
 
 ## The React app (inside index-ZZwLr-Wf.js)
 
-The minified JS contains these React components (minified names in parens):
+The minified JS renders the initial DOM skeleton. Many sections are then **replaced or augmented by scripts in `index.html`**. The React components provide section containers with IDs that the scripts poll for and inject into.
 
-| Section     | What it shows |
-|-------------|--------------|
-| **Nav**     | Fixed top bar. Logo + spider icon, links to #about #work #community #gallery, "Say Hello" button |
-| **Hero**    | Big headline "YITZY ROSENBERG: I UNTANGLE WICKED PROBLEMS", subtitle, tagline about debugging, CTA buttons (Explore Work, Download CV) |
-| **About**   | "The Non-Linear Path" - life story, sticky headshot, spider metaphor, Assess/Hack/Build methodology |
-| **Work**    | "How I Spend My Energy" - two columns: The Operator (real estate/startups) and The Engineer (water/infrastructure), plus toolkit |
-| **Community** | "The Math of Community" - Friday Night Dinners, volunteering photos, philosophy |
-| **Gallery** | "Off The Clock" - 4 cards: Scuba, Travel, Film Photography, Private Pilot |
-| **Contact** | "Let's Connect the Dots" - email, phone, LinkedIn, vCard download |
-| **Footer**  | Logo, copyright |
+| Section     | React provides | Scripts in index.html override |
+|-------------|---------------|-------------------------------|
+| **Nav**     | Fixed top bar. Logo + spider icon, section links, "Say Hello" button | — |
+| **Hero**    | Heading "I UNTANGLE WICKED PROBLEMS", subtitle, tagline, placeholder for nav buttons | CSS overrides heading size (`clamp(2.8rem, 7vw, 5.5rem)`), hides stray `<br>`, adds `padding-top: 10rem`. Scripts inject section nav buttons and desktop spider hint |
+| **Current Projects** | *(does not exist in React)* | **Fully injected** before Work section: Astrid app demo in iPhone frame + description card |
+| **About**   | "The Non-Linear Path" - life story, headshot, spider metaphor, Assess/Hack/Build methodology | CSS disables sticky headshot on mobile |
+| **Work**    | "How I Spend My Energy" - section container with grid | **Grid contents replaced** with 4 standalone experience cards (Real Estate, Startup, Infrastructure, VC). Toolkit replaced with 7-category grid |
+| **Community** | "The Math of Community" - section container | **Rebuilt** as 3 photo cards: Friday Night Dinners, Local Volunteering, AguaClara Reach |
+| **Gallery** | "Off The Clock" - 4 cards: Scuba, Travel, Film Photography, Private Pilot | **Longboard card appended** (5th card). Grid converted to flexbox for centered bottom row. Travel image repositioned |
+| **Contact** | "Let's Connect the Dots" - two button rows | **Button contents replaced**: Row 1 = Email, Phone, Save Contact (white). Row 2 = LinkedIn (blue), Download CV (red). All with SVG icons |
+| **Footer**  | Logo, copyright | — |
+
+### Section IDs (used for navigation)
+
+The React app's original section IDs have been changed. The scripts in `index.html` rely on these IDs:
+
+- `current_work` — "What I'm Building Now" (injected section)
+- `track_record` — "How I Spend My Energy" (Work/experience cards + toolkit)
+- `community` — "The Math of Community"
+- `off_the_clock` — "Off The Clock" (gallery)
+- `contact` — "Let's Connect the Dots"
+
+The hero section nav buttons link to these IDs. If you rename a section ID in the minified JS, update the corresponding `href` in the nav button script.
 
 ### The Interactive Spider (desktop)
 
@@ -131,9 +160,11 @@ Lives inside the React app. Renders on a full-viewport `<canvas>` element with `
 - Shows "BUGS DEBUGGED: X" in monospace, with the number in red
 - Small text (`text-xs`, `md:text-sm`), thin border, no backdrop blur
 - `pointer-events-none` so it doesn't interfere with scrolling
+- On mobile: hidden by the mobile spider script (replaced with corner web)
 
 **Tagline** (in hero section):
 - "(You debug the bugs on screen. I debug the ones in production.)"
+- Followed by a subtle hint: "Move your cursor to guide the spider. Catch the bugs." (desktop only, injected by script)
 
 ### Cursor behavior (desktop)
 
@@ -165,25 +196,39 @@ This is a plain JavaScript IIFE at the bottom of `index.html`. It only runs on t
 
 ## Editing tips
 
-**To change text content** (headings, descriptions, button labels):
+**Preferred approach: inject via `index.html` scripts.** Almost all recent changes were done this way. The pattern is:
+
+1. Poll for a React-rendered element by ID or selector using `setInterval`
+2. Once found, `clearInterval` and inject/replace content
+3. Use inline styles or existing Tailwind classes for styling
+
+This is far safer and more readable than editing the minified bundle.
+
+**To change text content in the React skeleton** (headings, descriptions, button labels):
 - Search for the exact string in `assets/index-ZZwLr-Wf.js` and do a string replacement
 - Be careful not to change the length of strings that are adjacent to important code
+- Only do this for strings that aren't already overridden by `index.html` scripts
 
-**To change styles on existing elements:**
-- Find the `className:"..."` for the element in the minified JS
-- Only use Tailwind classes that already exist in `assets/index-Cn99QLM1.css`
+**To change styles on React-rendered elements:**
+- **Prefer CSS overrides in the `<style>` block** in `index.html` with `!important`
+- If you must edit the minified JS: find the `className:"..."` and only use Tailwind classes that exist in `assets/index-Cn99QLM1.css`
 - To check if a class exists: `grep -o 'classname' assets/index-Cn99QLM1.css`
 
-**To add new behavior:**
-- Add a `<script>` tag in `index.html` (like the mobile spider script)
-- This is much safer than modifying the minified bundle
+**To add new sections or features:**
+- Add a `<script>` tag in `index.html` following the existing polling pattern
+- Poll for a known element, inject your content relative to it
+- See the Current Projects script for an example of injecting a whole new section
 
 **To change the mobile spider:**
 - Edit the script directly in `index.html` - it's plain readable JavaScript
 
 **To change images:**
 - Replace files in `photos/` keeping the same filenames
-- Or update the filename references in the minified JS
+- Or update the filename references in the relevant script (most are now in `index.html`)
+
+**To change experience cards, toolkit, community cards, or contact buttons:**
+- These are all defined in plain JS objects/arrays in `index.html` scripts
+- Edit the data directly — no minified JS involved
 
 ## Tech stack
 
@@ -197,7 +242,54 @@ This is a plain JavaScript IIFE at the bottom of `index.html`. It only runs on t
 
 ## Design language
 
-- **Colors:** Black background, white text, red accents (`#dc2626`, `#ff4444`)
-- **Fonts:** Monospace for code-themed elements, sans-serif for body
-- **Layout:** Single column on mobile, multi-column grid on desktop
-- **Interactions:** Framer Motion hover/tap animations on cards and buttons
+- **Colors:** Black background (`#000`), white text, red accents (`#dc2626`, `#ff4444`), blue accents (`#3b82f6` on alternating work cards, `#0A66C2` on LinkedIn button)
+- **Card style:** Dark background (`rgba(24,24,27,0.2)`), zinc border (`#27272a`), border lightens on hover (to accent color at 30% opacity)
+- **Fonts:** Monospace for code-themed elements (counter, section labels, taglines), sans-serif for body
+- **Layout:** Single column on mobile, multi-column grid on desktop. Gallery uses flexbox to center the bottom row of 5 cards
+- **Interactions:** Framer Motion hover/tap on React elements. Injected cards use CSS transitions (border-color, transform, image scale)
+- **Section spacing:** Unified to `padding: 5rem 0` via script override (React default was `py-32`)
+
+## Lessons learned
+
+Things that tripped us up and how to avoid them in the future:
+
+### The React h1 has a phantom `<br>`
+
+The minified React app renders the hero heading as `"" + <br> + "I UNTANGLE..."`. That empty string + line break wastes a full line of vertical space, pushing the visible heading behind the fixed nav. **Fix:** CSS rule `h1 > br:first-of-type { display: none !important; }` in the `<style>` block.
+
+### The fixed nav requires generous hero padding
+
+The nav bar is ~80px tall and `position: fixed`. The hero section needs `padding-top: 10rem` (160px) to ensure the heading clears it, especially at large font sizes. The original React `pt-24` (96px) was not enough. **Fix:** CSS rule `section:first-of-type { padding-top: 10rem !important; }`.
+
+### CSS `!important` is necessary to override React
+
+The minified bundle applies Tailwind classes directly. To override them from `index.html`, you need `!important` on your CSS rules. Without it, the specificity of the compiled Tailwind classes wins.
+
+### Heading size must be responsive
+
+The React app used `text-6xl md:text-8xl` which was enormous on some screens and invisible on others. **Fix:** `clamp(2.8rem, 7vw, 5.5rem)` scales smoothly from mobile to desktop without breakpoint jumps.
+
+### Sticky elements break on mobile
+
+The About section headshot uses `sticky top-32` which overlays content on small screens. **Fix:** CSS media query disables sticky on `max-width: 767px`.
+
+### DOM injection pattern
+
+All `index.html` scripts follow the same pattern:
+```js
+var poll = setInterval(function(){
+  var el = document.getElementById('section_id');
+  if (!el) return;
+  clearInterval(poll);
+  // Now safe to modify el
+}, 200);
+```
+This is necessary because React renders asynchronously. The 200ms interval is a good balance between responsiveness and CPU usage.
+
+### Don't try to replace the React app wholesale
+
+Early attempts to rewrite the entire page or refactor into a modular build system caused regressions. The safest approach is to **keep the React bundle as the skeleton** and **surgically override specific sections** from `index.html` scripts. Each script is self-contained and only touches one section.
+
+### Section IDs were renamed
+
+The original React section IDs (`work`, `gallery`, etc.) were changed to more descriptive names (`track_record`, `off_the_clock`, etc.). All nav links, scroll targets, and injection scripts must use the new IDs. If you change an ID in the minified JS, grep `index.html` for every reference to the old name.
