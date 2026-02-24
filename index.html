@@ -486,6 +486,193 @@
     </script>
 
     <script>
+    // Education section: inject after toolkit inside track_record
+    (function(){
+      var degrees = [
+        {
+          school: 'Cornell University',
+          degree: 'Masters of Systems Engineering',
+          detail: 'Financial & Business Systems',
+          gpa: '4.0',
+          color: '#dc2626',
+          photo: 'photos/Diplomas.JPG',
+          photoAlt: 'Masters and Bachelors diplomas',
+          roles: [
+            'Lead TA for NBA6230/6233 "Actualizing Your Startup"',
+            'Lead TA for NBA3000/5640 "Designing New Ventures"',
+            'Research Assistant, SC Johnson School of Business'
+          ]
+        },
+        {
+          school: 'Cornell University',
+          degree: 'Bachelors of Environmental Engineering',
+          detail: 'Entrepreneurship \u00b7 Cum Laude',
+          gpa: '3.7',
+          color: '#dc2626',
+          photo: 'photos/meme.jpg',
+          photoAlt: 'Cornell undergraduate days',
+          roles: [
+            'President, INCOSE Student Chapter',
+            'VP, Cornell Rotaract Club',
+            'Senior Leadership, AguaClara Cornell',
+            'Senior Leadership, Engineers Without Borders',
+            'Unit Head & Counselor, Camp Kesem',
+            'Kessler Fellow'
+          ]
+        },
+        {
+          school: 'Technion \u2013 Israel Institute of Technology',
+          degree: 'Engineering for Developing Communities',
+          detail: 'Haifa, Israel',
+          gpa: '3.9',
+          color: '#3b82f6',
+          photo: 'photos/technion.jpg',
+          photoAlt: 'Technion group photo',
+          roles: [
+            'Research Fellow, University of Technology Sarawak (Malaysia)'
+          ]
+        },
+        {
+          school: 'Broward College',
+          degree: 'Associates in Arts',
+          detail: 'Fort Lauderdale, FL',
+          gpa: '3.92',
+          color: '#3b82f6',
+          photo: 'photos/BCGrad.jpeg',
+          photoAlt: 'Broward College graduation with president',
+          roles: [
+            'Founder & President, Chemistry Club',
+            'Founder, Textbook Exchange Library',
+            'VP Fellowship, PTK Honors',
+            'South Campus Bureau Chief, "The Observer"',
+            'Model United Nations Senior Member'
+          ]
+        }
+      ];
+
+      var awards = [
+        'Aspen Institute Future Climate Leader (2023)',
+        'AWWA Scholar (2020)',
+        'Kessler Fellow (2019)',
+        'ACS Scholar (2018)',
+        'Honorary Discipline Award \u2013 Physics (2018)',
+        'Future Resilient Leader Award (2018)',
+        'Jack Kent Cooke Scholar Semifinalist (2017, 2016)',
+        'Student Life Leadership Award (2017)',
+        'Best Position Paper & Outstanding Delegation \u2013 Southern Regional MUN (2017)',
+        'Presidents List (8 semesters) \u00b7 Dean\u2019s List (2 semesters)'
+      ];
+
+      var currentLeadership = [
+        'President, Cornell Club of Fort Lauderdale & Boca Raton',
+        'Aspen Institute Future Climate Leader',
+        'Board Member, Young Professionals in Infrastructure',
+        'Young Professionals in Energy'
+      ];
+
+      var poll = setInterval(function(){
+        var work = document.getElementById('track_record');
+        if (!work) return;
+        var container = work.firstElementChild;
+        if (!container) return;
+        // Find the toolkit element (last major block in work section)
+        var toolkit = container.querySelector('.bg-zinc-900\\/40');
+        if (!toolkit) return;
+        clearInterval(poll);
+
+        var section = document.createElement('div');
+        section.id = 'education';
+        section.style.cssText = 'margin-top:4rem;';
+
+        // Section heading
+        var html = '<h3 class="text-2xl font-bold mb-8 flex items-center gap-3">' +
+          '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-400"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 1.1 2.7 3 6 3s6-1.9 6-3v-5"/></svg>' +
+          ' Education</h3>';
+
+        // Degree cards - 2x2 grid
+        html += '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:1.5rem;">';
+
+        degrees.forEach(function(d) {
+          html += '<div style="background:rgba(24,24,27,0.4);border:1px solid #27272a;border-radius:0.75rem;overflow:hidden;transition:border-color 0.3s;" ' +
+            'onmouseenter="this.style.borderColor=\'' + d.color + '4d\'" onmouseleave="this.style.borderColor=\'#27272a\'">';
+
+          // Photo
+          html += '<div style="width:100%;height:200px;overflow:hidden;">' +
+            '<img src="' + d.photo + '" alt="' + d.photoAlt + '" style="width:100%;height:100%;object-fit:cover;transition:transform 0.5s;" ' +
+            'onmouseenter="this.style.transform=\'scale(1.05)\'" onmouseleave="this.style.transform=\'scale(1)\'">' +
+            '</div>';
+
+          // Content
+          html += '<div style="padding:1.25rem;">';
+
+          // School name
+          html += '<p style="font-family:monospace;font-size:0.75rem;color:' + d.color + ';text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.25rem;">' + d.school + '</p>';
+
+          // Degree
+          html += '<h4 style="font-size:1.1rem;font-weight:700;color:#fff;margin-bottom:0.25rem;">' + d.degree + '</h4>';
+
+          // Detail + GPA
+          html += '<p style="font-size:0.85rem;color:#a1a1aa;margin-bottom:0.75rem;">' + d.detail + ' &nbsp;\u00b7&nbsp; <span style="color:' + d.color + ';font-weight:600;">GPA: ' + d.gpa + '</span></p>';
+
+          // Key roles (compact list)
+          if (d.roles && d.roles.length > 0) {
+            html += '<div style="border-top:1px solid #27272a;padding-top:0.75rem;margin-top:0.25rem;">';
+            d.roles.forEach(function(r) {
+              html += '<p style="font-size:0.8rem;color:#71717a;line-height:1.6;">\u2022 ' + r + '</p>';
+            });
+            html += '</div>';
+          }
+
+          html += '</div></div>';
+        });
+
+        html += '</div>';
+
+        // Current leadership strip
+        html += '<div style="margin-top:2rem;padding:1.25rem 1.5rem;background:rgba(24,24,27,0.4);border:1px solid #27272a;border-radius:0.75rem;">';
+        html += '<p style="font-family:monospace;font-size:0.7rem;color:#dc2626;text-transform:uppercase;letter-spacing:0.15em;margin-bottom:0.5rem;">Current Leadership</p>';
+        html += '<div style="display:flex;flex-wrap:wrap;gap:0.5rem;">';
+        currentLeadership.forEach(function(role) {
+          html += '<span style="font-size:0.8rem;color:#d4d4d8;padding:0.25rem 0.75rem;border:1px solid #3f3f46;border-radius:9999px;white-space:nowrap;">' + role + '</span>';
+        });
+        html += '</div></div>';
+
+        // Awards - collapsible
+        html += '<details style="margin-top:1.5rem;background:rgba(24,24,27,0.4);border:1px solid #27272a;border-radius:0.75rem;overflow:hidden;">';
+        html += '<summary style="padding:1.25rem 1.5rem;cursor:pointer;font-family:monospace;font-size:0.8rem;color:#a1a1aa;letter-spacing:0.05em;list-style:none;display:flex;align-items:center;gap:0.5rem;user-select:none;">' +
+          '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>' +
+          ' AWARDS &amp; HONORS (' + awards.length + ')' +
+          '<svg class="edu-chevron" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:auto;transition:transform 0.3s;"><polyline points="6 9 12 15 18 9"/></svg>' +
+          '</summary>';
+        html += '<div style="padding:0 1.5rem 1.25rem;display:flex;flex-wrap:wrap;gap:0.5rem;">';
+        awards.forEach(function(a) {
+          html += '<span style="font-size:0.8rem;color:#d4d4d8;padding:0.25rem 0.75rem;background:rgba(39,39,42,0.5);border-radius:9999px;">' + a + '</span>';
+        });
+        html += '</div></details>';
+
+        section.innerHTML = html;
+
+        // Insert after toolkit
+        toolkit.parentNode.insertBefore(section, toolkit.nextSibling);
+
+        // Chevron rotation on details toggle
+        var details = section.querySelector('details');
+        if (details) {
+          details.addEventListener('toggle', function() {
+            var chev = details.querySelector('.edu-chevron');
+            if (chev) chev.style.transform = details.open ? 'rotate(180deg)' : '';
+          });
+        }
+      }, 200);
+
+      // Responsive: stack to 1 column on mobile
+      var style = document.createElement('style');
+      style.textContent = '@media(max-width:767px){#education>div:first-of-type{grid-template-columns:1fr!important;}}';
+      document.head.appendChild(style);
+    })();
+    </script>
+
+    <script>
     // Add section navigation buttons in the hero (before About)
     (function(){
       var poll = setInterval(function(){
