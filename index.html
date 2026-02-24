@@ -494,13 +494,24 @@
           degree: 'Masters of Systems Engineering',
           detail: 'Financial & Business Systems',
           gpa: '4.0',
+          gpaLabel: 'GPA',
           color: '#dc2626',
           photo: 'photos/Diplomas.JPG',
           photoAlt: 'Masters and Bachelors diplomas',
-          roles: [
-            'Lead TA for NBA6230/6233 "Actualizing Your Startup"',
-            'Lead TA for NBA3000/5640 "Designing New Ventures"',
-            'Research Assistant, SC Johnson School of Business'
+          leadership: [
+            'Engaged Leadership Certification',
+            'President, International Council on Systems Engineering Student Chapter',
+            'Graduate Student Researcher, AguaClara (August 2020 \u2013 June 2021)',
+            'Co-Entrepreneurial Lead, National Science Foundation I-Corps (May 2020 \u2013 December 2020)',
+            'Business Lead & Research Advisor to Going Global Teams, AguaClara (May 2019 \u2013 September 2020)',
+            'Prefabricated Plant Design & Research, AguaClara (Summer 2019)',
+            'Public Relations Sub-Team Lead, AguaClara (January 2019 \u2013 May 2019)',
+            'Public Relations Team Member, AguaClara (September 2018 \u2013 January 2019)',
+            'Lead Teaching Assistant for NBA6230 & 6233 "Actualizing Your Startup", SC Johnson School of Business',
+            'Lead Teaching Assistant for NBA3000 & 5640 "Designing New Ventures", SC Johnson School of Business',
+            'Research Assistant, SC Johnson School of Business (Summer 2020)',
+            'Tanzania Team Member, Engineers Without Borders (September 2018 \u2013 December 2020)',
+            'Research Fellow, University of Technology Sarawak, Malaysia (August 2019 \u2013 May 2020)'
           ]
         },
         {
@@ -508,16 +519,23 @@
           degree: 'Bachelors of Environmental Engineering',
           detail: 'Entrepreneurship \u00b7 Cum Laude',
           gpa: '3.7',
+          gpaLabel: 'Cumulative GPA',
           color: '#dc2626',
           photo: 'photos/meme.jpg',
           photoAlt: 'Cornell undergraduate days',
-          roles: [
-            'President, INCOSE Student Chapter',
-            'VP, Cornell Rotaract Club',
-            'Senior Leadership, AguaClara Cornell',
-            'Senior Leadership, Engineers Without Borders',
-            'Unit Head & Counselor, Camp Kesem',
-            'Kessler Fellow'
+          leadership: [
+            'Vice-President of Cornell Rotaract Club',
+            'Senior Leadership in AguaClara Cornell',
+            'Senior Leadership in Engineers Without Borders',
+            'Unit Head and Counselor in Camp Kesem',
+            'Kessler Fellow',
+            'Engagement Intern for Hillel',
+            'House Manager for Triphammer Cooperative',
+            'Mentor for CU-Empower',
+            'Peer Advisor for Environmental Engineering',
+            'Ambassador for Civil and Environmental Program',
+            'Contributor to Rotary WASH Grant Writing Team',
+            'Engineering Leadership Certification'
           ]
         },
         {
@@ -525,49 +543,68 @@
           degree: 'Engineering for Developing Communities',
           detail: 'Haifa, Israel',
           gpa: '3.9',
+          gpaLabel: 'GPA',
           color: '#3b82f6',
           photo: 'photos/technion.jpg',
           photoAlt: 'Technion group photo',
-          roles: [
-            'Research Fellow, University of Technology Sarawak (Malaysia)'
-          ]
+          leadership: []
         },
         {
           school: 'Broward College',
           degree: 'Associates in Arts',
-          detail: 'Fort Lauderdale, FL',
+          detail: 'Fort Lauderdale, FL \u00b7 Highest Honors',
           gpa: '3.92',
+          gpaLabel: 'GPA',
           color: '#3b82f6',
           photo: 'photos/BCGrad.jpeg',
           photoAlt: 'Broward College graduation with president',
-          roles: [
-            'Founder & President, Chemistry Club',
-            'Founder, Textbook Exchange Library',
-            'VP Fellowship, PTK Honors',
-            'South Campus Bureau Chief, "The Observer"',
-            'Model United Nations Senior Member'
+          leadership: [
+            'Founder & President of the Chemistry Club',
+            'Founder of the Textbook Exchange Library',
+            'Vice-President of Fellowship for Phi Theta Kappa Honors',
+            'South Campus Bureau Chief for "The Observer"',
+            'Jurisprudence in Student Government',
+            'Member of the Student Leadership Committee',
+            'Writer for Honors Newsletter',
+            'Senior Member of Model United Nations',
+            'Honors Student Committee Club',
+            'Central Campus Events Coordinator',
+            'South Campus Events Coordinator',
+            'Robotics Student Government Representative',
+            'Service Chair for the National Society of Leadership and Success',
+            'Chai Lifeline Miami',
+            'Friendship Circle Miami'
           ]
         }
       ];
 
       var awards = [
         'Aspen Institute Future Climate Leader (2023)',
-        'AWWA Scholar (2020)',
+        'American Water Works Association Scholar (2020)',
         'Kessler Fellow (2019)',
-        'ACS Scholar (2018)',
+        'American Chemical Society Scholar (2018)',
         'Honorary Discipline Award \u2013 Physics (2018)',
         'Future Resilient Leader Award (2018)',
         'Jack Kent Cooke Scholar Semifinalist (2017, 2016)',
+        'Bocchino Family Scholarship Award (2017)',
         'Student Life Leadership Award (2017)',
+        'Honorary Discipline Award \u2013 Chemistry & Spanish (2017)',
+        'Presidents Award (2017)',
+        'Student Life Civic Award \u2013 The Observer & Phi Theta Kappa (2017)',
         'Best Position Paper & Outstanding Delegation \u2013 Southern Regional MUN (2017)',
-        'Presidents List (8 semesters) \u00b7 Dean\u2019s List (2 semesters)'
+        'Rasmuson Award (2016)',
+        'Robert Elmer Award (2015)',
+        'Scholars Grant (2015)',
+        'William Porterfield Award (2015)',
+        'Presidents List (Fall 2017, 2016, 2015, 2014 \u00b7 Spring 2017, 2015, 2014, 2013)',
+        'Dean\u2019s List (Spring 2019 \u00b7 Fall 2016)'
       ];
 
       var currentLeadership = [
         'President, Cornell Club of Fort Lauderdale & Boca Raton',
-        'Aspen Institute Future Climate Leader',
         'Board Member, Young Professionals in Infrastructure',
-        'Young Professionals in Energy'
+        'Young Professionals in Energy',
+        'Aspen Institute Future Climate Leader'
       ];
 
       var poll = setInterval(function(){
@@ -575,7 +612,6 @@
         if (!work) return;
         var container = work.firstElementChild;
         if (!container) return;
-        // Find the toolkit element (last major block in work section)
         var toolkit = container.querySelector('.bg-zinc-900\\/40');
         if (!toolkit) return;
         clearInterval(poll);
@@ -589,38 +625,45 @@
           '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-400"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 1.1 2.7 3 6 3s6-1.9 6-3v-5"/></svg>' +
           ' Education</h3>';
 
-        // Degree cards - 2x2 grid
-        html += '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:1.5rem;">';
+        // Degree cards - 2x2 grid with generous spacing
+        html += '<div class="edu-grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:2rem;">';
 
-        degrees.forEach(function(d) {
-          html += '<div style="background:rgba(24,24,27,0.4);border:1px solid #27272a;border-radius:0.75rem;overflow:hidden;transition:border-color 0.3s;" ' +
+        degrees.forEach(function(d, idx) {
+          var leadId = 'edu-lead-' + idx;
+          html += '<div class="edu-card" style="background:rgba(24,24,27,0.4);border:1px solid #27272a;border-radius:0.75rem;overflow:hidden;transition:border-color 0.3s;" ' +
             'onmouseenter="this.style.borderColor=\'' + d.color + '4d\'" onmouseleave="this.style.borderColor=\'#27272a\'">';
 
-          // Photo
-          html += '<div style="width:100%;height:200px;overflow:hidden;">' +
+          // Photo - uses class for responsive height
+          html += '<div class="edu-photo" style="width:100%;overflow:hidden;">' +
             '<img src="' + d.photo + '" alt="' + d.photoAlt + '" style="width:100%;height:100%;object-fit:cover;transition:transform 0.5s;" ' +
             'onmouseenter="this.style.transform=\'scale(1.05)\'" onmouseleave="this.style.transform=\'scale(1)\'">' +
             '</div>';
 
           // Content
-          html += '<div style="padding:1.25rem;">';
+          html += '<div style="padding:1.5rem;">';
 
           // School name
           html += '<p style="font-family:monospace;font-size:0.75rem;color:' + d.color + ';text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.25rem;">' + d.school + '</p>';
 
           // Degree
-          html += '<h4 style="font-size:1.1rem;font-weight:700;color:#fff;margin-bottom:0.25rem;">' + d.degree + '</h4>';
+          html += '<h4 style="font-size:1.15rem;font-weight:700;color:#fff;margin-bottom:0.25rem;">' + d.degree + '</h4>';
 
           // Detail + GPA
-          html += '<p style="font-size:0.85rem;color:#a1a1aa;margin-bottom:0.75rem;">' + d.detail + ' &nbsp;\u00b7&nbsp; <span style="color:' + d.color + ';font-weight:600;">GPA: ' + d.gpa + '</span></p>';
+          html += '<p style="font-size:0.85rem;color:#a1a1aa;margin-bottom:0.5rem;">' + d.detail + ' &nbsp;\u00b7&nbsp; <span style="color:' + d.color + ';font-weight:600;">' + d.gpaLabel + ': ' + d.gpa + '</span></p>';
 
-          // Key roles (compact list)
-          if (d.roles && d.roles.length > 0) {
-            html += '<div style="border-top:1px solid #27272a;padding-top:0.75rem;margin-top:0.25rem;">';
-            d.roles.forEach(function(r) {
-              html += '<p style="font-size:0.8rem;color:#71717a;line-height:1.6;">\u2022 ' + r + '</p>';
+          // Leadership dropdown (collapsible like Awards)
+          if (d.leadership && d.leadership.length > 0) {
+            html += '<details id="' + leadId + '" style="border-top:1px solid #27272a;margin-top:0.25rem;">';
+            html += '<summary style="cursor:pointer;font-family:monospace;font-size:0.7rem;color:#a1a1aa;letter-spacing:0.05em;list-style:none;display:flex;align-items:center;gap:0.4rem;user-select:none;padding:0.5rem 0;">' +
+              '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="' + d.color + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' +
+              ' LEADERSHIP (' + d.leadership.length + ')' +
+              '<svg class="edu-chev-' + idx + '" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:auto;transition:transform 0.3s;"><polyline points="6 9 12 15 18 9"/></svg>' +
+              '</summary>';
+            html += '<div style="padding:0.25rem 0 0.5rem;">';
+            d.leadership.forEach(function(r) {
+              html += '<p style="font-size:0.8rem;color:#71717a;line-height:1.7;padding-left:0.25rem;">\u2022 ' + r + '</p>';
             });
-            html += '</div>';
+            html += '</div></details>';
           }
 
           html += '</div></div>';
@@ -655,19 +698,35 @@
         // Insert after toolkit
         toolkit.parentNode.insertBefore(section, toolkit.nextSibling);
 
-        // Chevron rotation on details toggle
-        var details = section.querySelector('details');
-        if (details) {
-          details.addEventListener('toggle', function() {
-            var chev = details.querySelector('.edu-chevron');
-            if (chev) chev.style.transform = details.open ? 'rotate(180deg)' : '';
+        // Chevron rotation on Awards toggle
+        var awardDetails = section.querySelector('details:not([id])');
+        if (awardDetails) {
+          awardDetails.addEventListener('toggle', function() {
+            var chev = awardDetails.querySelector('.edu-chevron');
+            if (chev) chev.style.transform = awardDetails.open ? 'rotate(180deg)' : '';
           });
         }
+
+        // Chevron rotation for each Leadership dropdown
+        degrees.forEach(function(d, idx) {
+          var det = document.getElementById('edu-lead-' + idx);
+          if (det) {
+            det.addEventListener('toggle', function() {
+              var chev = det.querySelector('.edu-chev-' + idx);
+              if (chev) chev.style.transform = det.open ? 'rotate(180deg)' : '';
+            });
+          }
+        });
       }, 200);
 
-      // Responsive: stack to 1 column on mobile
+      // Responsive: taller photos on desktop, stack to 1 column on mobile
       var style = document.createElement('style');
-      style.textContent = '@media(max-width:767px){#education>div:first-of-type{grid-template-columns:1fr!important;}}';
+      style.textContent =
+        '.edu-photo{height:260px}' +
+        '@media(max-width:767px){' +
+          '#education .edu-grid{grid-template-columns:1fr!important;}' +
+          '.edu-photo{height:200px}' +
+        '}';
       document.head.appendChild(style);
     })();
     </script>
