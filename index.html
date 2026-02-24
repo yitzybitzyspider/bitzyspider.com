@@ -686,11 +686,11 @@
           leadership: [
             'Engaged Leadership Certification',
             'President, International Council on Systems Engineering Student Chapter',
-            'Graduate Student Researcher, AguaClara (August 2020 \u2013 June 2021)',
-            'Co-Entrepreneurial Lead, National Science Foundation I-Corps (May 2020 \u2013 December 2020)',
-            'Lead Teaching Assistant for NBA6230 & 6233 "Actualizing Your Startup", SC Johnson School of Business',
-            'Lead Teaching Assistant for NBA3000 & 5640 "Designing New Ventures", SC Johnson School of Business',
-            'Research Assistant, SC Johnson School of Business (Summer 2020)'
+            'Graduate Student Researcher, AguaClara',
+            'Co-Entrepreneurial Lead, National Science Foundation I-Corps',
+            'Lead Teaching Assistant for NBA6230 & 6233 "Actualizing Your Startup"',
+            'Lead Teaching Assistant for NBA3000 & 5640 "Designing New Ventures"',
+            'Research Assistant, SC Johnson School of Business'
           ]
         },
         {
@@ -807,8 +807,8 @@
           '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-400"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 1.1 2.7 3 6 3s6-1.9 6-3v-5"/></svg>' +
           ' Education</h3>';
 
-        // Degree cards - single column, narrower, taller
-        html += '<div class="edu-grid" style="display:flex;flex-direction:column;gap:2rem;max-width:640px;margin:0 auto;">';
+        // Degree cards - 2x2 grid, narrower
+        html += '<div class="edu-grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:1.5rem;max-width:820px;margin:0 auto;">';
 
         degrees.forEach(function(d, idx) {
           var leadId = 'edu-lead-' + idx;
@@ -838,10 +838,10 @@
 
           html += '</div>';
 
-          // Logo on right
+          // Logo on right in white circle
           if (d.logo) {
-            html += '<div style="flex-shrink:0;width:64px;height:64px;display:flex;align-items:center;justify-content:center;">' +
-              '<img src="' + d.logo + '" alt="' + d.school + ' logo" style="max-width:100%;max-height:100%;object-fit:contain;opacity:0.85;">' +
+            html += '<div style="flex-shrink:0;width:56px;height:56px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;padding:8px;">' +
+              '<img src="' + d.logo + '" alt="' + d.school + ' logo" style="max-width:100%;max-height:100%;object-fit:contain;">' +
               '</div>';
           }
 
@@ -870,7 +870,7 @@
         html += '</div>';
 
         // Current leadership strip
-        html += '<div style="margin-top:2rem;padding:1.25rem 1.5rem;background:rgba(24,24,27,0.4);border:1px solid #27272a;border-radius:0.75rem;max-width:640px;margin-left:auto;margin-right:auto;">';
+        html += '<div style="margin-top:2rem;padding:1.25rem 1.5rem;background:rgba(24,24,27,0.4);border:1px solid #27272a;border-radius:0.75rem;max-width:820px;margin-left:auto;margin-right:auto;">';
         html += '<p style="font-family:monospace;font-size:0.7rem;color:#dc2626;text-transform:uppercase;letter-spacing:0.15em;margin-bottom:0.5rem;">Current Leadership</p>';
         html += '<div style="display:flex;flex-wrap:wrap;gap:0.5rem;">';
         currentLeadership.forEach(function(role) {
@@ -879,7 +879,7 @@
         html += '</div></div>';
 
         // Awards - collapsible
-        html += '<details style="margin-top:1.5rem;background:rgba(24,24,27,0.4);border:1px solid #27272a;border-radius:0.75rem;overflow:hidden;max-width:640px;margin-left:auto;margin-right:auto;">';
+        html += '<details style="margin-top:1.5rem;background:rgba(24,24,27,0.4);border:1px solid #27272a;border-radius:0.75rem;overflow:hidden;max-width:820px;margin-left:auto;margin-right:auto;">';
         html += '<summary style="padding:1.25rem 1.5rem;cursor:pointer;font-family:monospace;font-size:0.8rem;color:#a1a1aa;letter-spacing:0.05em;list-style:none;display:flex;align-items:center;gap:0.5rem;user-select:none;">' +
           '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>' +
           ' AWARDS &amp; HONORS (' + awards.length + ')' +
@@ -920,10 +920,10 @@
       // Responsive: taller photos on desktop, stack to 1 column on mobile
       var style = document.createElement('style');
       style.textContent =
-        '.edu-photo{height:320px}' +
+        '.edu-photo{height:200px}' +
         '@media(max-width:767px){' +
-          '.edu-grid{max-width:100%!important;}' +
-          '.edu-photo{height:220px}' +
+          '.edu-grid{grid-template-columns:1fr!important;max-width:100%!important;}' +
+          '.edu-photo{height:200px}' +
         '}';
       document.head.appendChild(style);
     })();
