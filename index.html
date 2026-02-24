@@ -682,20 +682,15 @@
           color: '#dc2626',
           photo: 'photos/Diplomas.JPG',
           photoAlt: 'Masters and Bachelors diplomas',
+          logo: 'photos/Cornell_University_Logo.png',
           leadership: [
             'Engaged Leadership Certification',
             'President, International Council on Systems Engineering Student Chapter',
             'Graduate Student Researcher, AguaClara (August 2020 \u2013 June 2021)',
             'Co-Entrepreneurial Lead, National Science Foundation I-Corps (May 2020 \u2013 December 2020)',
-            'Business Lead & Research Advisor to Going Global Teams, AguaClara (May 2019 \u2013 September 2020)',
-            'Prefabricated Plant Design & Research, AguaClara (Summer 2019)',
-            'Public Relations Sub-Team Lead, AguaClara (January 2019 \u2013 May 2019)',
-            'Public Relations Team Member, AguaClara (September 2018 \u2013 January 2019)',
             'Lead Teaching Assistant for NBA6230 & 6233 "Actualizing Your Startup", SC Johnson School of Business',
             'Lead Teaching Assistant for NBA3000 & 5640 "Designing New Ventures", SC Johnson School of Business',
-            'Research Assistant, SC Johnson School of Business (Summer 2020)',
-            'Tanzania Team Member, Engineers Without Borders (September 2018 \u2013 December 2020)',
-            'Research Fellow, University of Technology Sarawak, Malaysia (August 2019 \u2013 May 2020)'
+            'Research Assistant, SC Johnson School of Business (Summer 2020)'
           ]
         },
         {
@@ -707,6 +702,7 @@
           color: '#dc2626',
           photo: 'photos/meme.jpg',
           photoAlt: 'Cornell undergraduate days',
+          logo: 'photos/Cornell_University_Logo.png',
           leadership: [
             'Vice-President of Cornell Rotaract Club',
             'Senior Leadership in AguaClara Cornell',
@@ -725,12 +721,13 @@
         {
           school: 'Technion \u2013 Israel Institute of Technology',
           degree: 'Engineering for Developing Communities',
-          detail: 'Haifa, Israel',
+          detail: 'Haifa, Israel \u00b7 Study Abroad',
           gpa: '3.9',
           gpaLabel: 'GPA',
           color: '#3b82f6',
           photo: 'photos/technion.jpg',
           photoAlt: 'Technion group photo',
+          logo: 'photos/TechnionLogo.svg',
           leadership: []
         },
         {
@@ -742,6 +739,7 @@
           color: '#3b82f6',
           photo: 'photos/BCGrad.jpeg',
           photoAlt: 'Broward College graduation with president',
+          logo: 'photos/BrowardCollegeLogo.svg',
           leadership: [
             'Founder & President of the Chemistry Club',
             'Founder of the Textbook Exchange Library',
@@ -809,8 +807,8 @@
           '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-400"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 1.1 2.7 3 6 3s6-1.9 6-3v-5"/></svg>' +
           ' Education</h3>';
 
-        // Degree cards - 2x2 grid with generous spacing
-        html += '<div class="edu-grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:2rem;">';
+        // Degree cards - single column, narrower, taller
+        html += '<div class="edu-grid" style="display:flex;flex-direction:column;gap:2rem;max-width:640px;margin:0 auto;">';
 
         degrees.forEach(function(d, idx) {
           var leadId = 'edu-lead-' + idx;
@@ -823,8 +821,11 @@
             'onmouseenter="this.style.transform=\'scale(1.05)\'" onmouseleave="this.style.transform=\'scale(1)\'">' +
             '</div>';
 
-          // Content
-          html += '<div style="padding:1.5rem;">';
+          // Content - flex row with text on left and logo on right
+          html += '<div style="padding:1.5rem;display:flex;align-items:flex-start;gap:1rem;">';
+
+          // Text side
+          html += '<div style="flex:1;min-width:0;">';
 
           // School name
           html += '<p style="font-family:monospace;font-size:0.75rem;color:' + d.color + ';text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.25rem;">' + d.school + '</p>';
@@ -835,9 +836,21 @@
           // Detail + GPA
           html += '<p style="font-size:0.85rem;color:#a1a1aa;margin-bottom:0.5rem;">' + d.detail + ' &nbsp;\u00b7&nbsp; <span style="color:' + d.color + ';font-weight:600;">' + d.gpaLabel + ': ' + d.gpa + '</span></p>';
 
+          html += '</div>';
+
+          // Logo on right
+          if (d.logo) {
+            html += '<div style="flex-shrink:0;width:64px;height:64px;display:flex;align-items:center;justify-content:center;">' +
+              '<img src="' + d.logo + '" alt="' + d.school + ' logo" style="max-width:100%;max-height:100%;object-fit:contain;opacity:0.85;">' +
+              '</div>';
+          }
+
+          html += '</div>';
+
           // Leadership dropdown (collapsible like Awards)
           if (d.leadership && d.leadership.length > 0) {
-            html += '<details id="' + leadId + '" style="border-top:1px solid #27272a;margin-top:0.25rem;">';
+            html += '<div style="padding:0 1.5rem 1rem;">';
+            html += '<details id="' + leadId + '" style="border-top:1px solid #27272a;">';
             html += '<summary style="cursor:pointer;font-family:monospace;font-size:0.7rem;color:#a1a1aa;letter-spacing:0.05em;list-style:none;display:flex;align-items:center;gap:0.4rem;user-select:none;padding:0.5rem 0;">' +
               '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="' + d.color + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' +
               ' LEADERSHIP (' + d.leadership.length + ')' +
@@ -848,15 +861,16 @@
               html += '<p style="font-size:0.8rem;color:#71717a;line-height:1.7;padding-left:0.25rem;">\u2022 ' + r + '</p>';
             });
             html += '</div></details>';
+            html += '</div>';
           }
 
-          html += '</div></div>';
+          html += '</div>';
         });
 
         html += '</div>';
 
         // Current leadership strip
-        html += '<div style="margin-top:2rem;padding:1.25rem 1.5rem;background:rgba(24,24,27,0.4);border:1px solid #27272a;border-radius:0.75rem;">';
+        html += '<div style="margin-top:2rem;padding:1.25rem 1.5rem;background:rgba(24,24,27,0.4);border:1px solid #27272a;border-radius:0.75rem;max-width:640px;margin-left:auto;margin-right:auto;">';
         html += '<p style="font-family:monospace;font-size:0.7rem;color:#dc2626;text-transform:uppercase;letter-spacing:0.15em;margin-bottom:0.5rem;">Current Leadership</p>';
         html += '<div style="display:flex;flex-wrap:wrap;gap:0.5rem;">';
         currentLeadership.forEach(function(role) {
@@ -865,7 +879,7 @@
         html += '</div></div>';
 
         // Awards - collapsible
-        html += '<details style="margin-top:1.5rem;background:rgba(24,24,27,0.4);border:1px solid #27272a;border-radius:0.75rem;overflow:hidden;">';
+        html += '<details style="margin-top:1.5rem;background:rgba(24,24,27,0.4);border:1px solid #27272a;border-radius:0.75rem;overflow:hidden;max-width:640px;margin-left:auto;margin-right:auto;">';
         html += '<summary style="padding:1.25rem 1.5rem;cursor:pointer;font-family:monospace;font-size:0.8rem;color:#a1a1aa;letter-spacing:0.05em;list-style:none;display:flex;align-items:center;gap:0.5rem;user-select:none;">' +
           '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>' +
           ' AWARDS &amp; HONORS (' + awards.length + ')' +
@@ -906,10 +920,10 @@
       // Responsive: taller photos on desktop, stack to 1 column on mobile
       var style = document.createElement('style');
       style.textContent =
-        '.edu-photo{height:260px}' +
+        '.edu-photo{height:320px}' +
         '@media(max-width:767px){' +
-          '#education .edu-grid{grid-template-columns:1fr!important;}' +
-          '.edu-photo{height:200px}' +
+          '.edu-grid{max-width:100%!important;}' +
+          '.edu-photo{height:220px}' +
         '}';
       document.head.appendChild(style);
     })();
