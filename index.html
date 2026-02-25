@@ -1273,6 +1273,21 @@
     </script>
 
     <script>
+    // Make BITZYSPIDER.COM logo scroll to top
+    (function(){
+      var poll = setInterval(function(){
+        var logo = document.querySelector('nav .text-2xl.font-bold');
+        if (!logo) return;
+        clearInterval(poll);
+        logo.style.cursor = 'pointer';
+        logo.addEventListener('click', function() {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+      }, 200);
+    })();
+    </script>
+
+    <script>
     // Desktop nav: inject Skills and Education links
     (function(){
       var poll = setInterval(function(){
