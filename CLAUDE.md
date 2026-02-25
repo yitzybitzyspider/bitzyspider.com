@@ -55,13 +55,20 @@ index.html              Entry point. Loads the React bundle and contains:
                         - Current Projects section injection (Astrid)
                         - Work section card replacement (4 experience cards)
                         - Toolkit section replacement (7-category grid)
+                        - Education section injection (2 photo cards)
                         - Section nav buttons injection (hero)
                         - Contact section redesign (icons, rows)
                         - Longboard gallery card injection
                         - Community section redesign (3 photo cards)
                         - Section spacing unifier
                         - Desktop spider hint text
+                        - Logo click-to-top handler
+                        - Desktop nav link injection (Skills, Education)
+                        - Mobile slide-up hamburger nav menu
                         This is the easiest and preferred file to edit.
+
+LEASE_Formula.pdf       Work sample PDF for commercial real estate card
+2023_SFWMD_SLRFRP.pdf   Work sample PDF for infrastructure card
 
 assets/
   index-ZZwLr-Wf.js    Minified React app (~296KB). Contains ALL components,
@@ -103,11 +110,11 @@ The minified JS renders the initial DOM skeleton. Many sections are then **repla
 
 | Section     | React provides | Scripts in index.html override |
 |-------------|---------------|-------------------------------|
-| **Nav**     | Fixed top bar. Logo + spider icon, section links, "Say Hello" button | — |
+| **Nav**     | Fixed top bar. Logo + spider icon, section links, "Say Hello" button | **Logo** made clickable (scrolls to top). **Desktop:** Skills and Education links injected after Work. **Mobile:** "Say Hello" replaced with hamburger icon that opens a slide-up menu with all sections; swipe-down to dismiss |
 | **Hero**    | Heading "I UNTANGLE WICKED PROBLEMS", subtitle, tagline, placeholder for nav buttons | CSS overrides heading size (`clamp(2.8rem, 7vw, 5.5rem)`), hides stray `<br>`, adds `padding-top: 10rem`. Scripts inject section nav buttons and desktop spider hint |
 | **Current Projects** | *(does not exist in React)* | **Fully injected** before Work section: Astrid app demo in iPhone frame + description card |
 | **About**   | "The Non-Linear Path" - life story, headshot, spider metaphor, Assess/Hack/Build methodology | CSS disables sticky headshot on mobile |
-| **Work**    | "How I Spend My Energy" - section container with grid | **Grid contents replaced** with 4 standalone experience cards (Real Estate, Startup, Infrastructure, VC). Toolkit replaced with 7-category grid |
+| **Work**    | "How I Spend My Energy" - section container with grid | **Grid contents replaced** with 4 standalone experience cards (Real Estate, Startup, Infrastructure, VC). Work sample badges color-matched to card accents (red or blue). Toolkit replaced with 7-category grid (id=`skills`). **Education section injected** after toolkit with 2 photo cards (Cornell, Self-taught) |
 | **Community** | "The Math of Community" - section container | **Rebuilt** as 3 photo cards: Friday Night Dinners, Local Volunteering, AguaClara Reach |
 | **Gallery** | "Off The Clock" - 4 cards: Scuba, Travel, Film Photography, Private Pilot | **Longboard card appended** (5th card). Grid converted to flexbox for centered bottom row. Travel image repositioned |
 | **Contact** | "Let's Connect the Dots" - two button rows | **Button contents replaced**: Row 1 = Email, Phone, Save Contact (white). Row 2 = LinkedIn (blue), Download CV (red). All with SVG icons |
@@ -119,11 +126,13 @@ The React app's original section IDs have been changed. The scripts in `index.ht
 
 - `current_work` — "What I'm Building Now" (injected section)
 - `track_record` — "How I Spend My Energy" (Work/experience cards + toolkit)
+- `skills` — Toolkit grid (id added by script onto the React-rendered toolkit container)
+- `education` — "Education" (injected section, 2 photo cards)
 - `community` — "The Math of Community"
 - `off_the_clock` — "Off The Clock" (gallery)
 - `contact` — "Let's Connect the Dots"
 
-The hero section nav buttons link to these IDs. If you rename a section ID in the minified JS, update the corresponding `href` in the nav button script.
+The hero section nav buttons, desktop nav links, and mobile hamburger menu all link to these IDs. If you rename a section ID in the minified JS, update the corresponding `href` in the nav button script, the desktop nav injection script, and the mobile nav menu script.
 
 ### The Interactive Spider (desktop)
 
@@ -242,7 +251,7 @@ This is far safer and more readable than editing the minified bundle.
 
 ## Design language
 
-- **Colors:** Black background (`#000`), white text, red accents (`#dc2626`, `#ff4444`), blue accents (`#3b82f6` on alternating work cards, `#0A66C2` on LinkedIn button)
+- **Colors:** Black background (`#000`), white text, red accents (`#dc2626`, `#ff4444`), blue accents (`#3b82f6` on alternating work cards, `#0A66C2` on LinkedIn button). Work sample badges match their card's accent color (red cards get red badges, blue cards get blue badges)
 - **Card style:** Dark background (`rgba(24,24,27,0.2)`), zinc border (`#27272a`), border lightens on hover (to accent color at 30% opacity)
 - **Fonts:** Monospace for code-themed elements (counter, section labels, taglines), sans-serif for body
 - **Layout:** Single column on mobile, multi-column grid on desktop. Gallery uses flexbox to center the bottom row of 5 cards
@@ -293,3 +302,40 @@ Early attempts to rewrite the entire page or refactor into a modular build syste
 ### Section IDs were renamed
 
 The original React section IDs (`work`, `gallery`, etc.) were changed to more descriptive names (`track_record`, `off_the_clock`, etc.). All nav links, scroll targets, and injection scripts must use the new IDs. If you change an ID in the minified JS, grep `index.html` for every reference to the old name.
+
+### Navigation links exist in three places
+
+The desktop nav bar, hero section nav buttons, and mobile hamburger menu all contain section links. When adding or removing a navigable section, **all three must be updated**:
+1. **Hero buttons** — the `buttons` array in the hero nav buttons injection script
+2. **Desktop nav** — the desktop nav link injection script (queries for `nav .hidden.md\\:flex`)
+3. **Mobile menu** — the `sections` array in the mobile slide-up nav script
+
+Missing any one of these will create an inconsistent experience between desktop and mobile.
+
+### Desktop nav link ordering matters
+
+The desktop nav injection script inserts links relative to existing React-rendered links using `insertBefore(newLink, referenceLink.nextSibling)`. The insertion order must be **reverse** of how you want them to appear if inserting after the same element, or you can chain them (insert A after Work, then insert B after A). The current order is: About, Work, Skills, Education, Community, Off the Clock.
+
+### The React nav logo is a `<div>`, not an `<a>`
+
+The BITZYSPIDER.COM logo in the top-left nav is rendered as a plain `<div>` (not a link). A script adds a click handler to scroll to the top of the page. If you ever need to change this behavior, the selector is `nav .text-2xl.font-bold`.
+
+### Work sample PDFs live in the repo root
+
+The work sample PDFs (`LEASE_Formula.pdf`, `2023_SFWMD_SLRFRP.pdf`) are served from the repo root, not a `/docs/` subdirectory. GitHub Pages serves all files in the root. The `badgeLink` paths in the work card data must be `'/LEASE_Formula.pdf'` not `'/docs/LEASE_Formula.pdf'`. Subdirectory paths will 404 on GitHub Pages unless that directory actually exists.
+
+### Badge colors should match their card's accent
+
+Work experience cards alternate between red (`#dc2626`) and blue (`#3b82f6`) accents. The "Work Sample" badges on each card should use the same color as the card's accent, not a hardcoded red. The hover color also needs to shift: red cards hover to `#ef4444`, blue cards hover to `#60a5fa`.
+
+### Mobile nav replaces "Say Hello" with a hamburger
+
+On touch devices, the "Say Hello" button in the top-right nav is hidden and replaced with a hamburger icon. Tapping it opens a slide-up sheet with all section links. The sheet supports swipe-down to dismiss (threshold: 80px). This script only runs on touch devices (`'ontouchstart' in window || navigator.maxTouchPoints`).
+
+### The `skills` ID is assigned by script, not React
+
+The toolkit section doesn't have an ID in the React bundle. The toolkit replacement script assigns `toolkit.id = 'skills'` so that nav links can scroll to it. If the toolkit script is removed or rewritten, this ID assignment must be preserved or navigation will break.
+
+### Education section is injected, not React-rendered
+
+The Education section (id=`education`) is fully injected by a script in `index.html` after the toolkit. It contains two photo cards (Cornell Engineering, Self-Taught Foundation). The photos use the class `.edu-photo` with responsive height (`360px` desktop, `300px` mobile). If you need to add more education cards, add objects to the `schools` array in that script.
