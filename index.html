@@ -1278,14 +1278,11 @@
       var poll = setInterval(function(){
         var desktopNav = document.querySelector('nav .hidden.md\\:flex');
         if (!desktopNav) return;
-        var offTheClock = null;
-        var community = null;
+        var work = null;
         desktopNav.querySelectorAll('a').forEach(function(a) {
-          var t = a.textContent.trim();
-          if (t === 'Off the Clock') offTheClock = a;
-          if (t === 'Community') community = a;
+          if (a.textContent.trim() === 'Work') work = a;
         });
-        if (!offTheClock || !community) return;
+        if (!work) return;
         clearInterval(poll);
 
         function makeLink(text, href) {
@@ -1297,11 +1294,10 @@
           return a;
         }
 
-        // Insert Skills then Education after Community
+        // Insert Skills then Education after Work (before Community)
         var skillsLink = makeLink('Skills', '#skills');
         var eduLink = makeLink('Education', '#education');
-        var insertBefore = community.nextSibling;
-        desktopNav.insertBefore(skillsLink, insertBefore);
+        desktopNav.insertBefore(skillsLink, work.nextSibling);
         desktopNav.insertBefore(eduLink, skillsLink.nextSibling);
       }, 200);
     })();
