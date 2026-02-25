@@ -312,7 +312,7 @@
           dates: 'Dec 2024 \u2013 Dec 2025',
           color: '#dc2626',
           badge: 'Work Sample',
-          badgeLink: '/docs/LEASE_Formula.pdf',
+          badgeLink: '/LEASE_Formula.pdf',
           problem: 'Dragging a legacy, intuition-based industry into the future by replacing manual processes with high-velocity, data-driven systems.',
           fix: 'Treated a shopping center portfolio like a systems engineering challenge.',
           bullets: [
@@ -344,7 +344,7 @@
           dates: 'Nov 2021 \u2013 Feb 2023',
           color: '#dc2626',
           badge: 'Work Sample',
-          badgeLink: '/docs/2023_SFWMD_SLRFRP.pdf',
+          badgeLink: '/2023_SFWMD_SLRFRP.pdf',
           problem: 'Balancing the immediate engineering needs of 10 million people against the long-term, existential threat of sea-level rise and a shifting climate.',
           fix: 'Moved the district from reactive planning to advanced modeling and innovation.',
           bullets: [
@@ -395,12 +395,13 @@
 
           card.style.position = 'relative';
 
-          // Badge (same style as community cards)
+          // Badge (colored to match card accent)
           var badgeHtml = '';
           if (exp.badge) {
+            var hoverColor = exp.color === '#3b82f6' ? '#60a5fa' : '#ef4444';
             badgeHtml = '<a href="' + (exp.badgeLink || '#') + '" target="_blank" rel="noopener noreferrer" ' +
-              'style="position:absolute;top:0.75rem;right:0.75rem;z-index:2;background:#dc2626;color:white;font-size:0.65rem;font-weight:700;padding:0.25rem 0.6rem;border-radius:9999px;text-decoration:none;letter-spacing:0.05em;text-transform:uppercase" ' +
-              'onmouseenter="this.style.background=\'#ef4444\'" onmouseleave="this.style.background=\'#dc2626\'">' +
+              'style="position:absolute;top:0.75rem;right:0.75rem;z-index:2;background:' + exp.color + ';color:white;font-size:0.65rem;font-weight:700;padding:0.25rem 0.6rem;border-radius:9999px;text-decoration:none;letter-spacing:0.05em;text-transform:uppercase" ' +
+              'onmouseenter="this.style.background=\'' + hoverColor + '\'" onmouseleave="this.style.background=\'' + exp.color + '\'">' +
               exp.badge + '</a>';
           }
 
@@ -474,6 +475,7 @@
         var toolkit = container.querySelector('.bg-zinc-900\\/40');
         if (!toolkit) return;
         clearInterval(poll);
+        toolkit.id = 'skills';
         replaceToolkit(toolkit);
       }, 200);
 
@@ -763,10 +765,10 @@
       // Responsive: taller photos on desktop, stack to 1 column on mobile
       var style = document.createElement('style');
       style.textContent =
-        '.edu-photo{height:280px}' +
+        '.edu-photo{height:360px}' +
         '@media(max-width:767px){' +
           '.edu-grid{grid-template-columns:1fr!important;max-width:100%!important;}' +
-          '.edu-photo{height:240px}' +
+          '.edu-photo{height:300px}' +
         '}';
       document.head.appendChild(style);
     })();
@@ -783,6 +785,8 @@
         var buttons = [
           { label: 'What I\u2019m Building', href: '#current_work' },
           { label: 'My Track Record', href: '#track_record' },
+          { label: 'Skills', href: '#skills' },
+          { label: 'Education', href: '#education' },
           { label: 'Community', href: '#community' },
           { label: 'Off the Clock', href: '#off_the_clock' },
           { label: 'Get in Touch', href: '#contact' }
@@ -1080,6 +1084,177 @@
         hint.style.cssText = 'color:rgba(255,255,255,0.25);margin-top:0.75rem;letter-spacing:0.05em';
         hint.textContent = 'Move your cursor to guide the spider. Catch the bugs.';
         tagline.parentNode.insertBefore(hint, tagline.nextSibling);
+      }, 200);
+    })();
+    </script>
+
+    <script>
+    // Make BITZYSPIDER.COM logo scroll to top
+    (function(){
+      var poll = setInterval(function(){
+        var logo = document.querySelector('nav .text-2xl.font-bold');
+        if (!logo) return;
+        clearInterval(poll);
+        logo.style.cursor = 'pointer';
+        logo.addEventListener('click', function() {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+      }, 200);
+    })();
+    </script>
+
+    <script>
+    // Desktop nav: inject Skills and Education links
+    (function(){
+      var poll = setInterval(function(){
+        var desktopNav = document.querySelector('nav .hidden.md\\:flex');
+        if (!desktopNav) return;
+        var work = null;
+        desktopNav.querySelectorAll('a').forEach(function(a) {
+          if (a.textContent.trim() === 'Work') work = a;
+        });
+        if (!work) return;
+        clearInterval(poll);
+
+        function makeLink(text, href) {
+          var a = document.createElement('a');
+          a.href = href;
+          a.textContent = text;
+          a.className = 'hover:text-white transition-colors cursor-none';
+          a.style.color = '#9ca3af';
+          return a;
+        }
+
+        // Insert Skills then Education after Work (before Community)
+        var skillsLink = makeLink('Skills', '#skills');
+        var eduLink = makeLink('Education', '#education');
+        desktopNav.insertBefore(skillsLink, work.nextSibling);
+        desktopNav.insertBefore(eduLink, skillsLink.nextSibling);
+      }, 200);
+    })();
+    </script>
+
+    <script>
+    // Mobile nav: replace "Say Hello" with hamburger that opens a slide-up menu
+    (function(){
+      if (!('ontouchstart' in window) && !navigator.maxTouchPoints) return;
+
+      var poll = setInterval(function(){
+        // Find the Say Hello button in the nav
+        var navLinks = document.querySelectorAll('nav a');
+        var sayHello = null;
+        navLinks.forEach(function(a) {
+          if (a.textContent.trim() === 'Say Hello') sayHello = a;
+        });
+        if (!sayHello) return;
+        clearInterval(poll);
+
+        // Hide Say Hello
+        sayHello.style.display = 'none';
+
+        var nav = sayHello.parentElement;
+
+        // Create hamburger button
+        var burger = document.createElement('button');
+        burger.setAttribute('aria-label', 'Open navigation menu');
+        burger.style.cssText = 'background:none;border:none;padding:0.5rem;cursor:pointer;z-index:100;position:relative';
+        burger.innerHTML =
+          '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round">' +
+            '<line x1="3" y1="6" x2="21" y2="6"/>' +
+            '<line x1="3" y1="12" x2="21" y2="12"/>' +
+            '<line x1="3" y1="18" x2="21" y2="18"/>' +
+          '</svg>';
+        nav.appendChild(burger);
+
+        // Create overlay backdrop
+        var overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:998;opacity:0;pointer-events:none;transition:opacity 0.3s';
+        document.body.appendChild(overlay);
+
+        // Create slide-up menu
+        var menu = document.createElement('div');
+        menu.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:999;background:#18181b;border-top:1px solid #27272a;border-radius:1.5rem 1.5rem 0 0;padding:1.5rem 1.5rem 2.5rem;transform:translateY(100%);transition:transform 0.35s cubic-bezier(0.32,0.72,0,1);display:flex;flex-direction:column;gap:0.25rem';
+
+        // Drag handle
+        menu.innerHTML = '<div style="width:3rem;height:0.25rem;background:#52525b;border-radius:9999px;margin:0 auto 1rem"></div>';
+
+        var sections = [
+          { label: 'About', href: '#about' },
+          { label: 'What I\u2019m Building', href: '#current_work' },
+          { label: 'My Track Record', href: '#track_record' },
+          { label: 'Skills', href: '#skills' },
+          { label: 'Education', href: '#education' },
+          { label: 'Community', href: '#community' },
+          { label: 'Off the Clock', href: '#off_the_clock' },
+          { label: 'Get in Touch', href: '#contact' }
+        ];
+
+        sections.forEach(function(s) {
+          var a = document.createElement('a');
+          a.href = s.href;
+          a.textContent = s.label;
+          a.style.cssText = 'color:#d4d4d8;text-decoration:none;font-size:1.1rem;font-weight:600;padding:0.9rem 1rem;border-radius:0.75rem;transition:background 0.2s';
+          a.ontouchstart = function(){ a.style.background='rgba(255,255,255,0.08)'; };
+          a.ontouchend = function(){ setTimeout(function(){ a.style.background='none'; }, 150); };
+          a.addEventListener('click', function(){ closeMenu(); });
+          menu.appendChild(a);
+        });
+
+        document.body.appendChild(menu);
+
+        var isOpen = false;
+
+        function openMenu() {
+          isOpen = true;
+          menu.style.transform = 'translateY(0)';
+          overlay.style.opacity = '1';
+          overlay.style.pointerEvents = 'auto';
+          burger.innerHTML =
+            '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round">' +
+              '<line x1="6" y1="6" x2="18" y2="18"/>' +
+              '<line x1="6" y1="18" x2="18" y2="6"/>' +
+            '</svg>';
+        }
+
+        function closeMenu() {
+          isOpen = false;
+          menu.style.transform = 'translateY(100%)';
+          overlay.style.opacity = '0';
+          overlay.style.pointerEvents = 'none';
+          burger.innerHTML =
+            '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round">' +
+              '<line x1="3" y1="6" x2="21" y2="6"/>' +
+              '<line x1="3" y1="12" x2="21" y2="12"/>' +
+              '<line x1="3" y1="18" x2="21" y2="18"/>' +
+            '</svg>';
+        }
+
+        burger.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (isOpen) closeMenu(); else openMenu();
+        });
+
+        overlay.addEventListener('click', closeMenu);
+
+        // Swipe down to dismiss
+        var startY = 0;
+        menu.addEventListener('touchstart', function(e) {
+          startY = e.touches[0].clientY;
+        }, { passive: true });
+        menu.addEventListener('touchmove', function(e) {
+          var dy = e.touches[0].clientY - startY;
+          if (dy > 0) {
+            menu.style.transition = 'none';
+            menu.style.transform = 'translateY(' + dy + 'px)';
+          }
+        }, { passive: true });
+        menu.addEventListener('touchend', function(e) {
+          menu.style.transition = 'transform 0.35s cubic-bezier(0.32,0.72,0,1)';
+          var dy = e.changedTouches[0].clientY - startY;
+          if (dy > 80) { closeMenu(); } else { menu.style.transform = isOpen ? 'translateY(0)' : 'translateY(100%)'; }
+        });
+
       }, 200);
     })();
     </script>
