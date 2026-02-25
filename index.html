@@ -968,6 +968,7 @@
         var buttons = [
           { label: 'What I\u2019m Building', href: '#current_work' },
           { label: 'My Track Record', href: '#track_record' },
+          { label: 'Education', href: '#education' },
           { label: 'Community', href: '#community' },
           { label: 'Off the Clock', href: '#off_the_clock' },
           { label: 'Get in Touch', href: '#contact' }
@@ -1270,6 +1271,41 @@
     </script>
 
     <script>
+    // Desktop nav: inject Education link after "Off the Clock"
+    (function(){
+      var poll = setInterval(function(){
+        var desktopNav = document.querySelector('nav .hidden.md\\:flex');
+        if (!desktopNav) return;
+        var offTheClock = null;
+        desktopNav.querySelectorAll('a').forEach(function(a) {
+          if (a.textContent.trim() === 'Off the Clock') offTheClock = a;
+        });
+        if (!offTheClock) return;
+        clearInterval(poll);
+
+        // Find the "Community" link to insert Education after it (before Off the Clock)
+        var community = null;
+        desktopNav.querySelectorAll('a').forEach(function(a) {
+          if (a.textContent.trim() === 'Community') community = a;
+        });
+
+        var eduLink = document.createElement('a');
+        eduLink.href = '#education';
+        eduLink.textContent = 'Education';
+        eduLink.className = 'hover:text-white transition-colors cursor-none';
+        eduLink.style.color = '#9ca3af';
+
+        // Insert after Community, before Off the Clock
+        if (community && community.nextSibling) {
+          desktopNav.insertBefore(eduLink, community.nextSibling);
+        } else {
+          desktopNav.insertBefore(eduLink, offTheClock);
+        }
+      }, 200);
+    })();
+    </script>
+
+    <script>
     // Mobile nav: replace "Say Hello" with hamburger that opens a slide-up menu
     (function(){
       if (!('ontouchstart' in window) && !navigator.maxTouchPoints) return;
@@ -1317,6 +1353,7 @@
           { label: 'About', href: '#about' },
           { label: 'What I\u2019m Building', href: '#current_work' },
           { label: 'My Track Record', href: '#track_record' },
+          { label: 'Education', href: '#education' },
           { label: 'Community', href: '#community' },
           { label: 'Off the Clock', href: '#off_the_clock' },
           { label: 'Get in Touch', href: '#contact' }
