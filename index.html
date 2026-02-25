@@ -659,6 +659,7 @@
         var toolkit = container.querySelector('.bg-zinc-900\\/40');
         if (!toolkit) return;
         clearInterval(poll);
+        toolkit.id = 'skills';
         replaceToolkit(toolkit);
       }, 200);
 
@@ -968,6 +969,7 @@
         var buttons = [
           { label: 'What I\u2019m Building', href: '#current_work' },
           { label: 'My Track Record', href: '#track_record' },
+          { label: 'Skills', href: '#skills' },
           { label: 'Education', href: '#education' },
           { label: 'Community', href: '#community' },
           { label: 'Off the Clock', href: '#off_the_clock' },
@@ -1271,36 +1273,36 @@
     </script>
 
     <script>
-    // Desktop nav: inject Education link after "Off the Clock"
+    // Desktop nav: inject Skills and Education links
     (function(){
       var poll = setInterval(function(){
         var desktopNav = document.querySelector('nav .hidden.md\\:flex');
         if (!desktopNav) return;
         var offTheClock = null;
-        desktopNav.querySelectorAll('a').forEach(function(a) {
-          if (a.textContent.trim() === 'Off the Clock') offTheClock = a;
-        });
-        if (!offTheClock) return;
-        clearInterval(poll);
-
-        // Find the "Community" link to insert Education after it (before Off the Clock)
         var community = null;
         desktopNav.querySelectorAll('a').forEach(function(a) {
-          if (a.textContent.trim() === 'Community') community = a;
+          var t = a.textContent.trim();
+          if (t === 'Off the Clock') offTheClock = a;
+          if (t === 'Community') community = a;
         });
+        if (!offTheClock || !community) return;
+        clearInterval(poll);
 
-        var eduLink = document.createElement('a');
-        eduLink.href = '#education';
-        eduLink.textContent = 'Education';
-        eduLink.className = 'hover:text-white transition-colors cursor-none';
-        eduLink.style.color = '#9ca3af';
-
-        // Insert after Community, before Off the Clock
-        if (community && community.nextSibling) {
-          desktopNav.insertBefore(eduLink, community.nextSibling);
-        } else {
-          desktopNav.insertBefore(eduLink, offTheClock);
+        function makeLink(text, href) {
+          var a = document.createElement('a');
+          a.href = href;
+          a.textContent = text;
+          a.className = 'hover:text-white transition-colors cursor-none';
+          a.style.color = '#9ca3af';
+          return a;
         }
+
+        // Insert Skills then Education after Community
+        var skillsLink = makeLink('Skills', '#skills');
+        var eduLink = makeLink('Education', '#education');
+        var insertBefore = community.nextSibling;
+        desktopNav.insertBefore(skillsLink, insertBefore);
+        desktopNav.insertBefore(eduLink, skillsLink.nextSibling);
       }, 200);
     })();
     </script>
@@ -1353,6 +1355,7 @@
           { label: 'About', href: '#about' },
           { label: 'What I\u2019m Building', href: '#current_work' },
           { label: 'My Track Record', href: '#track_record' },
+          { label: 'Skills', href: '#skills' },
           { label: 'Education', href: '#education' },
           { label: 'Community', href: '#community' },
           { label: 'Off the Clock', href: '#off_the_clock' },
