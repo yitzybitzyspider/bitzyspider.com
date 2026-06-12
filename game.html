@@ -124,6 +124,8 @@
         <span style="color:#22c55e">beetle &middot; web first</span>
         <span style="color:#facc15">wasp &middot; stings!</span>
         <span style="color:#fbbf24">firefly &middot; bonus</span>
+        <span style="color:#84cc16">stinkbug &middot; spits slow-goo</span>
+        <span style="color:#a8a29e">slug &middot; slime slows you</span>
       </div>
       <div class="statline">BEST <span class="red" id="mHigh">0</span> &nbsp;&middot;&nbsp; BUGS DEBUGGED <span class="red" id="mTotal">0</span></div>
       <button class="btn" id="btnStart">START HUNTING</button>
@@ -212,22 +214,32 @@
 
     // ---------- stats / upgrades ----------
     var S; // current run stats
-    function freshStats(){ return { speed: 0, range: 0, silk: 0, grip: 0, heartT: 0 }; }
-    function maxSpeed(){ return 330 + S.speed * 55; }
+    function freshStats(){ return { speed: 0, range: 0, silk: 0, grip: 0, nest: 0, heartT: 0 }; }
+    function followK(){ return 0.10 + S.speed * 0.025; }   // lerp/frame toward cursor (original spider = 0.10)
     function webRange(){ return 190 + S.range * 48; }
     function silkMax(){ return 100 + S.silk * 30; }
     function silkRegen(){ return 14 + S.silk * 5; }
-    function catchR(){ return 28 + S.grip * 6; }
+    function catchR(){ return 30 + S.grip * 6; }
     function webDur(){ return 4000 + S.grip * 700; }
+    function bigWebR(){ return 64 + S.grip * 6; }
+    function maxWebs(){ return 1 + S.nest; }
+    function webCap(){ return 3 + S.nest; }
     function maxHearts(){ return 3 + S.heartT; }
-    var WEB_COST = 30;
+    var WEB_COST = 30, SPIN_COST = 50;
 
     var UPG = [
-      { key: 'speed',  name: 'SWIFT LEGS',   desc: 'Move faster',                      max: 4, cost: [50, 110, 200, 320] },
-      { key: 'range',  name: 'SILK RANGE',   desc: 'Web shots reach further',          max: 4, cost: [50, 110, 200, 320] },
-      { key: 'silk',   name: 'SILK GLANDS',  desc: 'More silk, faster regen',          max: 4, cost: [60, 130, 230, 360] },
-      { key: 'grip',   name: 'STRONG GRIP',  desc: 'Bigger catch radius, webs last longer', max: 4, cost: [60, 130, 230, 360] },
-      { key: 'heartT', name: 'EXTRA HEART',  desc: '+1 max health',                    max: 2, cost: [150, 300] }
+      { key: 'speed',  name: 'SWIFT LEGS',   max: 4, cost: [50, 110, 200, 320],
+        desc: function(){ return 'Follow speed ' + Math.round(followK() * 100) + '% → ' + Math.round((followK() + 0.025) * 100) + '%'; } },
+      { key: 'range',  name: 'SILK RANGE',   max: 4, cost: [50, 110, 200, 320],
+        desc: function(){ return 'Web shot reach ' + webRange() + ' → ' + (webRange() + 48); } },
+      { key: 'silk',   name: 'SILK GLANDS',  max: 4, cost: [60, 130, 230, 360],
+        desc: function(){ return 'Silk ' + silkMax() + ' → ' + (silkMax() + 30) + ', faster regen'; } },
+      { key: 'grip',   name: 'STRONG GRIP',  max: 4, cost: [60, 130, 230, 360],
+        desc: function(){ return 'Catch radius ' + catchR() + ' → ' + (catchR() + 6) + ', webs last longer'; } },
+      { key: 'nest',   name: 'WEB NEST',     max: 2, cost: [120, 260],
+        desc: function(){ return 'Spin ' + (maxWebs() + 1) + ' webs at once, each holds ' + (webCap() + 1) + ' bugs'; } },
+      { key: 'heartT', name: 'EXTRA HEART',  max: 2, cost: [150, 300],
+        desc: function(){ return '+1 max health (' + maxHearts() + ' → ' + (maxHearts() + 1) + ')'; } }
     ];
 
     // ---------- bug types ----------
@@ -237,23 +249,49 @@
       beetle:  { r: 12, sp: 55,  score: 30,  web: true,  min: 3, w: 0.6 },
       wasp:    { r: 9,  sp: 175, score: 40,  web: true,  min: 4, w: 0.5, sting: true },
       firefly: { r: 7,  sp: 230, score: 50,  web: false, min: 5, w: 0.3, ttl: 7 },
+      stink:   { r: 11, sp: 120, score: 60,  web: true,  min: 6, w: 0.4, spit: true },
+      slug:    { r: 12, sp: 26,  score: 70,  web: true,  min: 7, w: 0.35, slime: true },
       boss:    { r: 20, sp: 420, score: 200, web: true,  min: 99, w: 0, hp: 3, boss: true }
     };
 
     // ---------- game state ----------
     var state = 'menu'; // menu | play | shop | pause | over
-    var spider = { x: 0, y: 0, vx: 0, vy: 0, rot: 0, legPhase: 0 };
+    var spider = { x: 0, y: 0, rot: 0, slowUntil: 0 };
     var target = { x: 0, y: 0 };
     var trail = [], lastTrail = { x: 0, y: 0 };
     var bugs = [], shots = [], parts = [], floats = [];
+    var webs = [], globs = [], slimes = []; // spun webs, enemy spit, slug slime
     var hearts = 3, silk = 100, score = 0, cash = 0, level = 1, quota = 12, caught = 0;
     var invulnUntil = 0, shake = 0, flash = 0, spawnTimer = 0;
+
+    // ---- leg rig (verbatim geometry from the site's interactive spider) ----
+    var HIPS = [
+      { x: 15, y: -10 }, { x: 10, y: -15 }, { x: 5, y: -18 }, { x: 0, y: -15 },
+      { x: 15, y: 10 },  { x: 10, y: 15 },  { x: 5, y: 18 },  { x: 0, y: 15 }
+    ];
+    var FEET = [
+      { x: 60, y: -30 }, { x: 55, y: -50 }, { x: 35, y: -60 }, { x: -10, y: -65 },
+      { x: 60, y: 30 },  { x: 55, y: 50 },  { x: 35, y: 60 },  { x: -10, y: 65 }
+    ];
+    var STEP_DIST = 60;   // foot steps when stretched past this (original zy)
+    var STEP_LERP = 0.25; // per-frame foot lerp while stepping (original ha)
+    var legs = [];
+    function initLegs(){
+      legs = [];
+      for (var i = 0; i < 8; i++) {
+        legs.push({ fx: spider.x, fy: spider.y, tx: spider.x, ty: spider.y, stepping: false });
+      }
+    }
 
     function now(){ return performance.now(); }
     function rand(a, b){ return a + Math.random() * (b - a); }
     function dist2(ax, ay, bx, by){ var dx = ax - bx, dy = ay - by; return dx * dx + dy * dy; }
 
     // ---------- resize / background ----------
+    function clampInto(o){
+      o.x = Math.min(Math.max(o.x, 18), W - 18);
+      o.y = Math.min(Math.max(o.y, 18), H - 18);
+    }
     function resize(){
       dpr = Math.min(2, window.devicePixelRatio || 1);
       W = window.innerWidth; H = window.innerHeight;
@@ -261,6 +299,11 @@
       cvs.style.width = W + 'px'; cvs.style.height = H + 'px';
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       renderBg();
+      // keep the whole game inside the new playfield
+      clampInto(spider); clampInto(target);
+      var i;
+      for (i = 0; i < bugs.length; i++) clampInto(bugs[i]);
+      for (i = 0; i < webs.length; i++) clampInto(webs[i]);
     }
     function renderBg(){
       bgCvs = document.createElement('canvas');
@@ -297,8 +340,10 @@
       }
     }
     window.addEventListener('resize', resize);
+    window.addEventListener('orientationchange', function(){ setTimeout(resize, 250); });
     resize();
     spider.x = target.x = W / 2; spider.y = target.y = H / 2;
+    initLegs();
 
     // ---------- spawning ----------
     function pickType(){
@@ -411,11 +456,15 @@
     function startGame(){
       S = freshStats();
       hearts = 3; score = 0; cash = 0; level = 1;
+      spider.x = target.x = W / 2; spider.y = target.y = H / 2;
+      spider.slowUntil = 0;
+      initLegs();
       startLevel();
       setState('play');
     }
     function startLevel(){
-      bugs = []; shots = []; caught = 0; spawnTimer = 0;
+      bugs = []; shots = []; webs = []; globs = []; slimes = [];
+      caught = 0; spawnTimer = 0;
       quota = 8 + level * 4;
       silk = silkMax();
       hearts = Math.min(maxHearts(), hearts + 1);
@@ -469,7 +518,7 @@
         row.innerHTML =
           '<div class="info"><span class="nm">' + u.name + '</span>' +
           '<span class="pips">' + pips + '</span>' +
-          '<div class="ds">' + u.desc + '</div></div>';
+          '<div class="ds">' + (maxed ? 'Fully upgraded' : u.desc()) + '</div></div>';
         var btn = document.createElement('button');
         btn.className = 'buyBtn';
         btn.textContent = maxed ? 'MAX' : cost + ' pts';
@@ -509,6 +558,7 @@
       if (state !== 'play') return;
       pDown = true;
       pStart = { x: e.clientX, y: e.clientY, t: Date.now() };
+      spinHold = { x: e.clientX, y: e.clientY, t0: now(), done: false };
       setTarget(e);
     });
     window.addEventListener('pointermove', function(e){
@@ -518,7 +568,9 @@
     window.addEventListener('pointerup', function(e){
       if (!pDown) return;
       pDown = false;
-      if (state === 'play' && pStart) {
+      var spun = spinHold && spinHold.done;
+      spinHold = null;
+      if (state === 'play' && pStart && !spun) {
         var d = Math.hypot(e.clientX - pStart.x, e.clientY - pStart.y);
         if (Date.now() - pStart.t < 280 && d < 16) shootWeb();
       }
@@ -526,6 +578,7 @@
     });
     window.addEventListener('keydown', function(e){
       if (e.code === 'Space') { e.preventDefault(); shootWeb(); }
+      if (e.key === 'w' || e.key === 'W') spinWeb();
       if (e.key === 'p' || e.key === 'P') togglePause();
       if (e.key === 'm' || e.key === 'M') toggleMute();
     });
@@ -556,8 +609,8 @@
     // menu copy
     var isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints;
     document.getElementById('howTo').innerHTML = isTouch
-      ? '<b>DRAG</b> to move the spider.<br><b>TAP</b> to shoot a web at the nearest bug.<br>Walk over webbed bugs to <b>wrap</b> them for bonus points.'
-      : '<b>MOVE</b> your mouse — the spider follows.<br><b>CLICK</b> (or SPACE) to shoot a web at the nearest bug.<br>Walk over webbed bugs to <b>wrap</b> them for bonus points.';
+      ? '<b>DRAG</b> to move — your silk trail snares bugs that hit it.<br><b>TAP</b> to shoot a web at the nearest bug.<br><b>HOLD STILL</b> half a second to spin a big web that traps anything flying in.<br>Walk over webbed bugs to <b>wrap</b> them for bonus points.'
+      : '<b>MOVE</b> your mouse — your silk trail snares bugs that hit it.<br><b>CLICK</b> (or SPACE) to shoot a web at the nearest bug.<br><b>HOLD</b> the mouse still (or press W) to spin a big web that traps anything flying in.<br>Walk over webbed bugs to <b>wrap</b> them for bonus points.';
     document.getElementById('mHigh').textContent = hi;
     document.getElementById('mTotal').textContent = totalBugs;
     document.getElementById('btnMute').innerHTML = muted ? '&#128263;' : '&#128266;';
@@ -596,16 +649,22 @@
       moveSpider(dt);
       updateBugs(dt, t);
       updateShots(dt);
+      updateWebs(t);
+      updateGlobs(dt, t);
+      updateTrailSnare(t);
       updateFx(dt);
 
       if (state === 'play') {
+        checkSpin(t);
         collide(t);
         if (caught >= quota) levelClear();
       } else if (state === 'menu') {
-        // menu: catch flies silently
+        // menu: catch flies silently (at the mouth, like the original)
+        var hx = spider.x + Math.cos(spider.rot) * 15;
+        var hy = spider.y + Math.sin(spider.rot) * 15;
         for (var ci = bugs.length - 1; ci >= 0; ci--) {
           var cb = bugs[ci];
-          if (!cb.dead && dist2(spider.x, spider.y, cb.x, cb.y) < 30 * 30) {
+          if (!cb.dead && dist2(hx, hy, cb.x, cb.y) < 30 * 30) {
             pop(cb.x, cb.y, '#9ca3af', 8, 2);
             bugs.splice(ci, 1);
           }
@@ -617,22 +676,147 @@
       updateHud(false);
     }
 
+    // Original site spider physics: position lerps toward the cursor,
+    // rotation eases toward the target angle, feet step when overstretched.
     function moveSpider(dt){
+      var f60 = dt * 60; // convert per-frame lerps to be framerate-independent
+      var t = now();
       var dx = target.x - spider.x, dy = target.y - spider.y;
       var d = Math.hypot(dx, dy);
-      var sp = Math.min(S ? maxSpeed() : 330, d * 6);
+
+      var fk = S ? followK() : 0.10;
+      if (t < spider.slowUntil) fk *= 0.45; // slowed by stinkbug spit / slime
+      else if (inSlime()) fk *= 0.55;
+      var k = 1 - Math.pow(1 - fk, f60);
+      spider.x += dx * k;
+      spider.y += dy * k;
+
+      // smooth rotation with angle wrap (original: 0.15/frame)
       if (d > 1) {
-        spider.vx = dx / d * sp; spider.vy = dy / d * sp;
-        spider.x += spider.vx * dt; spider.y += spider.vy * dt;
-      } else { spider.vx = spider.vy = 0; }
-      var moving = Math.hypot(spider.vx, spider.vy);
-      if (moving > 20) spider.rot = Math.atan2(spider.vy, spider.vx);
-      spider.legPhase += (2 + moving * 0.025) * dt * 6;
-      // silk trail
+        var diff = Math.atan2(dy, dx) - spider.rot;
+        while (diff > Math.PI) diff -= TAU;
+        while (diff < -Math.PI) diff += TAU;
+        spider.rot += diff * (1 - Math.pow(0.85, f60));
+      }
+
+      // IK feet: each foot stays planted until stretched past STEP_DIST
+      var c = Math.cos(spider.rot), s = Math.sin(spider.rot);
+      var sc = 1 + (S ? S.grip * 0.06 : 0);
+      var stepK = 1 - Math.pow(1 - STEP_LERP, f60);
+      for (var i = 0; i < 8; i++) {
+        var L = legs[i], ideal = FEET[i];
+        var ix = spider.x + (ideal.x * c - ideal.y * s) * sc;
+        var iy = spider.y + (ideal.x * s + ideal.y * c) * sc;
+        if (!L.stepping && dist2(L.fx, L.fy, ix, iy) > STEP_DIST * STEP_DIST * sc * sc) {
+          L.stepping = true; L.tx = ix; L.ty = iy;
+        }
+        if (L.stepping) {
+          L.tx = ix; L.ty = iy; // keep tracking the moving ideal
+          L.fx += (L.tx - L.fx) * stepK;
+          L.fy += (L.ty - L.fy) * stepK;
+          if (dist2(L.fx, L.fy, L.tx, L.ty) < 4) {
+            L.fx = L.tx; L.fy = L.ty; L.stepping = false;
+          }
+        }
+      }
+
+      // silk trail (this is your temporary web — bugs that hit it get snared)
       if (Math.hypot(spider.x - lastTrail.x, spider.y - lastTrail.y) > 14) {
-        trail.push({ x: spider.x, y: spider.y, t: now() });
+        trail.push({ x: spider.x, y: spider.y, t: t });
         lastTrail.x = spider.x; lastTrail.y = spider.y;
         if (trail.length > 60) trail.shift();
+      }
+    }
+    function inSlime(){
+      for (var i = 0; i < slimes.length; i++) {
+        var sl = slimes[i];
+        if (dist2(spider.x, spider.y, sl.x, sl.y) < sl.r * sl.r) return true;
+      }
+      return false;
+    }
+
+    // ---------- spun webs (hold still to build one) ----------
+    function spinWeb(){
+      if (state !== 'play') return;
+      if (silk < SPIN_COST) { SFX.deny(); return; }
+      silk -= SPIN_COST;
+      if (webs.length >= maxWebs()) {
+        var old = webs.shift();
+        pop(old.x, old.y, '#52525b', 8, 2);
+      }
+      webs.push({ x: spider.x, y: spider.y, r: bigWebR(), cap: webCap(), used: 0 });
+      pop(spider.x, spider.y, '#fff', 10, 2);
+      floatTxt(spider.x, spider.y - 30, 'WEB SPUN', '#fff');
+      SFX.wrap();
+      updateHud(true);
+    }
+    var spinHold = null; // {x, y, t0, done}
+    function checkSpin(t){
+      if (!spinHold || spinHold.done) return;
+      if (!pDown) { spinHold = null; return; }
+      var moved = Math.hypot(target.x - spinHold.x, target.y - spinHold.y);
+      if (moved > 14) { spinHold = null; return; }
+      if (t - spinHold.t0 > 550) {
+        spinHold.done = true;
+        spinWeb();
+      }
+    }
+    function updateWebs(t){
+      if (state !== 'play') return;
+      for (var i = webs.length - 1; i >= 0; i--) {
+        var w = webs[i];
+        for (var j = 0; j < bugs.length; j++) {
+          var b = bugs[j];
+          if (b.dead || b.webbed) continue;
+          if (dist2(w.x, w.y, b.x, b.y) < w.r * w.r) {
+            webBug(b);
+            w.used++;
+            if (w.used >= w.cap) {
+              pop(w.x, w.y, '#9ca3af', 12, 2);
+              floatTxt(w.x, w.y, 'web tattered', '#71717a');
+              webs.splice(i, 1);
+            }
+            break;
+          }
+        }
+      }
+    }
+
+    // ---------- enemy spit ----------
+    function updateGlobs(dt, t){
+      for (var i = globs.length - 1; i >= 0; i--) {
+        var g = globs[i];
+        g.x += g.vx * dt; g.y += g.vy * dt;
+        if (g.x < -20 || g.x > W + 20 || g.y < -20 || g.y > H + 20) { globs.splice(i, 1); continue; }
+        if (dist2(g.x, g.y, spider.x, spider.y) < 22 * 22) {
+          spider.slowUntil = t + 2500;
+          pop(spider.x, spider.y, '#65a30d', 10, 2);
+          floatTxt(spider.x, spider.y - 26, 'SLOWED!', '#65a30d');
+          SFX.free();
+          globs.splice(i, 1);
+        }
+      }
+    }
+
+    // ---------- trail snare (temporary web) ----------
+    function updateTrailSnare(t){
+      if (state !== 'play') return;
+      for (var i = 0; i < bugs.length; i++) {
+        var b = bugs[i];
+        if (b.dead || b.webbed || b.t.boss) continue;
+        if (b.snaredUntil && t < b.snaredUntil) continue;
+        for (var j = trail.length - 1; j >= 0; j--) {
+          var p = trail[j];
+          if (t - p.t > 5000) continue;
+          if (dist2(b.x, b.y, p.x, p.y) < (b.t.r + 8) * (b.t.r + 8)) {
+            // snared: heavy slow so you can run it down; tears the trail
+            b.snaredUntil = t + 1600;
+            b.vx *= 0.15; b.vy *= 0.15;
+            trail.splice(j, 1);
+            pop(b.x, b.y, '#fff', 5, 1.5);
+            break;
+          }
+        }
       }
     }
 
@@ -670,6 +854,34 @@
             capSpeed(b, 210);
           } else wander(b, dt, 700);
         }
+        else if (b.k === 'stink') {
+          // keeps its distance and lobs slowing spit at you
+          var sd2 = dist2(spider.x, spider.y, b.x, b.y);
+          var sdx = b.x - spider.x, sdy = b.y - spider.y, sl = Math.hypot(sdx, sdy) || 1;
+          if (sd2 < 230 * 230) { // back away
+            b.vx += sdx / sl * 500 * dt; b.vy += sdy / sl * 500 * dt;
+            capSpeed(b, b.t.sp);
+          } else wander(b, dt, 500);
+          b.spitT = (b.spitT || rand(1, 2.5)) - dt;
+          if (b.spitT <= 0 && state === 'play' && sd2 < 480 * 480) {
+            b.spitT = rand(2.2, 3.4);
+            var gl = Math.hypot(spider.x - b.x, spider.y - b.y) || 1;
+            globs.push({
+              x: b.x, y: b.y,
+              vx: (spider.x - b.x) / gl * 260,
+              vy: (spider.y - b.y) / gl * 260
+            });
+            pop(b.x, b.y, '#65a30d', 4, 1.5);
+          }
+        }
+        else if (b.k === 'slug') {
+          wander(b, dt, 80);
+          b.slimeT = (b.slimeT || 0) - dt;
+          if (b.slimeT <= 0) {
+            b.slimeT = 0.7;
+            slimes.push({ x: b.x, y: b.y, r: 22, t: t });
+          }
+        }
         else if (b.k === 'boss') {
           if (b.pauseT > 0) { b.pauseT -= dt; b.vx = b.vy = 0; }
           else if (b.dashT <= 0) {
@@ -683,7 +895,10 @@
           }
         }
 
-        b.x += b.vx * dt; b.y += b.vy * dt;
+        // snared by your silk trail: crawl speed
+        var snared = b.snaredUntil && t < b.snaredUntil;
+        var mv = snared ? 0.18 : 1;
+        b.x += b.vx * dt * mv; b.y += b.vy * dt * mv;
         // bounce off edges (once inside)
         var m = 18;
         if (b.x < m && b.vx < 0) b.vx = Math.abs(b.vx);
@@ -730,11 +945,14 @@
     }
 
     function collide(t){
+      // catches happen at the spider's mouth (original: pos + 15*facing, 30px)
       var cr = catchR();
+      var hx = spider.x + Math.cos(spider.rot) * 15;
+      var hy = spider.y + Math.sin(spider.rot) * 15;
       for (var i = bugs.length - 1; i >= 0; i--) {
         var b = bugs[i];
         if (b.dead) continue;
-        var d = dist2(spider.x, spider.y, b.x, b.y);
+        var d = dist2(hx, hy, b.x, b.y);
         if (b.webbed && b.hp <= 0) {
           if (d < (cr + b.t.r) * (cr + b.t.r)) catchBug(b, true);
         } else if (!b.webbed) {
@@ -763,6 +981,9 @@
       }
       var t = now();
       while (trail.length && t - trail[0].t > 5000) trail.shift();
+      for (i = slimes.length - 1; i >= 0; i--) {
+        if (t - slimes[i].t > 6000) slimes.splice(i, 1);
+      }
     }
 
     // ---------- HUD ----------
@@ -798,6 +1019,11 @@
         document.getElementById('silkFill').style.width = pct + '%';
         document.getElementById('silkBar').classList.toggle('low', silk < WEB_COST);
       }
+      var wl = 'SILK · WEBS ' + webs.length + '/' + maxWebs();
+      if (hudCache.webs !== wl) {
+        hudCache.webs = wl;
+        document.getElementById('silkLbl').textContent = wl;
+      }
     }
 
     // ---------- drawing ----------
@@ -809,14 +1035,45 @@
       ctx.save();
       if (shake > 0) ctx.translate(rand(-shake, shake) * 0.5, rand(-shake, shake) * 0.5);
 
-      // silk trail
+      // slug slime puddles
+      for (var i = 0; i < slimes.length; i++) {
+        var sl = slimes[i], sAge = 1 - (t - sl.t) / 6000;
+        if (sAge <= 0) continue;
+        ctx.fillStyle = 'rgba(101,163,13,' + (0.10 * sAge) + ')';
+        ctx.beginPath(); ctx.arc(sl.x, sl.y, sl.r, 0, TAU); ctx.fill();
+      }
+
+      // silk trail (temporary web): connected strand that snares bugs
       ctx.lineWidth = 1;
-      for (var i = 0; i < trail.length; i++) {
-        var tp = trail[i], age = 1 - (t - tp.t) / 5000;
+      for (i = 1; i < trail.length; i++) {
+        var t0 = trail[i - 1], t1 = trail[i];
+        var age = 1 - (t - t1.t) / 5000;
         if (age <= 0) continue;
-        if (dist2(spider.x, spider.y, tp.x, tp.y) < 90 * 90) {
-          ctx.strokeStyle = 'rgba(255,255,255,' + (0.12 * age) + ')';
-          ctx.beginPath(); ctx.moveTo(spider.x, spider.y); ctx.lineTo(tp.x, tp.y); ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,255,255,' + (0.22 * age) + ')';
+        ctx.beginPath(); ctx.moveTo(t0.x, t0.y); ctx.lineTo(t1.x, t1.y); ctx.stroke();
+      }
+
+      // spun webs
+      for (i = 0; i < webs.length; i++) drawWeb(webs[i], t);
+
+      // stinkbug spit
+      for (i = 0; i < globs.length; i++) {
+        var gb = globs[i];
+        ctx.fillStyle = 'rgba(101,163,13,0.85)';
+        ctx.beginPath(); ctx.arc(gb.x, gb.y, 5, 0, TAU); ctx.fill();
+        ctx.fillStyle = 'rgba(163,230,53,0.5)';
+        ctx.beginPath(); ctx.arc(gb.x - 1, gb.y - 1, 2, 0, TAU); ctx.fill();
+      }
+
+      // web-spin progress ring (holding still)
+      if (spinHold && !spinHold.done && pDown) {
+        var prog = Math.min(1, (t - spinHold.t0) / 550);
+        if (prog > 0.15) {
+          ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(spider.x, spider.y, 40, -Math.PI / 2, -Math.PI / 2 + prog * TAU);
+          ctx.stroke();
         }
       }
 
@@ -876,24 +1133,65 @@
       }
     }
 
-    // spider matches the site spider: body(-5,0) 20x16, head(15,0) r12, eyes(19,±5)
+    // a spun web: radial rings + spokes, frays as it fills up
+    function drawWeb(w, t){
+      var wear = 1 - w.used / w.cap * 0.5;
+      ctx.strokeStyle = 'rgba(255,255,255,' + (0.18 * wear) + ')';
+      ctx.lineWidth = 1;
+      var spokes = 8, i, s;
+      for (i = 0; i < spokes; i++) {
+        var a = (i / spokes) * TAU;
+        ctx.beginPath(); ctx.moveTo(w.x, w.y);
+        ctx.lineTo(w.x + Math.cos(a) * w.r, w.y + Math.sin(a) * w.r);
+        ctx.stroke();
+      }
+      for (i = 1; i <= 4; i++) {
+        var rr = (i / 4) * w.r;
+        ctx.beginPath();
+        for (s = 0; s <= 32; s++) {
+          var a2 = (s / 32) * TAU;
+          var wob = Math.sin(s * 2.3 + i * 1.7) * 1.5;
+          var px = w.x + Math.cos(a2) * (rr + wob), py = w.y + Math.sin(a2) * (rr + wob);
+          s ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+        }
+        ctx.stroke();
+      }
+    }
+
+    // spider matches the site spider: body(-5,0) 20x16, head(15,0) r12, eyes(19,±5).
+    // Legs are drawn in WORLD space from the IK feet, with the original
+    // double-bend joint formula (perpendicular offsets at 35% and 70%).
     function drawSpider(x, y, rot, scale, t){
+      var c = Math.cos(rot), s = Math.sin(rot);
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      for (var i = 0; i < 8; i++) {
+        var hip = HIPS[i], L = legs[i];
+        var hx = x + (hip.x * c - hip.y * s) * scale;
+        var hy = y + (hip.x * s + hip.y * c) * scale;
+        var qx = L.fx - hx, qy = L.fy - hy;
+        var qn = Math.hypot(qx, qy) || 1;
+        var perpX = -qy / qn, perpY = qx / qn;
+        var sign = hip.y < 0 ? -1 : 1;
+        var b1x = hx + qx * 0.35 + perpX * 20 * sign * scale;
+        var b1y = hy + qy * 0.35 + perpY * 20 * sign * scale;
+        var b2x = hx + qx * 0.7 + perpX * 15 * sign * scale;
+        var b2y = hy + qy * 0.7 + perpY * 15 * sign * scale;
+        ctx.strokeStyle = '#fff';
+        ctx.beginPath();
+        ctx.moveTo(hx, hy); ctx.lineTo(b1x, b1y); ctx.lineTo(b2x, b2y); ctx.lineTo(L.fx, L.fy);
+        ctx.stroke();
+        ctx.fillStyle = '#ff4444';
+        dot(hx, hy, 2); dot(b1x, b1y, 1.5); dot(b2x, b2y, 1.5);
+      }
+
       ctx.save();
       ctx.translate(x, y); ctx.rotate(rot); ctx.scale(scale, scale);
 
-      // 8 legs: 4 hip positions x 2 sides (verbatim from the site spider)
-      var lp = spider.legPhase;
-      ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
-      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-      var hips = [-12, -6, 2, 10];
-      for (var i = 0; i < 8; i++) {
-        var h = hips[i & 3], side = i < 4 ? 1 : -1;
-        var w = Math.sin(lp + i * 0.9) * 6;
-        var jx = h + side * (18 + w), jy = side * 12;
-        var fx = h + side * (25 + w * 0.5), fy = side * 24;
-        ctx.beginPath(); ctx.moveTo(h, 0); ctx.lineTo(jx, jy); ctx.lineTo(fx, fy); ctx.stroke();
-        ctx.fillStyle = '#ff4444';
-        dot(h, 0, 2); dot(jx, jy, 1.5);
+      // slime tint while slowed
+      if (t < spider.slowUntil) {
+        ctx.fillStyle = 'rgba(101,163,13,0.18)';
+        ctx.beginPath(); ctx.arc(0, 0, 34, 0, TAU); ctx.fill();
       }
 
       // body
@@ -1014,6 +1312,36 @@
         ctx.beginPath(); ctx.ellipse(2, 5, 3, 6, -0.4, 0, TAU); ctx.fill();
         ctx.restore();
       }
+      else if (b.k === 'stink') {
+        // shield bug: pointy pentagon shell
+        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+        ctx.save(); ctx.scale(1, flap);
+        ctx.beginPath(); ctx.ellipse(-3, -7, 4, 8, 0.4, 0, TAU); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(-3, 7, 4, 8, -0.4, 0, TAU); ctx.fill();
+        ctx.restore();
+        ctx.fillStyle = '#3f6212';
+        ctx.beginPath();
+        ctx.moveTo(10, 0); ctx.lineTo(3, -8); ctx.lineTo(-8, -6);
+        ctx.lineTo(-11, 0); ctx.lineTo(-8, 6); ctx.lineTo(3, 8);
+        ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = '#84cc16'; ctx.lineWidth = 1.2;
+        ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(-11, 0); ctx.lineTo(10, 0); ctx.stroke();
+        ctx.fillStyle = '#dc2626'; dot(8, -2, 1.2); dot(8, 2, 1.2);
+      }
+      else if (b.k === 'slug') {
+        // slug: blobby body + eye stalks, slime sheen
+        ctx.fillStyle = 'rgba(163,230,53,0.15)';
+        ctx.beginPath(); ctx.ellipse(-2, 2, 14, 8, 0, 0, TAU); ctx.fill();
+        ctx.fillStyle = '#57534e';
+        ctx.beginPath(); ctx.ellipse(0, 0, 12, 7, 0, 0, TAU); ctx.fill();
+        ctx.fillStyle = '#78716c';
+        ctx.beginPath(); ctx.ellipse(2, -2, 8, 4, 0, 0, TAU); ctx.fill();
+        ctx.strokeStyle = '#57534e'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(9, -3); ctx.lineTo(14, -8); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(9, 0); ctx.lineTo(15, -2); ctx.stroke();
+        ctx.fillStyle = '#dc2626'; dot(14, -8, 1.5); dot(15, -2, 1.5);
+      }
       else if (b.k === 'boss') {
         // dragonfly
         ctx.fillStyle = 'rgba(255,255,255,0.4)';
@@ -1027,6 +1355,15 @@
         ctx.beginPath(); ctx.ellipse(-8, 0, 16, 3.5, 0, 0, TAU); ctx.fill();
         ctx.fillStyle = '#14b8a6'; dot(8, 0, 6);
         ctx.fillStyle = '#dc2626'; dot(11, -2.5, 2); dot(11, 2.5, 2);
+      }
+
+      // snared by the trail: a few clinging strands
+      if (!b.webbed && b.snaredUntil && t < b.snaredUntil) {
+        var sr = b.t.r + 4;
+        ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(-sr, -2); ctx.lineTo(sr, 3); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(-sr, 4); ctx.lineTo(sr, -2); ctx.stroke();
       }
 
       // web cocoon overlay
