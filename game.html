@@ -63,6 +63,9 @@
     #silkBar { height: 6px; background: #27272a; border-radius: 99px; overflow: hidden; border: 1px solid #18181b; }
     #silkFill { height: 100%; background: #dc2626; width: 100%; }
     #silkBar.low #silkFill { background: #52525b; }
+    #webBar { height: 6px; background: #27272a; border-radius: 99px; overflow: hidden; border: 1px solid #18181b; margin-top: 4px; }
+    #webFill { height: 100%; background: #e4e4e7; width: 100%; }
+    #webBar.low #webFill { background: #52525b; }
     #silkLbl { font-size: 9px; color: #52525b; letter-spacing: 0.2em; margin-top: 4px; }
 
     /* ---------- Overlays ---------- */
@@ -124,6 +127,7 @@
   <div id="hud">
     <div class="hud" id="hudTL">
       <div>LV <span id="hLvl">1</span> <span class="dim">&middot;</span> <span id="hQuota">0/12</span> <span class="dim">bugs</span></div>
+      <div class="dim" id="hRank" style="font-size:10px;letter-spacing:0.12em"></div>
       <div class="dim">SCORE <span class="red" id="hScore">0</span></div>
     </div>
     <div class="hud" id="hudTR">
@@ -133,7 +137,8 @@
     <div class="hud" id="hudB">
       <div id="hearts"></div>
       <div id="silkBar"><div id="silkFill"></div></div>
-      <div id="silkLbl">SILK</div>
+      <div id="webBar"><div id="webFill"></div></div>
+      <div id="silkLbl">SHOT &middot; WEB</div>
     </div>
     <div class="hud" id="hudBR">
       <button id="btnCut">&#10005; DETACH</button><button id="btnAuto">&#127760; AUTO</button><button id="btnWeb">&#128376; WEB</button>
@@ -145,7 +150,7 @@
     <div class="card">
       <div class="brand">BITZYSPIDER ARCADE</div>
       <h1>BUG<span class="red">HUNT</span></h1>
-      <div style="color:#52525b;font-size:9px;letter-spacing:0.2em;margin-top:6px" id="verLabel">v6</div>
+      <div style="color:#52525b;font-size:9px;letter-spacing:0.2em;margin-top:6px" id="verLabel">v7</div>
       <div class="sub" id="howTo"></div>
       <div class="bugLegend">
         <span>fly &middot; catch it</span>
@@ -156,7 +161,7 @@
         <span style="color:#84cc16">stinkbug &middot; spits slow-goo</span>
         <span style="color:#a8a29e">slug &middot; slime slows you</span>
         <span style="color:#a3e635">webworm &middot; eats your web</span>
-        <span style="color:#14b8a6">&#9670; dragonfly &middot; tears webs</span>
+        <span style="color:#14b8a6">dragonfly &middot; tough, tears webs</span>
         <span style="color:#eab308">&#9670; hornet queen &middot; spawns wasps</span>
         <span style="color:#22c55e">&#9670; mantis &middot; stalks &amp; strikes</span>
       </div>
@@ -169,6 +174,7 @@
   <div class="overlay" id="ovShop">
     <div class="card">
       <h2>LEVEL <span id="sLvl">1</span> <span style="color:#dc2626">CLEARED</span></h2>
+      <div id="sRank" style="color:#fbbf24;font-size:11px;letter-spacing:0.15em;margin-top:8px"></div>
       <div class="statline">BONUS +<span id="sBonus">0</span> &nbsp;&middot;&nbsp; SPEND: <span id="shopCash">0</span> pts</div>
       <div id="shopRows"></div>
       <div style="margin-top:18px"><button class="btn" id="btnNext">NEXT LEVEL &rarr;</button></div>
@@ -215,6 +221,17 @@
     var totalBugs = +load('total') || 0;
     var muted = load('mute') === '1';
 
+    // debug params for internal testing: ?lvl=15&pts=2000&boss=mantis
+    // jump straight to a level, start with shop points, force-spawn a boss
+    var DBG = {};
+    try {
+      var qs = (window.location && window.location.search || '').slice(1).split('&');
+      for (var qi = 0; qi < qs.length; qi++) {
+        var kv = qs[qi].split('=');
+        if (kv[0]) DBG[kv[0]] = decodeURIComponent(kv[1] || '1');
+      }
+    } catch(e){}
+
     // ---------- audio (tiny synth) ----------
     var AC = null;
     function audio(){
@@ -246,15 +263,20 @@
     };
 
     // ---------- stats / upgrades ----------
-    var GAME_VERSION = 'v6';
+    var GAME_VERSION = 'v7';
     var S; // current run stats
     function freshStats(){ return { speed: 0, range: 0, silk: 0, grip: 0, tough: 0, venom: 0, heartT: 0, dblShot: 0, fortify: 0, bomb: 0, extraLife: 0 }; }
     function wrapMult(){ return 1.5 + (S ? S.venom * 0.25 : 0); } // wrapped catch bonus
     function followK(){ return 0.10; }                      // lerp/frame toward cursor (original spider feel)
     function topSpeed(){ return 150 + (S ? S.speed * 40 : 80); } // hard speed cap px/s — slow on purpose
     function webRange(){ return 190 + S.range * 48; }
+    // two silk supplies: SHOT silk (red bar) powers aimed web shots and
+    // regenerates fast; WEB silk (white bar) is for weaving strands — it
+    // regenerates slowly but every catch feeds it, so hunting fuels building
     function silkMax(){ return 100 + S.silk * 30; }
     function silkRegen(){ return 11 + S.silk * 4; }
+    function webSilkMax(){ return 160 + S.silk * 40; }
+    function webSilkRegen(){ return 5 + S.silk * 1.5; }
     function catchR(){ return 30 + S.grip * 6; }
     function webDur(){ return 4000 + S.grip * 700; }
     function toughMult(){ return 1 + S.tough * 0.4 + (S ? S.fortify * 0.35 : 0); }
@@ -270,13 +292,23 @@
     var BOMB_RADIUS = 140;
     var BOMB_COST = 200;
 
+    // level ranks — fun names for the climb
+    var RANKS = [
+      'HATCHLING', 'SPIDERLING', 'WEB CADET', 'SILK SLINGER', 'BUG WRANGLER',
+      'THREAD THEORIST', 'KNOT NINJA', 'SNARE SURGEON', 'LOOM LORD', 'WEB WIZARD',
+      'ARACHNO-ENGINEER', 'SILK ARCHITECT', 'FANG COMMANDER', 'DEBUGGER SUPREME', 'THE EXTERMINATOR'
+    ];
+    function rankName(lv){
+      return lv <= RANKS.length ? RANKS[lv - 1] : 'ITSY BITSY LEGEND';
+    }
+
     var UPG = [
       { key: 'speed',  name: 'SWIFT LEGS',   max: 4, cost: [50, 110, 200, 320],
         desc: function(){ return 'Top speed ' + topSpeed() + ' → ' + (topSpeed() + 40); } },
       { key: 'range',  name: 'SILK RANGE',   max: 4, cost: [50, 110, 200, 320],
         desc: function(){ return 'Web shot reach ' + webRange() + ' → ' + (webRange() + 48); } },
       { key: 'silk',   name: 'SILK GLANDS',  max: 4, cost: [60, 130, 230, 360],
-        desc: function(){ return 'Silk ' + silkMax() + ' → ' + (silkMax() + 30) + ', faster regen'; } },
+        desc: function(){ return 'Shot silk ' + silkMax() + ' → ' + (silkMax() + 30) + ', web silk ' + webSilkMax() + ' → ' + (webSilkMax() + 40) + ', faster regen'; } },
       { key: 'grip',   name: 'STRONG GRIP',  max: 4, cost: [60, 130, 230, 360],
         desc: function(){ return 'Catch radius ' + catchR() + ' → ' + (catchR() + 6) + ', shot-webs last longer'; } },
       { key: 'tough',  name: 'TOUGH SILK',   max: 2, cost: [120, 260],
@@ -309,7 +341,9 @@
       stink:   { r: 11, sp: 120, score: 60,  web: true,  min: 6, w: 0.4, spit: true, esc: 4 },
       slug:    { r: 12, sp: 26,  score: 70,  web: true,  min: 7, w: 0.35, slime: true, esc: 10 },
       worm:    { r: 9,  sp: 70,  score: 80,  web: true,  min: 8, w: 0.3, eats: true, esc: 6 },
-      boss:    { r: 20, sp: 420, score: 200, web: true,  min: 99, w: 0, hp: 3, boss: true, esc: 0 },
+      // dragonfly: not a boss anymore — a tough regular that shows up
+      // occasionally from level 9. 3 web shots to down, tears strands.
+      boss:    { r: 20, sp: 420, score: 150, web: true,  min: 9, w: 0.2, hp: 3, tears: true, qv: 3, esc: 0 },
       queen:   { r: 24, sp: 160, score: 350, web: true,  min: 99, w: 0, hp: 5, boss: true, esc: 0 },
       mantis:  { r: 22, sp: 320, score: 500, web: true,  min: 99, w: 0, hp: 4, boss: true, esc: 0, sting: true }
     };
@@ -335,7 +369,7 @@
     var autoTimer = 0;              // time until next auto-strand
     var bombs = 0;                  // purchased bombs available this run
     var shownScore = 0;             // score ticker display value
-    var hearts = 3, silk = 100, score = 0, cash = 0, level = 1, quota = 12, caught = 0;
+    var hearts = 3, silk = 100, webSilk = 160, score = 0, cash = 0, level = 1, quota = 12, caught = 0;
     var invulnUntil = 0, shake = 0, flash = 0, spawnTimer = 0;
     var dust = []; // ambient drifting motes
     function initDust(){
@@ -463,14 +497,13 @@
         vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp,
         hp: t.hp || 1, webbed: false, webT: 0,
         wing: Math.random() * 6, ttl: t.ttl || 0,
-        dashT: 0, pauseT: 0.4, qv: t.boss ? 5 : 1, dead: false
+        dashT: 0, pauseT: 0.4, qv: t.qv || (t.boss ? 5 : 1), dead: false
       });
+      if (kind === 'boss' && state === 'play') floatTxt(Math.min(Math.max(x, 60), W - 60), Math.min(Math.max(y, 60), H - 60), 'dragonfly!', '#14b8a6');
     }
     function pickBoss(){
-      if (level < 15) return 'boss';
-      if (level < 25) return 'queen';
-      var roster = ['boss', 'queen', 'mantis'];
-      return roster[Math.floor((level / 5) % 3)];
+      // queen first (level 5), then alternate queen/mantis every 5th level
+      return Math.floor(level / 5) % 2 === 1 ? 'queen' : 'mantis';
     }
     var BOSS_NAMES = { boss: 'DRAGONFLY', queen: 'HORNET QUEEN', mantis: 'MANTIS' };
     var BOSS_COLORS = { boss: '#14b8a6', queen: '#eab308', mantis: '#22c55e' };
@@ -545,6 +578,8 @@
       score += pts; cash += pts;
       caught += b.qv;
       totalBugs++;
+      // every catch feeds the web meter — hunting fuels building
+      webSilk = Math.min(webSilkMax(), webSilk + (wrapped ? 14 : 7));
       if (score > hi) hi = score;
       floatTxt(b.x, b.y - 14, '+' + pts, wrapped ? '#dc2626' : '#fff');
       pop(b.x, b.y, wrapped ? '#dc2626' : '#9ca3af', 12, 3);
@@ -579,6 +614,9 @@
     function startGame(){
       S = freshStats();
       hearts = 3; score = 0; cash = 0; level = 1;
+      // debug jumps: ?lvl=15 starts there, ?pts=2000 seeds shop points
+      if (+DBG.lvl > 1) level = Math.min(99, +DBG.lvl);
+      if (+DBG.pts > 0) cash = +DBG.pts;
       spider.x = target.x = W / 2; spider.y = target.y = H / 2;
       spider.slowUntil = 0;
       strands = []; hubs = []; crossings = []; ripples = [];
@@ -598,8 +636,17 @@
       caught = 0; spawnTimer = 0;
       quota = 8 + level * 4;
       silk = silkMax();
+      webSilk = webSilkMax();
       hearts = Math.min(maxHearts(), hearts + 1);
       if (level % 5 === 0) spawnBoss();
+      // debug: force-spawn any bug/boss each level (?boss=mantis)
+      if (DBG.boss && TYPES[DBG.boss]) {
+        spawnBug(DBG.boss);
+        var db = bugs[bugs.length - 1];
+        db.x = W / 2; db.y = -40;
+        floatTxt(W / 2, 80, DBG.boss.toUpperCase() + ' (TEST)', BOSS_COLORS[DBG.boss] || '#fff');
+      }
+      floatTxt(W / 2, H * 0.3, 'LV ' + level + ' — ' + rankName(level), '#fff');
       updateHud(true);
     }
     function levelClear(){
@@ -610,6 +657,7 @@
       bugs = []; shots = [];
       document.getElementById('sLvl').textContent = level;
       document.getElementById('sBonus').textContent = bonus;
+      document.getElementById('sRank').textContent = 'PROMOTED: ' + rankName(level + 1);
       buildShop();
       setState('shop');
     }
@@ -770,11 +818,13 @@
     // menu copy
     var isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints;
     document.getElementById('howTo').innerHTML = isTouch
-      ? 'You are small and slow. Your silk is not.<br><b>DRAG</b> to move &middot; <b>TAP</b> to shoot a web where you tap.<br><b>WEB</b>: anchor a strand, walk, <b>PIN</b> it, keep weaving &middot; <b>DETACH</b> to stop.<br><b>AUTO</b>: auto-build a circular web around you &middot; <b>E</b> to eat a strand and reclaim silk.<br><b>Cross your own strands</b> — crossings knit the web together; loose threads fray away. Multiple bugs on one strand chew faster! Walk over stuck bugs to <b>wrap</b> them. You grow every level.'
-      : 'You are small and slow. Your silk is not.<br><b>MOVE</b> with the mouse &middot; <b>CLICK</b> to shoot a web where you click.<br><b>W</b>: anchor a strand, walk, press <b>W</b> to pin, keep weaving &middot; <b>X</b> to detach.<br><b>Q</b>: auto-build a circular web around you &middot; <b>E</b>: eat a nearby strand to reclaim silk &middot; <b>B</b>: use a bug bomb.<br><b>Cross your own strands</b> — crossings knit the web together; loose threads fray away. Multiple bugs on one strand chew faster! Walk over stuck bugs to <b>wrap</b> them. You grow every level.';
+      ? 'You are small and slow. Your silk is not.<br><b>Red meter</b> = web shots &middot; <b>white meter</b> = weaving silk. Catching bugs refills the white one.<br><b>DRAG</b> to move &middot; <b>TAP</b> to shoot a web where you tap.<br><b>WEB</b>: anchor a strand, walk, <b>PIN</b> it, keep weaving &middot; <b>DETACH</b> to stop.<br><b>AUTO</b>: auto-build a circular web around you &middot; <b>E</b> to eat a strand and reclaim silk.<br><b>Cross your own strands</b> — crossings knit the web together; loose threads fray away. Multiple bugs on one strand chew faster! Walk over stuck bugs to <b>wrap</b> them. You grow every level.'
+      : 'You are small and slow. Your silk is not.<br><b>Red meter</b> = web shots &middot; <b>white meter</b> = weaving silk. Catching bugs refills the white one.<br><b>MOVE</b> with the mouse &middot; <b>CLICK</b> to shoot a web where you click.<br><b>W</b>: anchor a strand, walk, press <b>W</b> to pin, keep weaving &middot; <b>X</b> to detach.<br><b>Q</b>: auto-build a circular web around you &middot; <b>E</b>: eat a nearby strand to reclaim silk &middot; <b>B</b>: use a bug bomb.<br><b>Cross your own strands</b> — crossings knit the web together; loose threads fray away. Multiple bugs on one strand chew faster! Walk over stuck bugs to <b>wrap</b> them. You grow every level.';
     document.getElementById('mHigh').textContent = hi;
     document.getElementById('mTotal').textContent = totalBugs;
     document.getElementById('btnMute').innerHTML = muted ? '&#128263;' : '&#128266;';
+    var dbgActive = DBG.lvl || DBG.pts || DBG.boss;
+    document.getElementById('verLabel').textContent = GAME_VERSION + (dbgActive ? ' · DEBUG (lvl=' + (DBG.lvl || 1) + (DBG.boss ? ' boss=' + DBG.boss : '') + ')' : '');
 
     // ---------- update ----------
     function update(dt){
@@ -782,6 +832,7 @@
 
       if (state === 'play') {
         silk = Math.min(silkMax(), silk + silkRegen() * dt);
+        webSilk = Math.min(webSilkMax(), webSilk + webSilkRegen() * dt);
 
         // spawning
         spawnTimer -= dt;
@@ -988,11 +1039,11 @@
         } else if (strands.length >= STRAND_MAX_COUNT) {
           floatTxt(spider.x, spider.y - 30, 'too many strands', '#71717a');
           SFX.deny();
-        } else if (silk < strandCost(len)) {
-          floatTxt(spider.x, spider.y - 30, 'not enough silk', '#dc2626');
+        } else if (webSilk < strandCost(len)) {
+          floatTxt(spider.x, spider.y - 30, 'not enough web silk', '#dc2626');
           SFX.deny();
         } else {
-          silk -= strandCost(len);
+          webSilk -= strandCost(len);
           strands.push({ x1: building.x, y1: building.y, x2: end.x, y2: end.y, decayAt: 0 });
           recalcSupport();
           pop(end.x, end.y, '#fff', 5, 1.5);
@@ -1043,8 +1094,8 @@
         if (dist2(spider.x, spider.y, cp.x, cp.y) < eatR2) {
           var len = Math.hypot(s.x2 - s.x1, s.y2 - s.y1);
           var reclaim = Math.floor(strandCost(len) * 0.6);
-          silk = Math.min(silkMax(), silk + reclaim);
-          floatTxt(cp.x, cp.y - 14, '+' + reclaim + ' silk', '#9ca3af');
+          webSilk = Math.min(webSilkMax(), webSilk + reclaim);
+          floatTxt(cp.x, cp.y - 14, '+' + reclaim + ' web silk', '#9ca3af');
           pop(cp.x, cp.y, '#fff', 5, 1.5);
           SFX.snag();
           strands.splice(i, 1);
@@ -1112,10 +1163,10 @@
       }
       var len = Math.hypot(x2 - x1, y2 - y1);
       var cost = strandCost(len);
-      if (silk < cost) { stopAutoWeb(); floatTxt(spider.x, spider.y - 30, 'out of silk', '#dc2626'); return; }
+      if (webSilk < cost) { stopAutoWeb(); floatTxt(spider.x, spider.y - 30, 'out of web silk', '#dc2626'); return; }
       // snap endpoints
       var ep1 = snapPoint(x1, y1), ep2 = snapPoint(x2, y2);
-      silk -= cost;
+      webSilk -= cost;
       strands.push({ x1: ep1.x, y1: ep1.y, x2: ep2.x, y2: ep2.y, decayAt: 0 });
       recalcSupport();
       autoAngle++;
@@ -1239,7 +1290,7 @@
           var s = strands[j];
           var cp = closestOnSeg(b.x, b.y, s);
           if (dist2(b.x, b.y, cp.x, cp.y) < (b.t.r + 3) * (b.t.r + 3)) {
-            if (b.t.boss) { breakStrand(s); shake = 6; continue; }
+            if (b.t.boss || b.t.tears) { breakStrand(s); shake = 6; continue; }
             b.webbed = true; b.hp = 0;
             b.vx = 0; b.vy = 0;
             b.x = cp.x; b.y = cp.y;
@@ -1275,7 +1326,7 @@
       if (state !== 'play') return;
       for (var i = 0; i < bugs.length; i++) {
         var b = bugs[i];
-        if (b.dead || b.webbed || b.t.boss) continue;
+        if (b.dead || b.webbed || b.t.boss || b.t.tears) continue;
         if (b.snaredUntil && t < b.snaredUntil) continue;
         for (var j = trail.length - 1; j >= 0; j--) {
           var p = trail[j];
@@ -1609,11 +1660,18 @@
           he.appendChild(sp);
         }
       }
+      hset('hRank', rankName(level));
       var pct = Math.round(silk / silkMax() * 100);
       if (hudCache.silk !== pct) {
         hudCache.silk = pct;
         document.getElementById('silkFill').style.width = pct + '%';
         document.getElementById('silkBar').classList.toggle('low', silk < WEB_COST);
+      }
+      var wpct = Math.round(webSilk / webSilkMax() * 100);
+      if (hudCache.webSilk !== wpct) {
+        hudCache.webSilk = wpct;
+        document.getElementById('webFill').style.width = wpct + '%';
+        document.getElementById('webBar').classList.toggle('low', webSilk < 20);
       }
       var wl = autoWeb ? 'SILK · AUTO WEB…' : building ? 'SILK · WEAVING…' : 'SILK · STRANDS ' + strands.length;
       if (bombs > 0) wl += ' · BOMBS ' + bombs;
@@ -1749,7 +1807,7 @@
       // elastic strand being laid (anchor → spider) with live cost
       if (building && (state === 'play' || state === 'pause')) {
         var blen = Math.hypot(spider.x - building.x, spider.y - building.y);
-        var affordable = silk >= strandCost(blen);
+        var affordable = webSilk >= strandCost(blen);
         ctx.strokeStyle = affordable ? 'rgba(255,255,255,0.7)' : 'rgba(220,38,38,0.7)';
         ctx.lineWidth = 1.5;
         ctx.setLineDash([6, 5]);
@@ -2156,8 +2214,8 @@
 
       ctx.restore();
 
-      // boss hp pips
-      if (b.t.boss && b.hp > 0) {
+      // hp pips for multi-hit bugs (bosses + dragonfly)
+      if (b.t.hp && b.hp > 0) {
         var bossCol = BOSS_COLORS[b.k] || '#dc2626';
         ctx.fillStyle = bossCol;
         var pipW = (b.t.hp || 3) * 10;
