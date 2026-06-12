@@ -52,6 +52,13 @@
     }
     #btnCut.show { display: inline-block; }
     #btnCut:active { transform: scale(0.95); }
+    #btnAuto {
+      background: rgba(0,0,0,0.55); border: 1px solid #3f3f46; color: #a1a1aa;
+      border-radius: 14px; padding: 12px 14px; font-size: 12px; font-weight: 700;
+      letter-spacing: 0.08em; cursor: pointer; font-family: inherit; margin-right: 8px;
+    }
+    #btnAuto.on { border-color: #fbbf24; color: #fff; background: rgba(251,191,36,0.2); }
+    #btnAuto:active { transform: scale(0.95); }
     #hearts { font-size: 15px; letter-spacing: 3px; margin-bottom: 4px; }
     #silkBar { height: 6px; background: #27272a; border-radius: 99px; overflow: hidden; border: 1px solid #18181b; }
     #silkFill { height: 100%; background: #dc2626; width: 100%; }
@@ -129,7 +136,7 @@
       <div id="silkLbl">SILK</div>
     </div>
     <div class="hud" id="hudBR">
-      <button id="btnCut">&#10005; DETACH</button><button id="btnWeb">&#128376; WEB</button>
+      <button id="btnCut">&#10005; DETACH</button><button id="btnAuto">&#127760; AUTO</button><button id="btnWeb">&#128376; WEB</button>
     </div>
   </div>
 
@@ -138,6 +145,7 @@
     <div class="card">
       <div class="brand">BITZYSPIDER ARCADE</div>
       <h1>BUG<span class="red">HUNT</span></h1>
+      <div style="color:#52525b;font-size:9px;letter-spacing:0.2em;margin-top:6px" id="verLabel">v6</div>
       <div class="sub" id="howTo"></div>
       <div class="bugLegend">
         <span>fly &middot; catch it</span>
@@ -235,8 +243,9 @@
     };
 
     // ---------- stats / upgrades ----------
+    var GAME_VERSION = 'v6';
     var S; // current run stats
-    function freshStats(){ return { speed: 0, range: 0, silk: 0, grip: 0, tough: 0, venom: 0, heartT: 0 }; }
+    function freshStats(){ return { speed: 0, range: 0, silk: 0, grip: 0, tough: 0, venom: 0, heartT: 0, dblShot: 0, fortify: 0, bomb: 0, extraLife: 0 }; }
     function wrapMult(){ return 1.5 + (S ? S.venom * 0.25 : 0); } // wrapped catch bonus
     function followK(){ return 0.10; }                      // lerp/frame toward cursor (original spider feel)
     function topSpeed(){ return 150 + (S ? S.speed * 40 : 80); } // hard speed cap px/s — slow on purpose
@@ -245,8 +254,8 @@
     function silkRegen(){ return 11 + S.silk * 4; }
     function catchR(){ return 30 + S.grip * 6; }
     function webDur(){ return 4000 + S.grip * 700; }
-    function toughMult(){ return 1 + S.tough * 0.4; }       // bugs stuck on strands longer
-    function maxHearts(){ return 3 + S.heartT; }
+    function toughMult(){ return 1 + S.tough * 0.4 + (S ? S.fortify * 0.35 : 0); }
+    function maxHearts(){ return 3 + S.heartT + (S ? S.extraLife : 0); }
     // start small, grow a little every level cleared (plus grip)
     function spiderScale(){
       var lv = state === 'menu' ? 4 : level;
@@ -255,6 +264,8 @@
     var WEB_COST = 30;
     var STRAND_COST_PER_PX = 1 / 12;  // silk per pixel of strand
     var STRAND_MIN = 24, STRAND_SNAP = 18, STRAND_MAX_COUNT = 36;
+    var BOMB_RADIUS = 140;
+    var BOMB_COST = 200;
 
     var UPG = [
       { key: 'speed',  name: 'SWIFT LEGS',   max: 4, cost: [50, 110, 200, 320],
@@ -266,11 +277,22 @@
       { key: 'grip',   name: 'STRONG GRIP',  max: 4, cost: [60, 130, 230, 360],
         desc: function(){ return 'Catch radius ' + catchR() + ' → ' + (catchR() + 6) + ', shot-webs last longer'; } },
       { key: 'tough',  name: 'TOUGH SILK',   max: 2, cost: [120, 260],
-        desc: function(){ return 'Bugs stuck in strands ' + Math.round(toughMult() * 100) + '% → ' + Math.round((toughMult() + 0.4) * 100) + '% as long'; } },
+        desc: function(){ return 'Bugs stuck ' + Math.round((toughMult() - (S ? S.fortify * 0.35 : 0)) * 100) + '% → ' + Math.round((toughMult() - (S ? S.fortify * 0.35 : 0) + 0.4) * 100) + '% as long'; } },
       { key: 'venom',  name: 'VENOM FANGS',  max: 2, cost: [100, 220],
         desc: function(){ return 'Wrapped bugs worth x' + wrapMult().toFixed(2) + ' → x' + (wrapMult() + 0.25).toFixed(2); } },
       { key: 'heartT', name: 'EXTRA HEART',  max: 2, cost: [150, 300],
         desc: function(){ return '+1 max health (' + maxHearts() + ' → ' + (maxHearts() + 1) + ')'; } }
+    ];
+    // post-max point sinks — appear only once core upgrades are maxed
+    var SINKS = [
+      { key: 'dblShot',  name: 'DOUBLE SHOT',  max: 1, cost: [400],
+        desc: function(){ return 'Fire two web shots per click (spread)'; } },
+      { key: 'fortify',  name: 'FORTIFIED SILK', max: 99, cost: function(t){ return 180 + t * 60; },
+        desc: function(){ return 'Bugs stuck ' + Math.round(toughMult() * 100) + '% → ' + Math.round((toughMult() + 0.35) * 100) + '% as long'; } },
+      { key: 'extraLife', name: 'BUY A LIFE',   max: 99, cost: function(t){ return 250 + t * 100; },
+        desc: function(){ return '+1 max health (' + maxHearts() + ' → ' + (maxHearts() + 1) + ')'; } },
+      { key: 'bomb',     name: 'BUG BOMB',      max: 99, cost: function(t){ return BOMB_COST + t * 50; },
+        desc: function(){ return 'Homing bomb — splatters all bugs in radius ' + BOMB_RADIUS + 'px'; } }
     ];
 
     // ---------- bug types ----------
@@ -302,6 +324,11 @@
     var freezeUntil = 0;            // hit-stop
     var lastInputAt = 0;            // idle wander timer
     var wanderVel = { x: 0, y: 0 };
+    var autoWeb = false;            // auto-build circular web mode
+    var autoAngle = 0;              // current angle in auto-web spiral
+    var autoCenter = null;          // center of auto-web spiral
+    var autoTimer = 0;              // time until next auto-strand
+    var bombs = 0;                  // purchased bombs available this run
     var shownScore = 0;             // score ticker display value
     var hearts = 3, silk = 100, score = 0, cash = 0, level = 1, quota = 12, caught = 0;
     var invulnUntil = 0, shake = 0, flash = 0, spawnTimer = 0;
@@ -451,23 +478,30 @@
       silk -= WEB_COST;
       SFX.shoot();
       var shotAng = Math.atan2(dy, dx);
-      // aim assist: home only on bugs near the aim line (within ~28°)
-      var best = null, bd = webRange() * webRange();
-      for (var i = 0; i < bugs.length; i++) {
-        var b = bugs[i];
-        if (b.webbed || b.dead) continue;
-        var d = dist2(spider.x, spider.y, b.x, b.y);
-        if (d > bd) continue;
-        var da = Math.atan2(b.y - spider.y, b.x - spider.x) - shotAng;
-        while (da > Math.PI) da -= TAU;
-        while (da < -Math.PI) da += TAU;
-        if (Math.abs(da) < 0.5) { bd = d; best = b; }
+      var fireOne = function(ang){
+        var fdx = Math.cos(ang), fdy = Math.sin(ang);
+        var best = null, bd = webRange() * webRange();
+        for (var i = 0; i < bugs.length; i++) {
+          var b = bugs[i];
+          if (b.webbed || b.dead) continue;
+          var d = dist2(spider.x, spider.y, b.x, b.y);
+          if (d > bd) continue;
+          var da = Math.atan2(b.y - spider.y, b.x - spider.x) - ang;
+          while (da > Math.PI) da -= TAU;
+          while (da < -Math.PI) da += TAU;
+          if (Math.abs(da) < 0.5) { bd = d; best = b; }
+        }
+        shots.push({
+          x: spider.x, y: spider.y,
+          vx: fdx * 850, vy: fdy * 850,
+          traveled: 0, max: webRange() * 1.15, tgt: best
+        });
+      };
+      fireOne(shotAng);
+      if (S && S.dblShot > 0) {
+        fireOne(shotAng + 0.18);
+        fireOne(shotAng - 0.18);
       }
-      shots.push({
-        x: spider.x, y: spider.y,
-        vx: dx / L * 850, vy: dy / L * 850,
-        traveled: 0, max: webRange() * 1.15, tgt: best
-      });
     }
     function webBug(b){
       SFX.hit();
@@ -533,9 +567,12 @@
       hearts = 3; score = 0; cash = 0; level = 1;
       spider.x = target.x = W / 2; spider.y = target.y = H / 2;
       spider.slowUntil = 0;
-      strands = []; hubs = []; crossings = []; ripples = []; // webs persist across levels, reset per run
+      strands = []; hubs = []; crossings = []; ripples = [];
       comboN = 0; comboUntil = 0; shownScore = 0; freezeUntil = 0;
       lastInputAt = now();
+      autoWeb = false; autoCenter = null; bombs = 0;
+      var ba = document.getElementById('btnAuto');
+      if (ba) ba.classList.remove('on');
       initLegs();
       startLevel();
       setState('play');
@@ -579,6 +616,7 @@
       bugs = []; shots = []; strands = []; globs = []; slimes = [];
       hubs = []; crossings = []; ripples = [];
       building = null;
+      if (autoWeb) stopAutoWeb();
       syncWebBtns();
       document.getElementById('mHigh').textContent = hi;
       document.getElementById('mTotal').textContent = totalBugs;
@@ -586,24 +624,32 @@
     }
 
     // ---------- shop ----------
+    function allCoreMaxed(){
+      for (var i = 0; i < UPG.length; i++) if (S[UPG[i].key] < UPG[i].max) return false;
+      return true;
+    }
     function buildShop(){
       var wrap = document.getElementById('shopRows');
       wrap.innerHTML = '';
       document.getElementById('shopCash').textContent = cash;
-      UPG.forEach(function(u){
+      var addRow = function(u, isSink){
         var tier = S[u.key];
         var row = document.createElement('div');
         row.className = 'shopRow';
+        var maxU = u.max;
+        var showPips = maxU <= 10;
         var pips = '';
-        for (var i = 0; i < u.max; i++) pips += i < tier ? '●' : '○';
-        var maxed = tier >= u.max;
-        var cost = maxed ? 0 : u.cost[tier];
+        if (showPips) for (var i = 0; i < maxU; i++) pips += i < tier ? '●' : '○';
+        else pips = tier > 0 ? '×' + tier : '';
+        var maxed = tier >= maxU;
+        var cost = maxed ? 0 : (typeof u.cost === 'function' ? u.cost(tier) : u.cost[tier]);
         row.innerHTML =
           '<div class="info"><span class="nm">' + u.name + '</span>' +
-          '<span class="pips">' + pips + '</span>' +
+          (isSink ? '<span class="pips" style="color:#fbbf24">' + pips + '</span>' : '<span class="pips">' + pips + '</span>') +
           '<div class="ds">' + (maxed ? 'Fully upgraded' : u.desc()) + '</div></div>';
         var btn = document.createElement('button');
         btn.className = 'buyBtn';
+        if (isSink) btn.style.background = '#b45309';
         btn.textContent = maxed ? 'MAX' : cost + ' pts';
         btn.disabled = maxed || cash < cost;
         btn.addEventListener('click', function(e){
@@ -611,14 +657,23 @@
           if (maxed || cash < cost) return;
           cash -= cost;
           S[u.key]++;
-          if (u.key === 'heartT') hearts = Math.min(maxHearts(), hearts + 1);
+          if (u.key === 'heartT' || u.key === 'extraLife') hearts = Math.min(maxHearts(), hearts + 1);
           if (u.key === 'silk') silk = Math.min(silkMax(), silk + 30);
+          if (u.key === 'bomb') bombs++;
           SFX.buy();
           buildShop();
         });
         row.appendChild(btn);
         wrap.appendChild(row);
-      });
+      };
+      UPG.forEach(function(u){ addRow(u, false); });
+      if (allCoreMaxed()) {
+        var header = document.createElement('div');
+        header.style.cssText = 'text-align:center;color:#fbbf24;font-size:10px;letter-spacing:0.15em;padding:12px 0 4px;border-top:1px solid #27272a';
+        header.textContent = '— ADVANCED —';
+        wrap.appendChild(header);
+        SINKS.forEach(function(u){ addRow(u, true); });
+      }
     }
 
     // ---------- state / overlays ----------
@@ -667,6 +722,9 @@
       if (e.key === 'x' || e.key === 'X' || e.key === 'Escape') detach();
       if (e.key === 'p' || e.key === 'P') togglePause();
       if (e.key === 'm' || e.key === 'M') toggleMute();
+      if (e.key === 'q' || e.key === 'Q') toggleAutoWeb();
+      if (e.key === 'e' || e.key === 'E') eatNearbyStrand();
+      if (e.key === 'b' || e.key === 'B') useBomb();
     });
     document.addEventListener('visibilitychange', function(){
       if (document.hidden && state === 'play') setState('pause');
@@ -693,12 +751,13 @@
     document.getElementById('btnMute').addEventListener('click', function(e){ e.stopPropagation(); toggleMute(); });
     document.getElementById('btnWeb').addEventListener('click', function(e){ e.stopPropagation(); audio(); startOrPin(); });
     document.getElementById('btnCut').addEventListener('click', function(e){ e.stopPropagation(); detach(); });
+    document.getElementById('btnAuto').addEventListener('click', function(e){ e.stopPropagation(); audio(); toggleAutoWeb(); });
 
     // menu copy
     var isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints;
     document.getElementById('howTo').innerHTML = isTouch
-      ? 'You are small and slow. Your silk is not.<br><b>DRAG</b> to move &middot; <b>TAP</b> to shoot a web where you tap.<br><b>WEB</b>: anchor a strand, walk, <b>PIN</b> it, keep weaving &middot; <b>DETACH</b> to stop.<br><b>Cross your own strands</b> — crossings knit the web together; loose threads fray away. Bugs chew out and snap the strand they were on.<br>Walk over stuck bugs to <b>wrap</b> them. You grow every level.'
-      : 'You are small and slow. Your silk is not.<br><b>MOVE</b> with the mouse &middot; <b>CLICK</b> to shoot a web where you click.<br><b>W</b>: anchor a strand, walk, press <b>W</b> to pin, keep weaving &middot; <b>X</b> to detach.<br><b>Cross your own strands</b> — crossings knit the web together; loose threads fray away. Bugs chew out and snap the strand they were on.<br>Walk over stuck bugs to <b>wrap</b> them. You grow every level.';
+      ? 'You are small and slow. Your silk is not.<br><b>DRAG</b> to move &middot; <b>TAP</b> to shoot a web where you tap.<br><b>WEB</b>: anchor a strand, walk, <b>PIN</b> it, keep weaving &middot; <b>DETACH</b> to stop.<br><b>AUTO</b>: auto-build a circular web around you &middot; <b>E</b> to eat a strand and reclaim silk.<br><b>Cross your own strands</b> — crossings knit the web together; loose threads fray away. Multiple bugs on one strand chew faster! Walk over stuck bugs to <b>wrap</b> them. You grow every level.'
+      : 'You are small and slow. Your silk is not.<br><b>MOVE</b> with the mouse &middot; <b>CLICK</b> to shoot a web where you click.<br><b>W</b>: anchor a strand, walk, press <b>W</b> to pin, keep weaving &middot; <b>X</b> to detach.<br><b>Q</b>: auto-build a circular web around you &middot; <b>E</b>: eat a nearby strand to reclaim silk &middot; <b>B</b>: use a bug bomb.<br><b>Cross your own strands</b> — crossings knit the web together; loose threads fray away. Multiple bugs on one strand chew faster! Walk over stuck bugs to <b>wrap</b> them. You grow every level.';
     document.getElementById('mHigh').textContent = hi;
     document.getElementById('mTotal').textContent = totalBugs;
     document.getElementById('btnMute').innerHTML = muted ? '&#128263;' : '&#128266;';
@@ -754,6 +813,7 @@
       updateStrands(t);
       updateGlobs(dt, t);
       updateTrailSnare(t);
+      updateAutoWeb(dt);
       updateFx(dt);
 
       if (state === 'play') {
@@ -932,8 +992,119 @@
     function detach(){
       if (!building) return;
       building = null;
+      if (autoWeb) stopAutoWeb();
       SFX.free();
       syncWebBtns();
+      updateHud(true);
+    }
+    // bomb: homing explosion that splatters all bugs in a radius
+    function useBomb(){
+      if (state !== 'play' || bombs <= 0) { SFX.deny(); return; }
+      bombs--;
+      SFX.level();
+      var bx = spider.x + Math.cos(spider.rot) * 60;
+      var by = spider.y + Math.sin(spider.rot) * 60;
+      ripples.push({ x: bx, y: by, r: 10, life: 1.2 });
+      pop(bx, by, '#dc2626', 24, 5);
+      pop(bx, by, '#fbbf24', 16, 3);
+      shake = 18; flash = 0.4;
+      for (var i = 0; i < bugs.length; i++) {
+        var b = bugs[i];
+        if (b.dead) continue;
+        if (dist2(bx, by, b.x, b.y) < BOMB_RADIUS * BOMB_RADIUS) {
+          webBug(b);
+          if (b.t.boss) { b.hp = 0; b.webbed = true; b.webT = now() + webDur(); }
+        }
+      }
+      updateHud(true);
+    }
+    // eat your own strands to reclaim silk
+    function eatNearbyStrand(){
+      if (state !== 'play') return;
+      var sc = spiderScale();
+      var eatR2 = (20 * sc) * (20 * sc);
+      for (var i = strands.length - 1; i >= 0; i--) {
+        var s = strands[i];
+        var cp = closestOnSeg(spider.x, spider.y, s);
+        if (dist2(spider.x, spider.y, cp.x, cp.y) < eatR2) {
+          var len = Math.hypot(s.x2 - s.x1, s.y2 - s.y1);
+          var reclaim = Math.floor(strandCost(len) * 0.6);
+          silk = Math.min(silkMax(), silk + reclaim);
+          floatTxt(cp.x, cp.y - 14, '+' + reclaim + ' silk', '#9ca3af');
+          pop(cp.x, cp.y, '#fff', 5, 1.5);
+          SFX.snag();
+          strands.splice(i, 1);
+          recalcSupport();
+          updateHud(true);
+          return true;
+        }
+      }
+      return false;
+    }
+    // auto-web: automatically builds a circular web around spider's position
+    function startAutoWeb(){
+      autoWeb = true;
+      autoCenter = { x: spider.x, y: spider.y };
+      autoAngle = 0;
+      autoTimer = 0;
+      var ba = document.getElementById('btnAuto');
+      if (ba) ba.classList.add('on');
+    }
+    function stopAutoWeb(){
+      autoWeb = false;
+      autoCenter = null;
+      var ba = document.getElementById('btnAuto');
+      if (ba) ba.classList.remove('on');
+    }
+    function toggleAutoWeb(){
+      if (state !== 'play') return;
+      if (autoWeb) { stopAutoWeb(); return; }
+      startAutoWeb();
+    }
+    function updateAutoWeb(dt){
+      if (!autoWeb || state !== 'play') return;
+      autoTimer -= dt;
+      if (autoTimer > 0) return;
+      autoTimer = 0.12;
+      if (strands.length >= STRAND_MAX_COUNT) { stopAutoWeb(); floatTxt(spider.x, spider.y - 30, 'web full', '#71717a'); return; }
+      // build concentric rings of spokes + rings, radiating out from center
+      var spoke = 8, rings = 4;
+      var totalSpokes = spoke;
+      var phase = autoAngle;
+      // which ring and spoke are we on?
+      var step = Math.floor(phase);
+      var ringIdx = Math.floor(step / (totalSpokes + totalSpokes));
+      var inRing = step - ringIdx * totalSpokes * 2;
+      if (ringIdx >= rings) { stopAutoWeb(); floatTxt(spider.x, spider.y - 30, 'web complete!', '#fff'); return; }
+      var rInner = 30 + ringIdx * 36;
+      var rOuter = 30 + (ringIdx + 1) * 36;
+      var x1, y1, x2, y2;
+      if (inRing < totalSpokes) {
+        // spoke: from inner ring to outer ring at this angle
+        var a = (inRing / totalSpokes) * TAU;
+        x1 = autoCenter.x + Math.cos(a) * rInner;
+        y1 = autoCenter.y + Math.sin(a) * rInner;
+        x2 = autoCenter.x + Math.cos(a) * rOuter;
+        y2 = autoCenter.y + Math.sin(a) * rOuter;
+      } else {
+        // arc segment: connect adjacent spoke tips on the outer ring
+        var seg = inRing - totalSpokes;
+        var a1 = (seg / totalSpokes) * TAU;
+        var a2 = ((seg + 1) / totalSpokes) * TAU;
+        x1 = autoCenter.x + Math.cos(a1) * rOuter;
+        y1 = autoCenter.y + Math.sin(a1) * rOuter;
+        x2 = autoCenter.x + Math.cos(a2) * rOuter;
+        y2 = autoCenter.y + Math.sin(a2) * rOuter;
+      }
+      var len = Math.hypot(x2 - x1, y2 - y1);
+      var cost = strandCost(len);
+      if (silk < cost) { stopAutoWeb(); floatTxt(spider.x, spider.y - 30, 'out of silk', '#dc2626'); return; }
+      // snap endpoints
+      var ep1 = snapPoint(x1, y1), ep2 = snapPoint(x2, y2);
+      silk -= cost;
+      strands.push({ x1: ep1.x, y1: ep1.y, x2: ep2.x, y2: ep2.y, decayAt: 0 });
+      recalcSupport();
+      autoAngle++;
       updateHud(true);
     }
     // Crossings: where strands intersect mid-line, the web "knits" together —
@@ -1011,6 +1182,31 @@
     function updateStrands(t){
       if (state !== 'play') return;
       var i, j;
+      // count how many bugs are stuck on each strand
+      var strandBugCount = {};
+      for (i = 0; i < bugs.length; i++) {
+        var cb = bugs[i];
+        if (cb.webbed && cb.strand) {
+          var si = strands.indexOf(cb.strand);
+          if (si !== -1) strandBugCount[si] = (strandBugCount[si] || 0) + 1;
+        }
+      }
+      // multi-bug erosion: each extra bug on the same strand speeds up all their escapes
+      for (i = 0; i < bugs.length; i++) {
+        var eb = bugs[i];
+        if (!eb.webbed || !eb.strand) continue;
+        var sei = strands.indexOf(eb.strand);
+        var cnt = strandBugCount[sei] || 1;
+        if (cnt > 1) {
+          // each extra bug shaves time off: 30% faster per additional bug
+          var speedup = (cnt - 1) * 0.3;
+          eb.webT -= speedup * 16.67; // ~1 frame worth of speedup per extra bug per frame
+        }
+      }
+      // store bug counts on strands for drawing (blink speed indicator)
+      for (i = 0; i < strands.length; i++) {
+        strands[i].bugCount = strandBugCount[i] || 0;
+      }
       // decay of unsupported strands
       for (i = strands.length - 1; i >= 0; i--) {
         if (strands[i].decayAt && t > strands[i].decayAt) {
@@ -1030,13 +1226,12 @@
           var cp = closestOnSeg(b.x, b.y, s);
           if (dist2(b.x, b.y, cp.x, cp.y) < (b.t.r + 3) * (b.t.r + 3)) {
             if (b.t.boss) { breakStrand(s); shake = 6; continue; }
-            // stuck: counts as webbed (wrappable); escapes break the strand
             b.webbed = true; b.hp = 0;
             b.vx = 0; b.vy = 0;
             b.x = cp.x; b.y = cp.y;
             b.webT = t + b.t.esc * 1000 * toughMult();
             b.strand = s;
-            ripples.push({ x: cp.x, y: cp.y, r: 4, life: 1 }); // web twang
+            ripples.push({ x: cp.x, y: cp.y, r: 4, life: 1 });
             pop(b.x, b.y, '#fff', 5, 1.5);
             SFX.hit();
             break;
@@ -1340,7 +1535,8 @@
         document.getElementById('silkFill').style.width = pct + '%';
         document.getElementById('silkBar').classList.toggle('low', silk < WEB_COST);
       }
-      var wl = building ? 'SILK · WEAVING…' : 'SILK · STRANDS ' + strands.length;
+      var wl = autoWeb ? 'SILK · AUTO WEB…' : building ? 'SILK · WEAVING…' : 'SILK · STRANDS ' + strands.length;
+      if (bombs > 0) wl += ' · BOMBS ' + bombs;
       if (hudCache.webs !== wl) {
         hudCache.webs = wl;
         document.getElementById('silkLbl').textContent = wl;
@@ -1381,21 +1577,29 @@
         ctx.beginPath(); ctx.moveTo(t0.x, t0.y); ctx.lineTo(t1.x, t1.y); ctx.stroke();
       }
 
-      // which strands have a bug about to chew through (<1.2s)
-      for (i = 0; i < strands.length; i++) strands[i].warn = false;
+      // which strands have a bug about to chew through (<1.2s), and how stressed they are
+      for (i = 0; i < strands.length; i++) { strands[i].warn = false; strands[i].stress = 0; }
       for (i = 0; i < bugs.length; i++) {
         var wb = bugs[i];
         if (wb.strand && wb.webbed && wb.webT - t < 1200) wb.strand.warn = true;
       }
 
       // built web strands (slight sag, fray when decaying, red when breaking)
+      // multi-bug strands blink faster and glow more intensely
       for (i = 0; i < strands.length; i++) {
         var st = strands[i];
         var alpha = 0.55, color = '255,255,255';
-        if (st.decayAt) { // unsupported: fraying away
+        var bc = st.bugCount || 0;
+        if (st.decayAt) {
           var left = Math.max(0, (st.decayAt - t) / 12000);
           alpha = 0.15 + 0.4 * left;
-          if (Math.floor(t / 180) % 3 === 0) alpha *= 0.5; // flicker
+          if (Math.floor(t / 180) % 3 === 0) alpha *= 0.5;
+        }
+        if (bc >= 2) {
+          // multi-bug: faster blink rate (80ms per extra bug), orange-red
+          var blinkRate = Math.max(50, 140 - (bc - 1) * 40);
+          if (Math.floor(t / blinkRate) % 2 === 0) { color = '251,146,60'; alpha = 0.9; }
+          else { color = '248,113,113'; alpha = 0.6; }
         }
         if (st.warn && Math.floor(t / 140) % 2 === 0) { color = '248,113,113'; alpha = 0.8; }
         var sLen = Math.hypot(st.x2 - st.x1, st.y2 - st.y1);
@@ -1496,6 +1700,19 @@
         ctx.setLineDash([4, 8]);
         ctx.beginPath(); ctx.arc(spider.x, spider.y, webRange(), 0, TAU); ctx.stroke();
         ctx.setLineDash([]);
+      }
+
+      // auto-web progress indicator
+      if (autoWeb && autoCenter) {
+        var step2 = Math.floor(autoAngle);
+        var ringIdx2 = Math.floor(step2 / 16);
+        var maxR = 30 + (ringIdx2 + 1) * 36;
+        ctx.strokeStyle = 'rgba(251,191,36,0.2)';
+        ctx.setLineDash([4, 6]);
+        ctx.beginPath(); ctx.arc(autoCenter.x, autoCenter.y, maxR, 0, TAU); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = 'rgba(251,191,36,0.15)';
+        ctx.beginPath(); ctx.arc(autoCenter.x, autoCenter.y, 6, 0, TAU); ctx.fill();
       }
 
       // shots (web strands)
