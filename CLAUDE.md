@@ -102,7 +102,30 @@ Yitzy_Rosenberg_CV.pdf  Resume download (linked from contact section)
 yitzy-rosenberg.vcf     vCard contact file (linked from contact section)
 CNAME                   GitHub Pages custom domain: bitzyspider.com
 .nojekyll               Tells GitHub Pages not to run Jekyll
+
+game.html               "Bug Hunt" — standalone arcade game prototype.
+                        NOT linked from the site; test at /game.html.
+                        Fully self-contained (HTML+CSS+JS, no dependencies).
+                        Safe to iterate on without touching index.html.
 ```
+
+## Bug Hunt game (game.html)
+
+A standalone arcade game built on the site's spider brand. Lives entirely in `game.html` — the main site never references it, so it can be iterated on freely.
+
+**Controls:** spider follows the mouse (desktop) or finger drag (mobile). Click / quick-tap / SPACE shoots a web at the nearest bug (costs 30 silk from a regenerating meter). Webbed bugs get stuck and struggle; walking over them "wraps" them for 1.5x points. P pauses, M mutes.
+
+**Bug types** (unlock by level): fly (L1, catch on contact), moth (L2, fast), beetle (L3, must be webbed first), wasp (L4, chases and stings — costs a heart), firefly (L5, fast bonus that despawns after 7s), dragonfly boss (every 5th level, takes 3 webs).
+
+**Progression:** quota of bugs per level (`8 + level*4`, boss counts as 5). Between levels an upgrade shop spends points (same number as score, tracked separately as `cash`): Swift Legs, Silk Range, Silk Glands, Strong Grip, Extra Heart. Hearts refill +1 per level clear. High score and lifetime "bugs debugged" persist in localStorage under `bughunt_*` keys.
+
+**Architecture notes:**
+- Single IIFE in `<script id="game-js">`; ES5 style matching the rest of the repo
+- State machine: `menu | play | shop | pause | over` — DOM overlays per state, canvas renders always
+- The menu runs an ambient autopilot (spider chases flies) behind the card
+- The spider drawing is verbatim from the site's mobile corner spider (body/head/eyes/fangs/leg geometry), so the brand stays consistent
+- Input uses pointer events only (works for both mouse and touch); a "tap" is pointerup within 280ms and <16px of pointerdown
+- The game JS can be syntax-checked with `node --check` and smoke-tested headlessly by stubbing window/document/canvas (see session history — menu → play → shop → game over all run in Node)
 
 ## The React app (inside index-ZZwLr-Wf.js)
 
