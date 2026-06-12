@@ -14,16 +14,17 @@
       color: #fff; -webkit-user-select: none; user-select: none;
       -webkit-tap-highlight-color: transparent;
     }
-    #game { position: fixed; inset: 0; touch-action: none; display: block; }
+    #game { position: fixed; left: 0; top: 0; touch-action: none; display: block; }
+    body.windowed #game { box-shadow: 0 0 0 1px #27272a; border-radius: 10px; }
 
     /* ---------- HUD ---------- */
     #hud { display: none; }
     body.playing #hud { display: block; }
     .hud { position: fixed; pointer-events: none; z-index: 10; text-shadow: 0 1px 4px #000; }
-    #hudTL { top: calc(env(safe-area-inset-top, 0px) + 12px); left: 14px; font-size: 12px; line-height: 1.7; }
+    #hudTL { top: calc(var(--ay, 0px) + env(safe-area-inset-top, 0px) + 12px); left: calc(var(--ax, 0px) + 14px); font-size: 12px; line-height: 1.7; }
     #hudTL .red { color: #dc2626; }
     #hudTL .dim { color: #71717a; }
-    #hudTR { top: calc(env(safe-area-inset-top, 0px) + 12px); right: 14px; pointer-events: auto; display: flex; gap: 8px; }
+    #hudTR { top: calc(var(--ay, 0px) + env(safe-area-inset-top, 0px) + 12px); right: calc(var(--arx, 0px) + 14px); pointer-events: auto; display: flex; gap: 8px; }
     .icoBtn {
       background: rgba(0,0,0,0.5); border: 1px solid #3f3f46; color: #d4d4d8;
       border-radius: 10px; width: 40px; height: 40px; font-size: 16px; cursor: pointer;
@@ -31,12 +32,12 @@
     }
     .icoBtn:active { transform: scale(0.94); }
     #hudB {
-      bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); left: 50%;
+      bottom: calc(var(--aby, 0px) + env(safe-area-inset-bottom, 0px) + 14px); left: 50%;
       transform: translateX(-50%); width: min(380px, 64vw); text-align: center;
     }
     #hudBR {
-      bottom: calc(env(safe-area-inset-bottom, 0px) + 14px);
-      right: 14px; pointer-events: auto;
+      bottom: calc(var(--aby, 0px) + env(safe-area-inset-bottom, 0px) + 14px);
+      right: calc(var(--arx, 0px) + 14px); pointer-events: auto;
     }
     #btnWeb {
       background: rgba(0,0,0,0.55); border: 1px solid #3f3f46; color: #d4d4d8;
@@ -118,6 +119,17 @@
     #shopCash { color: #dc2626; font-weight: 700; }
 
     .bugLegend { display: flex; flex-wrap: wrap; gap: 6px 14px; justify-content: center; font-size: 10px; color: #71717a; margin: 14px 0 4px; line-height: 1.8; }
+
+    /* ---------- Arena size picker ---------- */
+    .sizeRow { display: flex; gap: 8px; justify-content: center; align-items: center; margin: 4px 0 14px; }
+    .sizeRow .lbl { font-size: 9px; letter-spacing: 0.25em; color: #52525b; margin-right: 4px; }
+    .sizeBtn {
+      background: transparent; border: 1px solid #3f3f46; color: #a1a1aa;
+      border-radius: 99px; padding: 7px 14px; font-size: 10px; font-weight: 700;
+      letter-spacing: 0.1em; cursor: pointer; font-family: inherit;
+    }
+    .sizeBtn.on { border-color: #dc2626; color: #fff; background: rgba(220,38,38,0.18); }
+    .sizeBtn:active { transform: scale(0.96); }
   </style>
 </head>
 <body>
@@ -150,7 +162,7 @@
     <div class="card">
       <div class="brand">BITZYSPIDER ARCADE</div>
       <h1>BUG<span class="red">HUNT</span></h1>
-      <div style="color:#52525b;font-size:9px;letter-spacing:0.2em;margin-top:6px" id="verLabel">v7</div>
+      <div style="color:#52525b;font-size:9px;letter-spacing:0.2em;margin-top:6px" id="verLabel">v8</div>
       <div class="sub" id="howTo"></div>
       <div class="bugLegend">
         <span>fly &middot; catch it</span>
@@ -164,8 +176,17 @@
         <span style="color:#14b8a6">dragonfly &middot; tough, tears webs</span>
         <span style="color:#eab308">&#9670; hornet queen &middot; spawns wasps</span>
         <span style="color:#22c55e">&#9670; mantis &middot; stalks &amp; strikes</span>
+        <span style="color:#d4d4d8">&#9670; moth king &middot; summons the swarm</span>
+        <span style="color:#f97316">&#9670; tarantula hawk &middot; hunts YOU</span>
+        <span style="color:#fbbf24">bosses drop power-ups — grab them!</span>
       </div>
       <div class="statline">BEST <span class="red" id="mHigh">0</span> &nbsp;&middot;&nbsp; BUGS DEBUGGED <span class="red" id="mTotal">0</span></div>
+      <div class="sizeRow">
+        <span class="lbl">ARENA</span>
+        <button class="sizeBtn" id="sz_small">SMALL</button>
+        <button class="sizeBtn" id="sz_medium">MEDIUM</button>
+        <button class="sizeBtn" id="sz_full">FULL</button>
+      </div>
       <button class="btn" id="btnStart">START HUNTING</button>
     </div>
   </div>
@@ -263,7 +284,7 @@
     };
 
     // ---------- stats / upgrades ----------
-    var GAME_VERSION = 'v7';
+    var GAME_VERSION = 'v8';
     var S; // current run stats
     function freshStats(){ return { speed: 0, range: 0, silk: 0, grip: 0, tough: 0, venom: 0, heartT: 0, dblShot: 0, fortify: 0, bomb: 0, extraLife: 0 }; }
     function wrapMult(){ return 1.5 + (S ? S.venom * 0.25 : 0); } // wrapped catch bonus
@@ -345,7 +366,9 @@
       // occasionally from level 9. 3 web shots to down, tears strands.
       boss:    { r: 20, sp: 420, score: 150, web: true,  min: 9, w: 0.2, hp: 3, tears: true, qv: 3, esc: 0 },
       queen:   { r: 24, sp: 160, score: 350, web: true,  min: 99, w: 0, hp: 5, boss: true, esc: 0 },
-      mantis:  { r: 22, sp: 320, score: 500, web: true,  min: 99, w: 0, hp: 4, boss: true, esc: 0, sting: true }
+      mantis:  { r: 22, sp: 320, score: 500, web: true,  min: 99, w: 0, hp: 4, boss: true, esc: 0, sting: true },
+      mothking:{ r: 28, sp: 240, score: 550, web: true,  min: 99, w: 0, hp: 6, boss: true, esc: 0 },
+      hawk:    { r: 18, sp: 300, score: 650, web: true,  min: 99, w: 0, hp: 5, boss: true, esc: 0, sting: true }
     };
 
     // ---------- game state ----------
@@ -368,6 +391,20 @@
     var autoCenter = null;          // center of auto-web spiral
     var autoTimer = 0;              // time until next auto-strand
     var bombs = 0;                  // purchased bombs available this run
+    var drops = [];                 // boss death pickups — walk over to collect
+    var buffScoreUntil = 0;         // 2x points (mantis charm)
+    var buffSpeedUntil = 0;         // 1.5x speed (moth dust)
+    // every boss releases something special when wrapped:
+    var DROPS = {
+      queen:    { name: 'ROYAL JELLY',   color: '#eab308',
+                  apply: function(){ hearts = maxHearts(); floatTxt(spider.x, spider.y - 30, 'ROYAL JELLY — hearts full!', '#eab308'); } },
+      mantis:   { name: 'PRAYING CHARM', color: '#22c55e',
+                  apply: function(){ buffScoreUntil = now() + 20000; floatTxt(spider.x, spider.y - 30, 'PRAYING CHARM — 2x points!', '#22c55e'); } },
+      mothking: { name: 'MOTH DUST',     color: '#d4d4d8',
+                  apply: function(){ buffSpeedUntil = now() + 20000; floatTxt(spider.x, spider.y - 30, 'MOTH DUST — speed boost!', '#d4d4d8'); } },
+      hawk:     { name: 'HAWK STING',    color: '#f97316',
+                  apply: function(){ bombs++; floatTxt(spider.x, spider.y - 30, 'HAWK STING — free bomb! (B)', '#f97316'); } }
+    };
     var shownScore = 0;             // score ticker display value
     var hearts = 3, silk = 100, webSilk = 160, score = 0, cash = 0, level = 1, quota = 12, caught = 0;
     var invulnUntil = 0, shake = 0, flash = 0, spawnTimer = 0;
@@ -413,9 +450,42 @@
       o.x = Math.min(Math.max(o.x, 18), W - 18);
       o.y = Math.min(Math.max(o.y, 18), H - 18);
     }
+    // arena sizes: pick on the menu, persisted. windowed arenas center the
+    // canvas; ofsX/ofsY convert pointer coords and shift the HUD via CSS vars
+    var SIZES = { small: { w: 560, h: 420 }, medium: { w: 880, h: 620 }, full: null };
+    var sizeMode = load('size') || 'full';
+    if (!SIZES.hasOwnProperty(sizeMode)) sizeMode = 'full';
+    var ofsX = 0, ofsY = 0;
+    function setSize(m){
+      sizeMode = m;
+      save('size', m);
+      ['small', 'medium', 'full'].forEach(function(k){
+        var b = document.getElementById('sz_' + k);
+        if (b) b.classList.toggle('on', k === m);
+      });
+      resize();
+    }
     function resize(){
       dpr = Math.min(2, window.devicePixelRatio || 1);
-      W = window.innerWidth; H = window.innerHeight;
+      var vw = window.innerWidth, vh = window.innerHeight;
+      var sz = SIZES[sizeMode];
+      if (sz) {
+        W = Math.min(sz.w, vw - 16);
+        H = Math.min(sz.h, vh - 16);
+        ofsX = Math.floor((vw - W) / 2);
+        ofsY = Math.floor((vh - H) / 2);
+      } else {
+        W = vw; H = vh; ofsX = 0; ofsY = 0;
+      }
+      document.body.classList.toggle('windowed', !!sz);
+      cvs.style.left = ofsX + 'px'; cvs.style.top = ofsY + 'px';
+      try {
+        var rs = document.documentElement.style;
+        rs.setProperty('--ax', ofsX + 'px');
+        rs.setProperty('--ay', ofsY + 'px');
+        rs.setProperty('--arx', (vw - ofsX - W) + 'px');
+        rs.setProperty('--aby', (vh - ofsY - H) + 'px');
+      } catch(e){}
       cvs.width = W * dpr; cvs.height = H * dpr;
       cvs.style.width = W + 'px'; cvs.style.height = H + 'px';
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -502,11 +572,12 @@
       if (kind === 'boss' && state === 'play') floatTxt(Math.min(Math.max(x, 60), W - 60), Math.min(Math.max(y, 60), H - 60), 'dragonfly!', '#14b8a6');
     }
     function pickBoss(){
-      // queen first (level 5), then alternate queen/mantis every 5th level
-      return Math.floor(level / 5) % 2 === 1 ? 'queen' : 'mantis';
+      // rotation: queen (L5), mantis (L10), moth king (L15), hawk (L20), repeat
+      var roster = ['queen', 'mantis', 'mothking', 'hawk'];
+      return roster[(Math.floor(level / 5) - 1) % 4];
     }
-    var BOSS_NAMES = { boss: 'DRAGONFLY', queen: 'HORNET QUEEN', mantis: 'MANTIS' };
-    var BOSS_COLORS = { boss: '#14b8a6', queen: '#eab308', mantis: '#22c55e' };
+    var BOSS_NAMES = { boss: 'DRAGONFLY', queen: 'HORNET QUEEN', mantis: 'MANTIS', mothking: 'MOTH KING', hawk: 'TARANTULA HAWK' };
+    var BOSS_COLORS = { boss: '#14b8a6', queen: '#eab308', mantis: '#22c55e', mothking: '#d4d4d8', hawk: '#f97316' };
     function spawnBoss(){
       var kind = pickBoss();
       spawnBug(kind);
@@ -575,11 +646,17 @@
         freezeUntil = t + (b.t.boss ? 120 : 60); // hit-stop
         ripples.push({ x: b.x, y: b.y, r: 6, life: 1 });
       }
+      if (t < buffScoreUntil) pts *= 2; // praying charm
       score += pts; cash += pts;
       caught += b.qv;
       totalBugs++;
       // every catch feeds the web meter — hunting fuels building
       webSilk = Math.min(webSilkMax(), webSilk + (wrapped ? 14 : 7));
+      // bosses release something special when they die
+      if (b.t.boss && DROPS[b.k]) {
+        drops.push({ x: b.x, y: b.y, k: b.k, born: t });
+        floatTxt(b.x, b.y - 34, DROPS[b.k].name + ' dropped!', DROPS[b.k].color);
+      }
       if (score > hi) hi = score;
       floatTxt(b.x, b.y - 14, '+' + pts, wrapped ? '#dc2626' : '#fff');
       pop(b.x, b.y, wrapped ? '#dc2626' : '#9ca3af', 12, 3);
@@ -623,6 +700,7 @@
       comboN = 0; comboUntil = 0; shownScore = 0; freezeUntil = 0;
       lastInputAt = now();
       autoWeb = false; autoCenter = null; bombs = 0;
+      drops = []; buffScoreUntil = 0; buffSpeedUntil = 0;
       var ba = document.getElementById('btnAuto');
       if (ba) ba.classList.remove('on');
       initLegs();
@@ -651,6 +729,8 @@
     }
     function levelClear(){
       SFX.level();
+      // any uncollected boss drops apply automatically — never lose one
+      while (drops.length) { DROPS[drops[0].k].apply(); drops.shift(); }
       var bonus = 20 + level * 15;
       cash += bonus;
       for (var i = 0; i < bugs.length; i++) pop(bugs[i].x, bugs[i].y, '#52525b', 4, 2);
@@ -676,7 +756,7 @@
     function toMenu(){
       save('hi', hi); save('total', totalBugs);
       bugs = []; shots = []; strands = []; globs = []; slimes = [];
-      hubs = []; crossings = []; ripples = [];
+      hubs = []; crossings = []; ripples = []; drops = [];
       building = null;
       if (autoWeb) stopAutoWeb();
       syncWebBtns();
@@ -750,8 +830,11 @@
 
     // ---------- input ----------
     var pDown = false, pStart = null;
+    function evX(e){ return e.clientX - ofsX; }
+    function evY(e){ return e.clientY - ofsY; }
     function setTarget(e){
-      target.x = e.clientX; target.y = e.clientY;
+      target.x = evX(e); target.y = evY(e);
+      clampInto(target);
       lastInputAt = now();
       wanderVel.x = 0; wanderVel.y = 0;
     }
@@ -761,7 +844,7 @@
       if (uiHit(e)) return;
       if (state !== 'play') return;
       pDown = true;
-      pStart = { x: e.clientX, y: e.clientY, t: Date.now() };
+      pStart = { x: evX(e), y: evY(e), t: Date.now() };
       setTarget(e);
     });
     window.addEventListener('pointermove', function(e){
@@ -772,9 +855,9 @@
       if (!pDown) return;
       pDown = false;
       if (state === 'play' && pStart) {
-        var d = Math.hypot(e.clientX - pStart.x, e.clientY - pStart.y);
+        var d = Math.hypot(evX(e) - pStart.x, evY(e) - pStart.y);
         // tap = aimed shot at the tap point
-        if (Date.now() - pStart.t < 280 && d < 16) shootWeb(e.clientX, e.clientY);
+        if (Date.now() - pStart.t < 280 && d < 16) shootWeb(evX(e), evY(e));
       }
       pStart = null;
     });
@@ -814,6 +897,10 @@
     document.getElementById('btnWeb').addEventListener('click', function(e){ e.stopPropagation(); audio(); startOrPin(); });
     document.getElementById('btnCut').addEventListener('click', function(e){ e.stopPropagation(); detach(); });
     document.getElementById('btnAuto').addEventListener('click', function(e){ e.stopPropagation(); audio(); toggleAutoWeb(); });
+    ['small', 'medium', 'full'].forEach(function(k){
+      document.getElementById('sz_' + k).addEventListener('click', function(e){ e.stopPropagation(); setSize(k); });
+    });
+    setSize(sizeMode); // apply persisted arena size + highlight the button
 
     // menu copy
     var isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints;
@@ -915,6 +1002,7 @@
       var mx = dx * k, my = dy * k;
       // hard cap: this is what makes webs worth building
       var cap = topSpeed() * dt;
+      if (t < buffSpeedUntil) cap *= 1.5;    // moth dust
       if (t < spider.slowUntil) cap *= 0.45; // stinkbug spit
       else if (inSlime()) cap *= 0.55;       // slug slime
       var mlen = Math.hypot(mx, my);
@@ -1007,12 +1095,22 @@
     // Press W / the WEB button to anchor a strand at your position; move,
     // press again to pin it. Stays in build mode so you can keep weaving.
     function snapPoint(x, y){
-      for (var i = 0; i < strands.length; i++) {
-        var s = strands[i];
+      var i, s;
+      // endpoints first (preferred: joins build hubs)
+      for (i = 0; i < strands.length; i++) {
+        s = strands[i];
         if (dist2(x, y, s.x1, s.y1) < STRAND_SNAP * STRAND_SNAP) return { x: s.x1, y: s.y1 };
         if (dist2(x, y, s.x2, s.y2) < STRAND_SNAP * STRAND_SNAP) return { x: s.x2, y: s.y2 };
       }
-      return { x: x, y: y };
+      // then anywhere along a strand — lets you weld onto / repair an
+      // existing web mid-line (a T-junction, which counts as support)
+      var bestP = null, bestD = STRAND_SNAP * STRAND_SNAP;
+      for (i = 0; i < strands.length; i++) {
+        var cp = closestOnSeg(x, y, strands[i]);
+        var d = dist2(x, y, cp.x, cp.y);
+        if (d < bestD) { bestD = d; bestP = cp; }
+      }
+      return bestP || { x: x, y: y };
     }
     function strandCost(len){ return Math.max(5, Math.ceil(len * STRAND_COST_PER_PX)); }
     function syncWebBtns(){
@@ -1188,8 +1286,16 @@
         ang1: Math.atan2(d1y, d1x), ang2: Math.atan2(d2y, d2x)
       };
     }
+    // true if point (px,py) rests on strand o's mid-line (not near its ends)
+    function endOnSeg(px, py, o){
+      var cp = closestOnSeg(px, py, o);
+      if (dist2(px, py, cp.x, cp.y) > 4) return false;
+      if (dist2(cp.x, cp.y, o.x1, o.y1) < 9 || dist2(cp.x, cp.y, o.x2, o.y2) < 9) return false;
+      return true;
+    }
     // a strand holds if it has >= 2 attachments (shared endpoints count 1,
-    // a mid-line crossing pins it and counts 2). loose ends fray away.
+    // a T-junction weld counts 1, a mid-line crossing pins it and counts 2).
+    // loose ends fray away.
     function recalcSupport(){
       var t = now(), i, j;
       crossings = [];
@@ -1202,6 +1308,10 @@
           // shared endpoints
           if (dist2(s.x1, s.y1, o.x1, o.y1) < 4 || dist2(s.x1, s.y1, o.x2, o.y2) < 4) { att[i]++; att[j]++; }
           if (dist2(s.x2, s.y2, o.x1, o.y1) < 4 || dist2(s.x2, s.y2, o.x2, o.y2) < 4) { att[i]++; att[j]++; }
+          // T-junctions: an endpoint welded onto the other strand's mid-line
+          // (how you repair / extend an existing web)
+          else if (endOnSeg(s.x1, s.y1, o) || endOnSeg(s.x2, s.y2, o) ||
+                   endOnSeg(o.x1, o.y1, s) || endOnSeg(o.x2, o.y2, s)) { att[i]++; att[j]++; }
           // mid-line crossings
           var cr = segCross(s, o);
           if (cr) { crossings.push(cr); att[i] += 2; att[j] += 2; }
@@ -1517,6 +1627,47 @@
             capSpeed(b, b.t.sp);
           }
         }
+        else if (b.k === 'mothking') {
+          // moth king: huge erratic darter, summons moths to swarm you
+          wander(b, dt, 2600);
+          b.vy += Math.sin(t * 0.004 + b.wing) * 120 * dt;
+          b.spawnT = (b.spawnT || rand(2.5, 4)) - dt;
+          if (b.spawnT <= 0 && state === 'play') {
+            b.spawnT = rand(3.5, 5.5);
+            var kMoths = 0;
+            for (var ki = 0; ki < bugs.length; ki++) if (bugs[ki].k === 'moth' && bugs[ki].kingSpawn && !bugs[ki].dead) kMoths++;
+            if (kMoths < 3) {
+              spawnBug('moth');
+              var km = bugs[bugs.length - 1];
+              km.x = b.x + rand(-24, 24); km.y = b.y + rand(-24, 24);
+              km.kingSpawn = true;
+              pop(b.x, b.y, '#d4d4d8', 8, 2);
+              floatTxt(b.x, b.y - 24, 'moths!', '#d4d4d8');
+            }
+          }
+        }
+        else if (b.k === 'hawk') {
+          // tarantula hawk: spider-hunting wasp — relentless pursuit, dive bursts
+          if (b.diveT > 0) {
+            b.diveT -= dt;
+            if (b.diveT <= 0) b.pauseT = rand(0.6, 1.2);
+          } else if (b.pauseT > 0) {
+            b.pauseT -= dt;
+            b.vx *= 0.92; b.vy *= 0.92;
+          } else {
+            var hdx = spider.x - b.x, hdy = spider.y - b.y, hl = Math.hypot(hdx, hdy) || 1;
+            if (hl < 240 && state === 'play') {
+              // dive! a fast committed burst at the spider
+              b.vx = hdx / hl * b.t.sp * 1.6; b.vy = hdy / hl * b.t.sp * 1.6;
+              b.diveT = 0.35;
+              pop(b.x, b.y, '#f97316', 5, 2);
+            } else {
+              // close in steadily
+              b.vx += hdx / hl * 600 * dt; b.vy += hdy / hl * 600 * dt;
+              capSpeed(b, b.t.sp * 0.7);
+            }
+          }
+        }
 
         // snared by your silk trail: crawl speed
         var snared = b.snaredUntil && t < b.snaredUntil;
@@ -1574,6 +1725,18 @@
     }
 
     function collide(t){
+      // boss drops: walk over to collect
+      for (var di2 = drops.length - 1; di2 >= 0; di2--) {
+        var dr = drops[di2];
+        if (dist2(spider.x, spider.y, dr.x, dr.y) < 34 * 34) {
+          DROPS[dr.k].apply();
+          pop(dr.x, dr.y, DROPS[dr.k].color, 14, 3);
+          ripples.push({ x: dr.x, y: dr.y, r: 6, life: 1 });
+          SFX.buy();
+          drops.splice(di2, 1);
+          updateHud(true);
+        }
+      }
       // catches happen at the spider's mouth (original: pos + 15*facing, 30px)
       var cr = catchR();
       var sc = spiderScale();
@@ -1675,6 +1838,9 @@
       }
       var wl = autoWeb ? 'SILK · AUTO WEB…' : building ? 'SILK · WEAVING…' : 'SILK · STRANDS ' + strands.length;
       if (bombs > 0) wl += ' · BOMBS ' + bombs;
+      var tb = now();
+      if (tb < buffScoreUntil) wl += ' · 2x PTS ' + Math.ceil((buffScoreUntil - tb) / 1000) + 's';
+      if (tb < buffSpeedUntil) wl += ' · FAST ' + Math.ceil((buffSpeedUntil - tb) / 1000) + 's';
       if (hudCache.webs !== wl) {
         hudCache.webs = wl;
         document.getElementById('silkLbl').textContent = wl;
@@ -1861,6 +2027,25 @@
         ctx.beginPath(); ctx.moveTo(spider.x, spider.y); ctx.lineTo(s.x, s.y); ctx.stroke();
         ctx.fillStyle = '#fff';
         ctx.beginPath(); ctx.arc(s.x, s.y, 3, 0, TAU); ctx.fill();
+      }
+
+      // boss drops: pulsing glowing pickups with a name tag
+      for (i = 0; i < drops.length; i++) {
+        var drp = drops[i];
+        var dInfo = DROPS[drp.k];
+        var pulse = 0.6 + Math.sin(t * 0.006 + i) * 0.4;
+        ctx.fillStyle = dInfo.color;
+        ctx.globalAlpha = 0.15 * pulse;
+        ctx.beginPath(); ctx.arc(drp.x, drp.y, 22 + pulse * 6, 0, TAU); ctx.fill();
+        ctx.globalAlpha = 0.9;
+        ctx.beginPath(); ctx.arc(drp.x, drp.y, 7, 0, TAU); ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.arc(drp.x - 2, drp.y - 2, 2, 0, TAU); ctx.fill();
+        ctx.font = 'bold 9px ui-monospace, Menlo, monospace';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = dInfo.color;
+        ctx.fillText(dInfo.name, drp.x, drp.y + 22);
       }
 
       // bugs
@@ -2190,6 +2375,56 @@
         ctx.beginPath(); ctx.moveTo(-4, 5); ctx.lineTo(-10, 14); ctx.lineTo(-16, 10); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(-14, -4); ctx.lineTo(-20, -12); ctx.lineTo(-26, -8); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(-14, 4); ctx.lineTo(-20, 12); ctx.lineTo(-26, 8); ctx.stroke();
+      }
+      else if (b.k === 'mothking') {
+        // moth king: huge pale moth with eye-spot wings and antennae crown
+        ctx.fillStyle = 'rgba(228,228,231,0.75)';
+        ctx.save(); ctx.scale(1, flap);
+        ctx.beginPath(); ctx.ellipse(-2, -14, 12, 18, 0.35, 0, TAU); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(-2, 14, 12, 18, -0.35, 0, TAU); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(-12, -10, 8, 12, 0.55, 0, TAU); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(-12, 10, 8, 12, -0.55, 0, TAU); ctx.fill();
+        // eye-spots on the wings
+        ctx.fillStyle = '#52525b'; dot(-2, -14, 4.5); dot(-2, 14, 4.5);
+        ctx.fillStyle = '#a78bfa'; dot(-2, -14, 2); dot(-2, 14, 2);
+        ctx.restore();
+        // furry body
+        ctx.fillStyle = '#a1a1aa';
+        ctx.beginPath(); ctx.ellipse(0, 0, 12, 6, 0, 0, TAU); ctx.fill();
+        ctx.fillStyle = '#d4d4d8';
+        ctx.beginPath(); ctx.ellipse(6, 0, 6, 5, 0, 0, TAU); ctx.fill();
+        // feathered antennae (the crown)
+        ctx.strokeStyle = '#d4d4d8'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(10, -2); ctx.lineTo(18, -9); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(10, 2); ctx.lineTo(18, 9); ctx.stroke();
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(14, -6); ctx.lineTo(17, -4); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(14, 6); ctx.lineTo(17, 4); ctx.stroke();
+        ctx.fillStyle = '#dc2626'; dot(11, -1.5, 1.4); dot(11, 1.5, 1.4);
+      }
+      else if (b.k === 'hawk') {
+        // tarantula hawk: blue-black body, vivid orange wings — spider hunter
+        ctx.fillStyle = 'rgba(249,115,22,0.75)';
+        ctx.save(); ctx.scale(1, flap);
+        ctx.beginPath(); ctx.ellipse(-1, -8, 6, 12, 0.35, 0, TAU); ctx.fill();
+        ctx.beginPath(); ctx.ellipse(-1, 8, 6, 12, -0.35, 0, TAU); ctx.fill();
+        ctx.restore();
+        // metallic blue-black body
+        ctx.fillStyle = '#1e1b4b';
+        ctx.beginPath(); ctx.ellipse(-5, 0, 11, 6, 0, 0, TAU); ctx.fill();
+        ctx.fillStyle = '#312e81';
+        ctx.beginPath(); ctx.ellipse(4, 0, 6, 5, 0, 0, TAU); ctx.fill();
+        ctx.fillStyle = '#1e1b4b'; dot(11, 0, 4.5);
+        ctx.fillStyle = '#f97316'; dot(13, -1.8, 1.6); dot(13, 1.8, 1.6);
+        // long dangling legs (it hunts on foot)
+        ctx.strokeStyle = '#312e81'; ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.moveTo(2, -4); ctx.lineTo(6, -11); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(2, 4); ctx.lineTo(6, 11); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(-2, -5); ctx.lineTo(-2, -12); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(-2, 5); ctx.lineTo(-2, 12); ctx.stroke();
+        // big stinger
+        ctx.fillStyle = '#f97316';
+        ctx.beginPath(); ctx.moveTo(-15, -2.5); ctx.lineTo(-21, 0); ctx.lineTo(-15, 2.5); ctx.fill();
       }
 
       // snared by the trail: a few clinging strands
