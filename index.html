@@ -1258,5 +1258,51 @@
       }, 200);
     })();
     </script>
+
+    <script>
+    // Bug Hunt game link: fixed pill (all devices) + hero line (desktop)
+    (function(){
+      // fixed pill, bottom-right, styled like the bugs-debugged counter
+      var poll = setInterval(function(){
+        if (!document.body) return;
+        clearInterval(poll);
+        var a = document.createElement('a');
+        a.href = '/game.html';
+        a.id = 'bughunt-link';
+        a.innerHTML = 'WANT MORE BUGS? <span style="color:#dc2626;font-weight:700">PLAY BUG HUNT &rarr;</span>';
+        a.style.cssText = 'position:fixed;bottom:1rem;right:1rem;z-index:55;' +
+          'font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;letter-spacing:0.06em;' +
+          'color:rgba(255,255,255,0.55);text-decoration:none;background:rgba(0,0,0,0.6);' +
+          'border:1px solid #27272a;border-radius:9999px;padding:8px 14px;cursor:none;' +
+          'transition:border-color 0.2s,color 0.2s';
+        a.addEventListener('mouseenter', function(){ a.style.borderColor = 'rgba(220,38,38,0.5)'; a.style.color = '#fff'; });
+        a.addEventListener('mouseleave', function(){ a.style.borderColor = '#27272a'; a.style.color = 'rgba(255,255,255,0.55)'; });
+        document.body.appendChild(a);
+      }, 200);
+
+      // desktop: a "play the full game" line under the spider hint in the hero
+      if (!('ontouchstart' in window || navigator.maxTouchPoints)) {
+        var tries = 0;
+        var poll2 = setInterval(function(){
+          tries++;
+          var hero = document.querySelector('[id] h1');
+          var tagline = hero && hero.parentElement && hero.parentElement.querySelector('.font-mono');
+          if (!tagline) return;
+          // wait briefly for the spider-hint line to inject first so we land under it
+          var hint = null;
+          var sib = tagline.nextElementSibling;
+          if (sib && /guide the spider/.test(sib.textContent)) hint = sib;
+          if (!hint && tries < 15) return;
+          clearInterval(poll2);
+          var p = document.createElement('p');
+          p.className = 'font-mono text-xs';
+          p.style.cssText = 'color:rgba(255,255,255,0.25);margin-top:0.4rem;letter-spacing:0.05em';
+          p.innerHTML = 'Caught them all? <a href="/game.html" style="color:rgba(220,38,38,0.85);text-decoration:underline;cursor:none">Play the full game &rarr;</a>';
+          var anchor = hint || tagline;
+          anchor.parentNode.insertBefore(p, anchor.nextSibling);
+        }, 200);
+      }
+    })();
+    </script>
   </body>
 </html>

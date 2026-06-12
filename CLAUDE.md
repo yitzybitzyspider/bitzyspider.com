@@ -62,6 +62,7 @@ index.html              Entry point. Loads the React bundle and contains:
                         - Community section redesign (3 photo cards)
                         - Section spacing unifier
                         - Desktop spider hint text
+                        - Bug Hunt game link (fixed pill + hero line)
                         - Logo click-to-top handler
                         - Desktop nav link injection (Skills, Education)
                         - Mobile slide-up hamburger nav menu
@@ -103,15 +104,19 @@ yitzy-rosenberg.vcf     vCard contact file (linked from contact section)
 CNAME                   GitHub Pages custom domain: bitzyspider.com
 .nojekyll               Tells GitHub Pages not to run Jekyll
 
-game.html               "Bug Hunt" — standalone arcade game prototype.
-                        NOT linked from the site; test at /game.html.
+game.html               "Bug Hunt" — standalone arcade game. Linked from the
+                        main site via a fixed bottom-right pill ("WANT MORE
+                        BUGS? PLAY BUG HUNT →") and a hero hint line, both
+                        injected by a script at the end of index.html.
                         Fully self-contained (HTML+CSS+JS, no dependencies).
                         Safe to iterate on without touching index.html.
 ```
 
 ## Bug Hunt game (game.html)
 
-A standalone arcade game built on the site's spider brand. Lives entirely in `game.html` — the main site never references it, so it can be iterated on freely.
+A standalone arcade game built on the site's spider brand. Lives entirely in `game.html`; the main site links to it via the injected pill/hero-line script in `index.html` (the game itself still has no dependency on the main site).
+
+**Tutorial (optional):** a TUTORIAL ghost button on the menu starts a guided practice run (`startTutorial()` / `tutUpdate()` / `TUT_STEPS`): no quota (`hQuota` shows "practice", rank shows TUTORIAL), no automatic spawning — each step spawns what it needs. Steps: MOVE (glide to a pulsing ring at `tutMark`), CATCH (fly), SHOOT→WRAP (beetle, message switches mid-step when it's webbed), WEAVE (1 strand), CROSS (1 crossing), TRAP (moth), and on desktop only RECLAIM (eat a strand, E). Completion banner, then auto-returns to menu. The banner is `#tutMsg`, positioned by the same `--ay` arena var as the HUD.
 
 **Controls:** spider follows the mouse (desktop) or finger drag (mobile), with a deliberate hard speed cap — the spider is slow on purpose so webs matter. Click / quick-tap / SPACE shoots a web **where you click** (aimed, with ±28° aim-assist homing and a generous hit radius; costs 30 silk from a regenerating meter). **W or the on-screen WEB button** anchors a strand at your position; walk, press again to pin it (silk cost ≈ length/12, min 5). It chains — you stay anchored at the pin point to keep weaving; pressing with <24px of travel exits build mode. The **silk trail dragging behind the spider snares** bugs that touch it (heavy slow for 1.6s, tears the trail segment; boss is immune). Stuck/webbed bugs struggle; walking over them "wraps" them for 1.5x points. P pauses, M mutes.
 
