@@ -45,6 +45,13 @@
     }
     #btnWeb.on { border-color: #dc2626; color: #fff; background: rgba(220,38,38,0.25); }
     #btnWeb:active { transform: scale(0.95); }
+    #btnCut {
+      display: none; background: rgba(0,0,0,0.55); border: 1px solid #3f3f46; color: #a1a1aa;
+      border-radius: 14px; padding: 12px 14px; font-size: 12px; font-weight: 700;
+      letter-spacing: 0.08em; cursor: pointer; font-family: inherit; margin-right: 8px;
+    }
+    #btnCut.show { display: inline-block; }
+    #btnCut:active { transform: scale(0.95); }
     #hearts { font-size: 15px; letter-spacing: 3px; margin-bottom: 4px; }
     #silkBar { height: 6px; background: #27272a; border-radius: 99px; overflow: hidden; border: 1px solid #18181b; }
     #silkFill { height: 100%; background: #dc2626; width: 100%; }
@@ -122,7 +129,7 @@
       <div id="silkLbl">SILK</div>
     </div>
     <div class="hud" id="hudBR">
-      <button id="btnWeb">&#128376; WEB</button>
+      <button id="btnCut">&#10005; DETACH</button><button id="btnWeb">&#128376; WEB</button>
     </div>
   </div>
 
@@ -238,6 +245,11 @@
     function webDur(){ return 4000 + S.grip * 700; }
     function toughMult(){ return 1 + S.tough * 0.4; }       // bugs stuck on strands longer
     function maxHearts(){ return 3 + S.heartT; }
+    // start small, grow a little every level cleared (plus grip)
+    function spiderScale(){
+      var lv = state === 'menu' ? 4 : level;
+      return Math.min(1.25, 0.62 + (lv - 1) * 0.05 + (S ? S.grip * 0.04 : 0));
+    }
     var WEB_COST = 30;
     var STRAND_COST_PER_PX = 1 / 12;  // silk per pixel of strand
     var STRAND_MIN = 24, STRAND_SNAP = 18, STRAND_MAX_COUNT = 36;
@@ -280,6 +292,14 @@
     var building = null; // anchor point while laying a strand
     var hearts = 3, silk = 100, score = 0, cash = 0, level = 1, quota = 12, caught = 0;
     var invulnUntil = 0, shake = 0, flash = 0, spawnTimer = 0;
+    var dust = []; // ambient drifting motes
+    function initDust(){
+      dust = [];
+      for (var i = 0; i < 16; i++) {
+        dust.push({ x: Math.random() * W, y: Math.random() * H,
+          vx: rand(-6, 6), vy: rand(-4, 4), r: rand(0.6, 1.6), a: rand(0.05, 0.16) });
+      }
+    }
 
     // ---- leg rig (verbatim geometry from the site's interactive spider) ----
     var HIPS = [
@@ -290,15 +310,18 @@
       { x: 60, y: -30 }, { x: 55, y: -50 }, { x: 35, y: -60 }, { x: -10, y: -65 },
       { x: 60, y: 30 },  { x: 55, y: 50 },  { x: 35, y: 60 },  { x: -10, y: 65 }
     ];
-    var STEP_DIST = 60;   // foot steps when stretched past this (original zy)
-    var STEP_LERP = 0.35; // per-frame foot lerp while stepping
+    var STEP_DIST = 34;   // foot steps when stretched past this — small = lively scuttle
+    var STEP_LERP = 0.3;  // per-frame foot lerp while stepping
     // alternating tetrapod gait: opposite groups so 4 feet always planted
     var GAIT = [0, 1, 0, 1, 1, 0, 1, 0];
     var legs = [];
     function initLegs(){
       legs = [];
+      var sc = spiderScale();
       for (var i = 0; i < 8; i++) {
-        legs.push({ fx: spider.x, fy: spider.y, tx: spider.x, ty: spider.y, stepping: false });
+        // feet start planted at their ideal positions — no spawn scramble
+        var fx = spider.x + FEET[i].x * sc, fy = spider.y + FEET[i].y * sc;
+        legs.push({ fx: fx, fy: fy, ix: fx, iy: fy, prog: 1, stepping: false });
       }
     }
 
@@ -367,6 +390,7 @@
     resize();
     spider.x = target.x = W / 2; spider.y = target.y = H / 2;
     initLegs();
+    initDust();
 
     // ---------- spawning ----------
     function pickType(){
@@ -493,8 +517,7 @@
     function startLevel(){
       bugs = []; shots = []; globs = []; slimes = [];
       building = null;
-      var btnW = document.getElementById('btnWeb');
-      if (btnW) btnW.classList.remove('on');
+      syncWebBtns();
       caught = 0; spawnTimer = 0;
       quota = 8 + level * 4;
       silk = silkMax();
@@ -529,8 +552,7 @@
       save('hi', hi); save('total', totalBugs);
       bugs = []; shots = []; strands = []; globs = []; slimes = [];
       building = null;
-      var btnW = document.getElementById('btnWeb');
-      if (btnW) btnW.classList.remove('on');
+      syncWebBtns();
       document.getElementById('mHigh').textContent = hi;
       document.getElementById('mTotal').textContent = totalBugs;
       setState('menu');
@@ -610,7 +632,8 @@
     });
     window.addEventListener('keydown', function(e){
       if (e.code === 'Space') { e.preventDefault(); shootWeb(target.x, target.y); }
-      if (e.key === 'w' || e.key === 'W') toggleBuild();
+      if (e.key === 'w' || e.key === 'W') startOrPin();
+      if (e.key === 'x' || e.key === 'X' || e.key === 'Escape') detach();
       if (e.key === 'p' || e.key === 'P') togglePause();
       if (e.key === 'm' || e.key === 'M') toggleMute();
     });
@@ -637,13 +660,14 @@
     document.getElementById('btnRetry').addEventListener('click', function(){ startGame(); });
     document.getElementById('btnMenu').addEventListener('click', toMenu);
     document.getElementById('btnMute').addEventListener('click', function(e){ e.stopPropagation(); toggleMute(); });
-    document.getElementById('btnWeb').addEventListener('click', function(e){ e.stopPropagation(); audio(); toggleBuild(); });
+    document.getElementById('btnWeb').addEventListener('click', function(e){ e.stopPropagation(); audio(); startOrPin(); });
+    document.getElementById('btnCut').addEventListener('click', function(e){ e.stopPropagation(); detach(); });
 
     // menu copy
     var isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints;
     document.getElementById('howTo').innerHTML = isTouch
-      ? 'You are slow. Your silk is not.<br><b>DRAG</b> to move &middot; <b>TAP</b> to shoot a web where you tap.<br><b>WEB button</b>: anchor a strand, walk, press again to pin it. Weave strands together — bugs chew through lone threads, and connected webs survive breaks.<br>Walk over stuck bugs to <b>wrap</b> them for bonus points.'
-      : 'You are slow. Your silk is not.<br><b>MOVE</b> with the mouse &middot; <b>CLICK</b> to shoot a web where you click.<br><b>W</b>: anchor a strand, walk, press again to pin it. Weave strands together — bugs chew through lone threads, and connected webs survive breaks.<br>Walk over stuck bugs to <b>wrap</b> them for bonus points.';
+      ? 'You are small and slow. Your silk is not.<br><b>DRAG</b> to move &middot; <b>TAP</b> to shoot a web where you tap.<br><b>WEB</b>: anchor a strand, walk, <b>PIN</b> it, keep weaving &middot; <b>DETACH</b> to stop.<br><b>Cross your own strands</b> — crossings knit the web together; loose threads fray away. Bugs chew out and snap the strand they were on.<br>Walk over stuck bugs to <b>wrap</b> them. You grow every level.'
+      : 'You are small and slow. Your silk is not.<br><b>MOVE</b> with the mouse &middot; <b>CLICK</b> to shoot a web where you click.<br><b>W</b>: anchor a strand, walk, press <b>W</b> to pin, keep weaving &middot; <b>X</b> to detach.<br><b>Cross your own strands</b> — crossings knit the web together; loose threads fray away. Bugs chew out and snap the strand they were on.<br>Walk over stuck bugs to <b>wrap</b> them. You grow every level.';
     document.getElementById('mHigh').textContent = hi;
     document.getElementById('mTotal').textContent = totalBugs;
     document.getElementById('btnMute').innerHTML = muted ? '&#128263;' : '&#128266;';
@@ -741,11 +765,12 @@
       // IK feet with alternating tetrapod gait: only one group of 4 steps at
       // a time, so 4 feet are always planted — walking, never levitating.
       var c = Math.cos(spider.rot), s = Math.sin(spider.rot);
-      var sc = 1 + (S ? S.grip * 0.06 : 0);
+      var sc = spiderScale();
       var stepK = 1 - Math.pow(1 - STEP_LERP, f60);
       var i, L, ideal, ix, iy;
       var groupBusy = [false, false], groupWants = [false, false];
-      var lead = 0.12; // feet land slightly ahead of travel
+      var lead = 0.14; // feet land slightly ahead of travel
+      var trigger2 = STEP_DIST * STEP_DIST * sc * sc;
 
       for (i = 0; i < 8; i++) {
         L = legs[i]; ideal = FEET[i];
@@ -753,25 +778,41 @@
         iy = spider.y + (ideal.x * s + ideal.y * c) * sc + spider.vy * lead;
         L.ix = ix; L.iy = iy;
         if (L.stepping) groupBusy[GAIT[i]] = true;
-        else if (dist2(L.fx, L.fy, ix, iy) > STEP_DIST * STEP_DIST * sc * sc) groupWants[GAIT[i]] = true;
+        else if (dist2(L.fx, L.fy, ix, iy) > trigger2) groupWants[GAIT[i]] = true;
       }
       // hand the gait to the other group once the current one is done
       if (!groupBusy[gaitGroup] && !groupWants[gaitGroup] && groupWants[1 - gaitGroup]) {
         gaitGroup = 1 - gaitGroup;
       }
-      var emergency = STEP_DIST * 1.7 * sc;
+      // start new steps: eligible legs, most-stretched first, but never more
+      // than 4 stepping at once — at least 4 feet stay planted, always
+      var emerg2 = trigger2 * 1.7 * 1.7;
+      var steppingCount = 0;
+      var candidates = [];
       for (i = 0; i < 8; i++) {
         L = legs[i];
+        if (L.stepping) { steppingCount++; continue; }
         var stretched2 = dist2(L.fx, L.fy, L.ix, L.iy);
-        if (!L.stepping &&
-            stretched2 > STEP_DIST * STEP_DIST * sc * sc &&
-            (GAIT[i] === gaitGroup || stretched2 > emergency * emergency)) {
-          L.stepping = true;
+        if (stretched2 > trigger2 && (GAIT[i] === gaitGroup || stretched2 > emerg2)) {
+          candidates.push([stretched2, i]);
         }
+      }
+      candidates.sort(function(a, b){ return b[0] - a[0]; });
+      for (i = 0; i < candidates.length && steppingCount < 4; i++) {
+        legs[candidates[i][1]].stepping = true;
+        legs[candidates[i][1]].prog = 0;
+        steppingCount++;
+      }
+      for (i = 0; i < 8; i++) {
+        L = legs[i];
         if (L.stepping) {
+          // progress always advances (original spider: 0.25/frame), so a
+          // step is GUARANTEED to finish in ~4 frames — this keeps the
+          // gait alternating and the legs visibly walking
+          L.prog += 0.25 * f60;
           L.fx += (L.ix - L.fx) * stepK;
           L.fy += (L.iy - L.fy) * stepK;
-          if (dist2(L.fx, L.fy, L.ix, L.iy) < 4) {
+          if (L.prog >= 1) {
             L.fx = L.ix; L.fy = L.iy; L.stepping = false;
           }
         }
@@ -804,7 +845,16 @@
       return { x: x, y: y };
     }
     function strandCost(len){ return Math.max(5, Math.ceil(len * STRAND_COST_PER_PX)); }
-    function toggleBuild(){
+    function syncWebBtns(){
+      var bw = document.getElementById('btnWeb');
+      var bc = document.getElementById('btnCut');
+      if (bw) {
+        bw.classList.toggle('on', !!building);
+        bw.innerHTML = building ? '&#128204; PIN' : '&#128376; WEB';
+      }
+      if (bc) bc.classList.toggle('show', !!building);
+    }
+    function startOrPin(){
       if (state !== 'play') return;
       if (!building) {
         building = snapPoint(spider.x, spider.y);
@@ -813,9 +863,9 @@
       } else {
         var end = snapPoint(spider.x, spider.y);
         var len = Math.hypot(end.x - building.x, end.y - building.y);
-        if (len < STRAND_MIN) { // too short = done weaving
-          building = null;
-          SFX.free();
+        if (len < STRAND_MIN) {
+          floatTxt(spider.x, spider.y - 30, 'walk further first', '#71717a');
+          SFX.deny();
         } else if (strands.length >= STRAND_MAX_COUNT) {
           floatTxt(spider.x, spider.y - 30, 'too many strands', '#71717a');
           SFX.deny();
@@ -831,25 +881,54 @@
           building = { x: end.x, y: end.y }; // chain: keep weaving from here
         }
       }
-      var btn = document.getElementById('btnWeb');
-      if (btn) btn.classList.toggle('on', !!building);
+      syncWebBtns();
       updateHud(true);
     }
-    // a strand is supported if BOTH endpoints touch another strand.
-    // unsupported strands slowly fall apart — redundancy keeps webs alive.
+    function detach(){
+      if (!building) return;
+      building = null;
+      SFX.free();
+      syncWebBtns();
+      updateHud(true);
+    }
+    // Crossings: where strands intersect mid-line, the web "knits" together —
+    // a crossing fully supports a strand, and gets a woven mesh graphic.
+    var crossings = []; // {x, y, a, b, ang1, ang2}
+    function segCross(s, o){
+      var d1x = s.x2 - s.x1, d1y = s.y2 - s.y1;
+      var d2x = o.x2 - o.x1, d2y = o.y2 - o.y1;
+      var den = d1x * d2y - d1y * d2x;
+      if (Math.abs(den) < 0.0001) return null;
+      var tt = ((o.x1 - s.x1) * d2y - (o.y1 - s.y1) * d2x) / den;
+      var uu = ((o.x1 - s.x1) * d1y - (o.y1 - s.y1) * d1x) / den;
+      if (tt < 0.04 || tt > 0.96 || uu < 0.04 || uu > 0.96) return null; // mid-line only
+      return {
+        x: s.x1 + d1x * tt, y: s.y1 + d1y * tt, a: s, b: o,
+        ang1: Math.atan2(d1y, d1x), ang2: Math.atan2(d2y, d2x)
+      };
+    }
+    // a strand holds if it has >= 2 attachments (shared endpoints count 1,
+    // a mid-line crossing pins it and counts 2). loose ends fray away.
     function recalcSupport(){
-      var t = now();
-      for (var i = 0; i < strands.length; i++) {
-        var s = strands[i], c1 = false, c2 = false;
-        for (var j = 0; j < strands.length; j++) {
-          if (i === j) continue;
+      var t = now(), i, j;
+      crossings = [];
+      var att = [];
+      for (i = 0; i < strands.length; i++) att.push(0);
+      for (i = 0; i < strands.length; i++) {
+        var s = strands[i];
+        for (j = i + 1; j < strands.length; j++) {
           var o = strands[j];
-          if (!c1 && (dist2(s.x1, s.y1, o.x1, o.y1) < 4 || dist2(s.x1, s.y1, o.x2, o.y2) < 4)) c1 = true;
-          if (!c2 && (dist2(s.x2, s.y2, o.x1, o.y1) < 4 || dist2(s.x2, s.y2, o.x2, o.y2) < 4)) c2 = true;
-          if (c1 && c2) break;
+          // shared endpoints
+          if (dist2(s.x1, s.y1, o.x1, o.y1) < 4 || dist2(s.x1, s.y1, o.x2, o.y2) < 4) { att[i]++; att[j]++; }
+          if (dist2(s.x2, s.y2, o.x1, o.y1) < 4 || dist2(s.x2, s.y2, o.x2, o.y2) < 4) { att[i]++; att[j]++; }
+          // mid-line crossings
+          var cr = segCross(s, o);
+          if (cr) { crossings.push(cr); att[i] += 2; att[j] += 2; }
         }
-        if (c1 && c2) s.decayAt = 0;
-        else if (!s.decayAt) s.decayAt = t + 9000;
+      }
+      for (i = 0; i < strands.length; i++) {
+        if (att[i] >= 2) strands[i].decayAt = 0;
+        else if (!strands[i].decayAt) strands[i].decayAt = t + 12000;
       }
     }
     function breakStrand(s){
@@ -1077,8 +1156,9 @@
     function collide(t){
       // catches happen at the spider's mouth (original: pos + 15*facing, 30px)
       var cr = catchR();
-      var hx = spider.x + Math.cos(spider.rot) * 15;
-      var hy = spider.y + Math.sin(spider.rot) * 15;
+      var sc = spiderScale();
+      var hx = spider.x + Math.cos(spider.rot) * 15 * sc;
+      var hy = spider.y + Math.sin(spider.rot) * 15 * sc;
       for (var i = bugs.length - 1; i >= 0; i--) {
         var b = bugs[i];
         if (b.dead) continue;
@@ -1113,6 +1193,13 @@
       while (trail.length && t - trail[0].t > 5000) trail.shift();
       for (i = slimes.length - 1; i >= 0; i--) {
         if (t - slimes[i].t > 6000) slimes.splice(i, 1);
+      }
+      // dust drifts and wraps
+      for (i = 0; i < dust.length; i++) {
+        var dm = dust[i];
+        dm.x += dm.vx * dt; dm.y += dm.vy * dt;
+        if (dm.x < -5) dm.x = W + 5; if (dm.x > W + 5) dm.x = -5;
+        if (dm.y < -5) dm.y = H + 5; if (dm.y > H + 5) dm.y = -5;
       }
     }
 
@@ -1165,6 +1252,13 @@
       ctx.save();
       if (shake > 0) ctx.translate(rand(-shake, shake) * 0.5, rand(-shake, shake) * 0.5);
 
+      // ambient dust motes
+      for (var di = 0; di < dust.length; di++) {
+        var dm = dust[di];
+        ctx.fillStyle = 'rgba(255,255,255,' + dm.a + ')';
+        ctx.beginPath(); ctx.arc(dm.x, dm.y, dm.r, 0, TAU); ctx.fill();
+      }
+
       // slug slime puddles
       for (var i = 0; i < slimes.length; i++) {
         var sl = slimes[i], sAge = 1 - (t - sl.t) / 6000;
@@ -1183,20 +1277,54 @@
         ctx.beginPath(); ctx.moveTo(t0.x, t0.y); ctx.lineTo(t1.x, t1.y); ctx.stroke();
       }
 
-      // built web strands
+      // which strands have a bug about to chew through (<1.2s)
+      for (i = 0; i < strands.length; i++) strands[i].warn = false;
+      for (i = 0; i < bugs.length; i++) {
+        var wb = bugs[i];
+        if (wb.strand && wb.webbed && wb.webT - t < 1200) wb.strand.warn = true;
+      }
+
+      // built web strands (slight sag, fray when decaying, red when breaking)
       for (i = 0; i < strands.length; i++) {
         var st = strands[i];
-        var alpha = 0.55;
+        var alpha = 0.55, color = '255,255,255';
         if (st.decayAt) { // unsupported: fraying away
-          var left = Math.max(0, (st.decayAt - t) / 9000);
+          var left = Math.max(0, (st.decayAt - t) / 12000);
           alpha = 0.15 + 0.4 * left;
           if (Math.floor(t / 180) % 3 === 0) alpha *= 0.5; // flicker
         }
-        ctx.strokeStyle = 'rgba(255,255,255,' + alpha + ')';
+        if (st.warn && Math.floor(t / 140) % 2 === 0) { color = '248,113,113'; alpha = 0.8; }
+        var sLen = Math.hypot(st.x2 - st.x1, st.y2 - st.y1);
+        var sag = Math.min(10, sLen * 0.045);
+        ctx.strokeStyle = 'rgba(' + color + ',' + alpha + ')';
         ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.moveTo(st.x1, st.y1); ctx.lineTo(st.x2, st.y2); ctx.stroke();
-        ctx.fillStyle = 'rgba(255,255,255,' + alpha + ')';
+        ctx.beginPath();
+        ctx.moveTo(st.x1, st.y1);
+        ctx.quadraticCurveTo((st.x1 + st.x2) / 2, (st.y1 + st.y2) / 2 + sag, st.x2, st.y2);
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(' + color + ',' + alpha + ')';
         dot(st.x1, st.y1, 2); dot(st.x2, st.y2, 2);
+      }
+
+      // woven mesh where strands cross — this is what makes it look like a web
+      ctx.lineWidth = 1;
+      for (i = 0; i < crossings.length; i++) {
+        var cr = crossings[i];
+        var c1 = Math.cos(cr.ang1), s1 = Math.sin(cr.ang1);
+        var c2 = Math.cos(cr.ang2), s2 = Math.sin(cr.ang2);
+        ctx.strokeStyle = 'rgba(255,255,255,0.28)';
+        for (var ring = 1; ring <= 3; ring++) {
+          var rr = ring * 7;
+          ctx.beginPath();
+          ctx.moveTo(cr.x + c1 * rr, cr.y + s1 * rr);
+          ctx.lineTo(cr.x + c2 * rr, cr.y + s2 * rr);
+          ctx.lineTo(cr.x - c1 * rr, cr.y - s1 * rr);
+          ctx.lineTo(cr.x - c2 * rr, cr.y - s2 * rr);
+          ctx.closePath();
+          ctx.stroke();
+        }
+        ctx.fillStyle = 'rgba(255,255,255,0.5)';
+        dot(cr.x, cr.y, 2);
       }
 
       // elastic strand being laid (anchor → spider) with live cost
@@ -1250,10 +1378,7 @@
 
       // spider (blink while invulnerable)
       var blink = t < invulnUntil && Math.floor(t / 100) % 2 === 0;
-      if (!blink) {
-        var sc = 1 + (S ? S.grip * 0.06 : 0);
-        drawSpider(spider.x, spider.y, spider.rot, sc, t);
-      }
+      if (!blink) drawSpider(spider.x, spider.y, spider.rot, spiderScale(), t);
 
       // particles
       for (i = 0; i < parts.length; i++) {
