@@ -113,19 +113,22 @@ game.html               "Bug Hunt" — standalone arcade game prototype.
 
 A standalone arcade game built on the site's spider brand. Lives entirely in `game.html` — the main site never references it, so it can be iterated on freely.
 
-**Controls:** spider follows the mouse (desktop) or finger drag (mobile). Click / quick-tap / SPACE shoots a web at the nearest bug (costs 30 silk from a regenerating meter). Webbed bugs get stuck and struggle; walking over them "wraps" them for 1.5x points. P pauses, M mutes.
+**Controls:** spider follows the mouse (desktop) or finger drag (mobile). Click / quick-tap / SPACE shoots a web at the nearest bug (costs 30 silk from a regenerating meter). **Hold still ~0.55s (or press W) to spin a big stationary web** (costs 50 silk) that auto-traps bugs flying into it. The **silk trail dragging behind the spider snares** bugs that touch it (heavy slow for 1.6s, tears the trail segment; boss is immune). Webbed bugs get stuck and struggle; walking over them "wraps" them for 1.5x points. P pauses, M mutes.
 
-**Bug types** (unlock by level): fly (L1, catch on contact), moth (L2, fast), beetle (L3, must be webbed first), wasp (L4, chases and stings — costs a heart), firefly (L5, fast bonus that despawns after 7s), dragonfly boss (every 5th level, takes 3 webs).
+**Movement (important):** the spider uses the *original site spider physics*, extracted from the minified React bundle — position lerps 10%/frame toward the cursor, rotation eases 15%/frame with angle wrap, and 8 IK feet stay planted in world space until stretched >60px, then step (lerp 0.25/frame). Hip/foot geometry arrays (`HIPS`/`FEET`) and the double-bend leg joint formula (perpendicular offsets at 35%/70%) are verbatim from the bundle. Catches happen at the *mouth* (15px ahead of center), like the original. All per-frame lerps are converted to framerate-independent form via `1 - Math.pow(1-k, dt*60)`.
 
-**Progression:** quota of bugs per level (`8 + level*4`, boss counts as 5). Between levels an upgrade shop spends points (same number as score, tracked separately as `cash`): Swift Legs, Silk Range, Silk Glands, Strong Grip, Extra Heart. Hearts refill +1 per level clear. High score and lifetime "bugs debugged" persist in localStorage under `bughunt_*` keys.
+**Bug types** (unlock by level): fly (L1, catch on contact), moth (L2, fast), beetle (L3, must be webbed first), wasp (L4, chases and stings — costs a heart), firefly (L5, fast bonus that despawns after 7s), stinkbug (L6, keeps distance and spits globs that slow the spider 55% for 2.5s), slug (L7, slow tank that leaves slime puddles which slow the spider while inside), dragonfly boss (every 5th level, takes 3 webs).
+
+**Progression:** quota of bugs per level (`8 + level*4`, boss counts as 5). Between levels an upgrade shop spends points (same number as score, tracked separately as `cash`): Swift Legs (follow lerp +2.5%/tier), Silk Range, Silk Glands, Strong Grip (catch radius, web duration, spider scale, spun-web radius), Web Nest (+1 simultaneous spun web, +1 web capacity), Extra Heart. Shop rows show live before→after numbers (desc is a function). Hearts refill +1 per level clear. High score and lifetime "bugs debugged" persist in localStorage under `bughunt_*` keys.
 
 **Architecture notes:**
 - Single IIFE in `<script id="game-js">`; ES5 style matching the rest of the repo
 - State machine: `menu | play | shop | pause | over` — DOM overlays per state, canvas renders always
 - The menu runs an ambient autopilot (spider chases flies) behind the card
-- The spider drawing is verbatim from the site's mobile corner spider (body/head/eyes/fangs/leg geometry), so the brand stays consistent
-- Input uses pointer events only (works for both mouse and touch); a "tap" is pointerup within 280ms and <16px of pointerdown
-- The game JS can be syntax-checked with `node --check` and smoke-tested headlessly by stubbing window/document/canvas (see session history — menu → play → shop → game over all run in Node)
+- Body/head/eyes/fangs drawing is verbatim from the site spider; legs come from the IK rig (world space), not the old sine-walk
+- Input uses pointer events only; a "tap" is pointerup within 280ms and <16px of pointerdown; a "hold" (web spin) is 550ms with <14px movement — a completed hold suppresses the tap-shot on release
+- Resize/orientation changes clamp the spider, target, bugs, and spun webs back into the new bounds, so the game stays playable at any window size
+- The game JS can be syntax-checked with `node --check` and smoke-tested headlessly by stubbing window/document/canvas (the stub needs `closePath`); an invincible-bot variant (patch `hearts--` and starting level via sed on the extracted JS) exercises boss/stinkbug/slug levels
 
 ## The React app (inside index-ZZwLr-Wf.js)
 
