@@ -175,11 +175,11 @@
     <div class="card">
       <div class="brand">BITZYSPIDER ARCADE</div>
       <h1>BUG<span class="red">HUNT</span></h1>
-      <div style="color:#52525b;font-size:9px;letter-spacing:0.2em;margin-top:6px" id="verLabel">v10</div>
+      <div style="color:#52525b;font-size:9px;letter-spacing:0.2em;margin-top:6px" id="verLabel">v11</div>
       <div class="sub" id="howTo"></div>
       <div class="bugLegend">
         <span>fly &middot; catch it</span>
-        <span>moth &middot; fast</span>
+        <span>moth &middot; dive-bombs your web</span>
         <span style="color:#22c55e">beetle &middot; web first</span>
         <span style="color:#facc15">wasp &middot; stings!</span>
         <span style="color:#fbbf24">firefly &middot; bonus</span>
@@ -298,7 +298,7 @@
     };
 
     // ---------- stats / upgrades ----------
-    var GAME_VERSION = 'v10';
+    var GAME_VERSION = 'v11';
     var S; // current run stats
     function freshStats(){ return { speed: 0, range: 0, silk: 0, grip: 0, tough: 0, venom: 0, heartT: 0, dblShot: 0, fortify: 0, bomb: 0, extraLife: 0 }; }
     function wrapMult(){ return 1.5 + (S ? S.venom * 0.25 : 0); } // wrapped catch bonus
@@ -323,7 +323,7 @@
     }
     var WEB_COST = 30;
     var STRAND_COST_PER_PX = 1 / 12;  // silk per pixel of strand
-    var STRAND_MIN = 24, STRAND_SNAP = 18, STRAND_MAX_COUNT = 36;
+    var STRAND_MIN = 24, STRAND_SNAP = 18, STRAND_MAX_COUNT = 48;
     var BOMB_RADIUS = 140;
     var BOMB_COST = 200;
 
@@ -1008,8 +1008,8 @@
     // menu copy
     var isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints;
     document.getElementById('howTo').innerHTML = isTouch
-      ? 'You are small and slow. Your silk is not.<br><b>Red meter</b> = web shots &middot; <b>white meter</b> = weaving silk. Catching bugs refills the white one.<br><b>DRAG</b> to move &middot; <b>TAP</b> to shoot a web where you tap.<br><b>WEB</b>: anchor a strand, walk, <b>PIN</b> it, keep weaving &middot; <b>DETACH</b> to stop.<br><b>AUTO</b>: the spider walks a spiral web on its own — drag to take back control.<br><b>Cross your own strands</b> — crossings knit the web together; loose threads fray away. Multiple bugs on one strand chew faster! Walk over stuck bugs to <b>wrap</b> them. You grow every level.'
-      : 'You are small and slow. Your silk is not.<br><b>Red meter</b> = web shots &middot; <b>white meter</b> = weaving silk. Catching bugs refills the white one.<br><b>MOVE</b> with the mouse &middot; <b>CLICK</b> to shoot a web where you click.<br><b>W</b>: anchor a strand, walk, press <b>W</b> to pin, keep weaving &middot; <b>X</b> to detach.<br><b>Q</b>: auto-weave — the spider walks a spiral web on its own (move the mouse to take back control) &middot; <b>E</b>: eat a nearby strand to reclaim silk &middot; <b>B</b>: use a bug bomb.<br><b>Cross your own strands</b> — crossings knit the web together; loose threads fray away. Multiple bugs on one strand chew faster! Walk over stuck bugs to <b>wrap</b> them. You grow every level.';
+      ? 'You are small and slow. Your silk is not.<br><b>Red meter</b> = web shots &middot; <b>white meter</b> = weaving silk. Catching bugs refills the white one.<br><b>DRAG</b> to move &middot; <b>TAP</b> to shoot a web where you tap.<br><b>WEB</b>: anchor a strand, walk, <b>PIN</b> it, keep weaving &middot; <b>DETACH</b> to stop.<br><b>AUTO</b>: the spider walks a spiral web on its own — drag to take back control.<br><b>Cross your own strands</b> — crossings knit the web together; loose threads fray away. Heavy bugs need TWO strands on them to hold; multiple bugs on one strand chew faster! Walk over stuck bugs to <b>wrap</b> them. You grow every level.'
+      : 'You are small and slow. Your silk is not.<br><b>Red meter</b> = web shots &middot; <b>white meter</b> = weaving silk. Catching bugs refills the white one.<br><b>MOVE</b> with the mouse &middot; <b>CLICK</b> to shoot a web where you click.<br><b>W</b>: anchor a strand, walk, press <b>W</b> to pin, keep weaving &middot; <b>X</b> to detach.<br><b>Q</b>: auto-weave — the spider walks a spiral web on its own (move the mouse to take back control) &middot; <b>E</b>: eat a nearby strand to reclaim silk &middot; <b>B</b>: use a bug bomb.<br><b>Cross your own strands</b> — crossings knit the web together; loose threads fray away. Heavy bugs need TWO strands on them to hold; multiple bugs on one strand chew faster! Walk over stuck bugs to <b>wrap</b> them. You grow every level.';
     document.getElementById('mHigh').textContent = hi;
     document.getElementById('mTotal').textContent = totalBugs;
     document.getElementById('btnMute').innerHTML = muted ? '&#128263;' : '&#128266;';
@@ -1319,6 +1319,7 @@
     var AUTO_RING = 38;   // spacing between spiral rows
     var AUTO_SEG = 46;    // pin a segment every ~46px of walked path
     var AUTO_ROWS = 3.2;  // spiral rows before it calls the web done
+    var AUTO_SPOKES = 6;  // radial spokes per turn — aligned across rows
     var autoLastConn = 0, autoGraceUntil = 0;
     function startAutoWeb(){
       if (webSilk < 10) { floatTxt(spider.x, spider.y - 30, 'not enough web silk', '#dc2626'); SFX.deny(); return; }
@@ -1377,14 +1378,26 @@
           building = { x: spider.x, y: spider.y };
         }
       }
-      // past the first row: stitch a connector back to the previous row
-      // every quarter turn, welding onto it (T-junction support)
-      if (autoWeb && autoAngle > TAU && autoAngle - autoLastConn > TAU / 4) {
-        autoLastConn = autoAngle;
-        var inR = r - AUTO_RING;
-        var ix = autoCenter.x + Math.cos(autoAngle) * inR;
-        var iy = autoCenter.y + Math.sin(autoAngle) * inR;
-        if (layAuto(spider.x, spider.y, ix, iy, true)) SFX.wrap();
+      // RADIAL SPOKES: every time the walk crosses one of the fixed spoke
+      // angles (6 per turn), tie a connector straight inward — to the hub
+      // on the first row, to the previous row after that. Because the
+      // angles repeat every row, the spokes line up into continuous
+      // radials and the web visibly grows outward from its center.
+      var spokeStep = TAU / AUTO_SPOKES;
+      var nextSpoke = (Math.floor(autoLastConn / spokeStep) + 1) * spokeStep;
+      if (autoWeb && autoAngle >= nextSpoke) {
+        autoLastConn = nextSpoke;
+        var sa = nextSpoke % TAU;
+        var sr = 26 + AUTO_RING * (nextSpoke / TAU);
+        var op = snapPoint(autoCenter.x + Math.cos(sa) * sr, autoCenter.y + Math.sin(sa) * sr);
+        var inner;
+        if (nextSpoke <= TAU) {
+          inner = { x: autoCenter.x, y: autoCenter.y }; // first row: all spokes share the hub
+        } else {
+          var ir = sr - AUTO_RING;
+          inner = snapPoint(autoCenter.x + Math.cos(sa) * ir, autoCenter.y + Math.sin(sa) * ir);
+        }
+        if (layAuto(op.x, op.y, inner.x, inner.y, false)) SFX.wrap();
       }
     }
     // Crossings: where strands intersect mid-line, the web "knits" together —
@@ -1508,26 +1521,40 @@
           recalcSupport();
         }
       }
-      // bugs hitting strands get stuck (boss tears through, webworms eat)
+      // bugs hitting strands get stuck (boss tears through, webworms eat).
+      // SIZE MATTERS: heavy bugs (r >= 11) need TWO strands on them to be
+      // held — one strand only drags them (slower the bigger they are)
       for (i = 0; i < bugs.length; i++) {
         var b = bugs[i];
         if (b.dead || b.webbed || b.t.eats) continue;
         if (b.strandImmune && t < b.strandImmune) continue;
+        var touching = [], nearest = null, nd2 = Infinity;
         for (j = strands.length - 1; j >= 0; j--) {
           var s = strands[j];
           var cp = closestOnSeg(b.x, b.y, s);
-          if (dist2(b.x, b.y, cp.x, cp.y) < (b.t.r + 3) * (b.t.r + 3)) {
+          var cd2 = dist2(b.x, b.y, cp.x, cp.y);
+          if (cd2 < (b.t.r + 3) * (b.t.r + 3)) {
             if (b.t.boss || b.t.tears) { breakStrand(s); shake = 6; continue; }
-            b.webbed = true; b.hp = 0;
-            b.vx = 0; b.vy = 0;
-            b.x = cp.x; b.y = cp.y;
-            b.webT = t + b.t.esc * 1000 * toughMult();
-            b.strand = s;
-            ripples.push({ x: cp.x, y: cp.y, r: 4, life: 1 });
-            pop(b.x, b.y, '#fff', 5, 1.5);
-            SFX.hit();
-            break;
+            touching.push(s);
+            if (cd2 < nd2) { nd2 = cd2; nearest = { s: s, cp: cp }; }
           }
+        }
+        if (!nearest) continue;
+        var need = b.t.r >= 11 ? 2 : 1;
+        if (touching.length >= need) {
+          b.webbed = true; b.hp = 0;
+          b.vx = 0; b.vy = 0;
+          b.x = nearest.cp.x; b.y = nearest.cp.y;
+          b.webT = t + b.t.esc * 1000 * toughMult();
+          b.strand = nearest.s;
+          ripples.push({ x: nearest.cp.x, y: nearest.cp.y, r: 4, life: 1 });
+          pop(b.x, b.y, '#fff', 5, 1.5);
+          SFX.hit();
+        } else {
+          // dragging silk: heavy bug bulldozes through a lone strand, slowly
+          b.dragUntil = t + 200;
+          b.dragSlow = Math.max(0.25, 1 - b.t.r * 0.045);
+          if (Math.random() < 0.04) ripples.push({ x: nearest.cp.x, y: nearest.cp.y, r: 3, life: 0.7 });
         }
       }
     }
@@ -1595,7 +1622,25 @@
         b.wing += dt * 30;
 
         if (b.k === 'fly') wander(b, dt, 600);
-        else if (b.k === 'moth') { wander(b, dt, 1400); b.vy += Math.sin(t * 0.01 + b.wing) * 60 * dt; }
+        else if (b.k === 'moth') {
+          // moths blunder into your web like a porch light: they seek your
+          // strands, get stuck, and chew out FAST (esc 3) — snapping the
+          // strand. Every moth is incoming web damage unless you wrap it.
+          var mTgt = null, mNd = 320 * 320;
+          for (var mi2 = 0; mi2 < strands.length; mi2++) {
+            var mcp = closestOnSeg(b.x, b.y, strands[mi2]);
+            var mdd = dist2(b.x, b.y, mcp.x, mcp.y);
+            if (mdd < mNd) { mNd = mdd; mTgt = mcp; }
+          }
+          if (mTgt) {
+            var mdx2 = mTgt.x - b.x, mdy2 = mTgt.y - b.y, mln = Math.hypot(mdx2, mdy2) || 1;
+            b.vx += mdx2 / mln * 600 * dt; b.vy += mdy2 / mln * 600 * dt;
+            capSpeed(b, b.t.sp);
+          } else {
+            wander(b, dt, 1400);
+          }
+          b.vy += Math.sin(t * 0.01 + b.wing) * 60 * dt;
+        }
         else if (b.k === 'beetle') { wander(b, dt, 160); }
         else if (b.k === 'firefly') {
           wander(b, dt, 1800);
@@ -1789,6 +1834,8 @@
         // snared by your silk trail: crawl speed
         var snared = b.snaredUntil && t < b.snaredUntil;
         var mv = snared ? 0.18 : 1;
+        // dragging through a lone strand (not enough lines to hold it)
+        if (b.dragUntil && t < b.dragUntil) mv *= (b.dragSlow || 0.5);
         // hub slow field: flying through a true web is hard work
         if (!b.t.boss) {
           for (var hi2 = 0; hi2 < hubs.length; hi2++) {
