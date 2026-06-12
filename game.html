@@ -120,6 +120,18 @@
 
     .bugLegend { display: flex; flex-wrap: wrap; gap: 6px 14px; justify-content: center; font-size: 10px; color: #71717a; margin: 14px 0 4px; line-height: 1.8; }
 
+    /* ---------- Tutorial banner ---------- */
+    #tutMsg {
+      display: none;
+      top: calc(var(--ay, 0px) + env(safe-area-inset-top, 0px) + 58px);
+      left: 50%; transform: translateX(-50%);
+      max-width: min(520px, 86vw);
+      background: rgba(0,0,0,0.7); border: 1px solid #3f3f46; border-radius: 12px;
+      padding: 10px 16px; font-size: 12px; line-height: 1.6;
+      text-align: center; color: #e4e4e7;
+    }
+    #tutMsg b { color: #fbbf24; }
+
     /* ---------- Arena size picker ---------- */
     .sizeRow { display: flex; gap: 8px; justify-content: center; align-items: center; margin: 4px 0 14px; }
     .sizeRow .lbl { font-size: 9px; letter-spacing: 0.25em; color: #52525b; margin-right: 4px; }
@@ -155,6 +167,7 @@
     <div class="hud" id="hudBR">
       <button id="btnCut">&#10005; DETACH</button><button id="btnAuto">&#127760; AUTO</button><button id="btnWeb">&#128376; WEB</button>
     </div>
+    <div class="hud" id="tutMsg"></div>
   </div>
 
   <!-- Menu -->
@@ -162,7 +175,7 @@
     <div class="card">
       <div class="brand">BITZYSPIDER ARCADE</div>
       <h1>BUG<span class="red">HUNT</span></h1>
-      <div style="color:#52525b;font-size:9px;letter-spacing:0.2em;margin-top:6px" id="verLabel">v8</div>
+      <div style="color:#52525b;font-size:9px;letter-spacing:0.2em;margin-top:6px" id="verLabel">v9</div>
       <div class="sub" id="howTo"></div>
       <div class="bugLegend">
         <span>fly &middot; catch it</span>
@@ -188,6 +201,7 @@
         <button class="sizeBtn" id="sz_full">FULL</button>
       </div>
       <button class="btn" id="btnStart">START HUNTING</button>
+      <button class="btn ghost" id="btnTut">TUTORIAL</button>
     </div>
   </div>
 
@@ -284,7 +298,7 @@
     };
 
     // ---------- stats / upgrades ----------
-    var GAME_VERSION = 'v8';
+    var GAME_VERSION = 'v9';
     var S; // current run stats
     function freshStats(){ return { speed: 0, range: 0, silk: 0, grip: 0, tough: 0, venom: 0, heartT: 0, dblShot: 0, fortify: 0, bomb: 0, extraLife: 0 }; }
     function wrapMult(){ return 1.5 + (S ? S.venom * 0.25 : 0); } // wrapped catch bonus
@@ -405,6 +419,89 @@
       hawk:     { name: 'HAWK STING',    color: '#f97316',
                   apply: function(){ bombs++; floatTxt(spider.x, spider.y - 30, 'HAWK STING — free bomb! (B)', '#f97316'); } }
     };
+
+    // ---------- tutorial (optional, from the menu) ----------
+    // a guided practice run: no quota, no enemies you didn't ask for.
+    // each step has a message, a setup, and a completion check.
+    var tutorial = false, tutStep = 0, tutMark = null, tutDoneAt = 0, tutStrandN = 0;
+    function tutMsgSet(s){
+      var el = document.getElementById('tutMsg');
+      if (el) { el.innerHTML = s; el.style.display = s ? 'block' : 'none'; }
+    }
+    var TUT_STEPS = [
+      { msg: function(){ return (isTouch ? '<b>MOVE</b> — drag your finger and the spider follows.' : '<b>MOVE</b> — the spider follows your mouse.') + ' Glide into the glowing ring.'; },
+        init: function(){ tutMark = { x: W * 0.72, y: H * 0.32 }; },
+        check: function(){ return dist2(spider.x, spider.y, tutMark.x, tutMark.y) < 42 * 42; } },
+      { msg: function(){ return '<b>CATCH</b> — a fly! Touch it with your fangs (the front of the spider).'; },
+        init: function(){ tutMark = null; spawnBug('fly'); var b = bugs[bugs.length - 1]; b.x = W * 0.3; b.y = H * 0.6; },
+        check: function(){ return bugs.length === 0; } },
+      { msg: function(){
+          var b = bugs[0];
+          if (b && b.webbed) return '<b>WRAP</b> — it\'s stuck! Walk over the beetle to wrap it for bonus points.';
+          return '<b>SHOOT</b> — beetles are armored. ' + (isTouch ? 'TAP' : 'CLICK') + ' the beetle to web it first.';
+        },
+        init: function(){ spawnBug('beetle'); var b = bugs[bugs.length - 1]; b.x = W * 0.65; b.y = H * 0.55; },
+        check: function(){ return bugs.length === 0; } },
+      { msg: function(){ return '<b>WEAVE</b> — ' + (isTouch ? 'tap WEB to anchor silk, walk away, tap PIN' : 'press W to anchor silk, walk away, press W again') + ' to lay a strand. It uses the white meter.'; },
+        init: function(){},
+        check: function(){ return strands.length >= 1; } },
+      { msg: function(){ return '<b>CROSS</b> — lay a second strand ACROSS the first. Crossings lock the web together so it doesn\'t fray away.'; },
+        init: function(){},
+        check: function(){ return crossings.length >= 1; } },
+      { msg: function(){ return '<b>TRAP</b> — a moth! Let your web snag it (or web-shoot it), then walk over and wrap it.'; },
+        init: function(){ spawnBug('moth'); var b = bugs[bugs.length - 1]; b.x = W * 0.2; b.y = H * 0.3; },
+        check: function(){ return bugs.length === 0; } }
+    ];
+    // desktop gets one extra lesson: eating silk back
+    if (!('ontouchstart' in window) && !navigator.maxTouchPoints) {
+      TUT_STEPS.push({
+        msg: function(){ return '<b>RECLAIM</b> — press E next to a strand to eat it and recover web silk.'; },
+        init: function(){ tutStrandN = strands.length; },
+        check: function(){ return strands.length < tutStrandN; }
+      });
+    }
+    function startTutorial(){
+      S = freshStats();
+      hearts = 3; score = 0; cash = 0; level = 1;
+      spider.x = target.x = W / 2; spider.y = target.y = H / 2;
+      spider.slowUntil = 0;
+      bugs = []; shots = []; globs = []; slimes = [];
+      strands = []; hubs = []; crossings = []; ripples = []; drops = [];
+      building = null; bombs = 0; buffScoreUntil = 0; buffSpeedUntil = 0;
+      comboN = 0; comboUntil = 0; shownScore = 0; freezeUntil = 0;
+      caught = 0; quota = 999;
+      silk = silkMax(); webSilk = webSilkMax();
+      lastInputAt = now();
+      if (autoWeb) stopAutoWeb();
+      syncWebBtns();
+      initLegs();
+      tutorial = true; tutStep = 0; tutDoneAt = 0;
+      TUT_STEPS[0].init();
+      tutMsgSet(TUT_STEPS[0].msg());
+      setState('play');
+      updateHud(true);
+    }
+    function tutUpdate(){
+      if (tutDoneAt) {
+        if (now() > tutDoneAt) toMenu();
+        return;
+      }
+      var st = TUT_STEPS[tutStep];
+      tutMsgSet(st.msg()); // some messages change mid-step (shoot → wrap)
+      if (st.check()) {
+        SFX.buy();
+        tutStep++;
+        if (tutStep >= TUT_STEPS.length) {
+          tutMsgSet('<b>YOU ARE READY.</b> Happy hunting!');
+          floatTxt(spider.x, spider.y - 40, 'TUTORIAL COMPLETE', '#fbbf24');
+          SFX.level();
+          tutDoneAt = now() + 2800;
+        } else {
+          TUT_STEPS[tutStep].init();
+          tutMsgSet(TUT_STEPS[tutStep].msg());
+        }
+      }
+    }
     var shownScore = 0;             // score ticker display value
     var hearts = 3, silk = 100, webSilk = 160, score = 0, cash = 0, level = 1, quota = 12, caught = 0;
     var invulnUntil = 0, shake = 0, flash = 0, spawnTimer = 0;
@@ -701,6 +798,7 @@
       lastInputAt = now();
       autoWeb = false; autoCenter = null; bombs = 0;
       drops = []; buffScoreUntil = 0; buffSpeedUntil = 0;
+      tutorial = false; tutMark = null; tutMsgSet('');
       var ba = document.getElementById('btnAuto');
       if (ba) ba.classList.remove('on');
       initLegs();
@@ -758,6 +856,7 @@
       bugs = []; shots = []; strands = []; globs = []; slimes = [];
       hubs = []; crossings = []; ripples = []; drops = [];
       building = null;
+      tutorial = false; tutMark = null; tutDoneAt = 0; tutMsgSet('');
       if (autoWeb) stopAutoWeb();
       syncWebBtns();
       document.getElementById('mHigh').textContent = hi;
@@ -887,6 +986,7 @@
 
     // buttons
     document.getElementById('btnStart').addEventListener('click', function(){ audio(); startGame(); });
+    document.getElementById('btnTut').addEventListener('click', function(){ audio(); startTutorial(); });
     document.getElementById('btnNext').addEventListener('click', nextLevel);
     document.getElementById('btnPause').addEventListener('click', function(e){ e.stopPropagation(); togglePause(); });
     document.getElementById('btnResume').addEventListener('click', function(){ setState('play'); });
@@ -921,12 +1021,16 @@
         silk = Math.min(silkMax(), silk + silkRegen() * dt);
         webSilk = Math.min(webSilkMax(), webSilk + webSilkRegen() * dt);
 
-        // spawning
-        spawnTimer -= dt;
-        var maxAlive = 3 + Math.min(level, 7);
-        if (spawnTimer <= 0 && bugs.length < maxAlive) {
-          spawnBug(pickType());
-          spawnTimer = Math.max(0.45, 2.2 - level * 0.13);
+        // spawning (the tutorial controls its own spawns)
+        if (!tutorial) {
+          spawnTimer -= dt;
+          var maxAlive = 3 + Math.min(level, 7);
+          if (spawnTimer <= 0 && bugs.length < maxAlive) {
+            spawnBug(pickType());
+            spawnTimer = Math.max(0.45, 2.2 - level * 0.13);
+          }
+        } else {
+          tutUpdate();
         }
 
         // idle wander, like the site spider: no input for 2.5s and it
@@ -970,7 +1074,7 @@
 
       if (state === 'play') {
         collide(t);
-        if (caught >= quota) levelClear();
+        if (!tutorial && caught >= quota) levelClear();
       } else if (state === 'menu') {
         // menu: catch flies silently (at the mouth, like the original)
         var hx = spider.x + Math.cos(spider.rot) * 15;
@@ -1807,7 +1911,7 @@
         shownScore = Math.min(score, shownScore + Math.max(1, Math.ceil((score - shownScore) * 0.15)));
       } else if (shownScore > score) shownScore = score;
       hset('hScore', shownScore);
-      hset('hQuota', Math.min(caught, quota) + '/' + quota);
+      hset('hQuota', tutorial ? 'practice' : Math.min(caught, quota) + '/' + quota);
       var hs = '';
       for (var i = 0; i < maxHearts(); i++) {
         hs += i < hearts ? '♥' : '♡';
@@ -1823,7 +1927,7 @@
           he.appendChild(sp);
         }
       }
-      hset('hRank', rankName(level));
+      hset('hRank', tutorial ? 'TUTORIAL' : rankName(level));
       var pct = Math.round(silk / silkMax() * 100);
       if (hudCache.silk !== pct) {
         hudCache.silk = pct;
@@ -2027,6 +2131,16 @@
         ctx.beginPath(); ctx.moveTo(spider.x, spider.y); ctx.lineTo(s.x, s.y); ctx.stroke();
         ctx.fillStyle = '#fff';
         ctx.beginPath(); ctx.arc(s.x, s.y, 3, 0, TAU); ctx.fill();
+      }
+
+      // tutorial target ring
+      if (tutorial && tutMark) {
+        var tpls = 0.5 + Math.sin(t * 0.005) * 0.5;
+        ctx.strokeStyle = 'rgba(251,191,36,' + (0.35 + tpls * 0.45) + ')';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(tutMark.x, tutMark.y, 26 + tpls * 8, 0, TAU); ctx.stroke();
+        ctx.fillStyle = 'rgba(251,191,36,' + (0.08 + tpls * 0.06) + ')';
+        ctx.beginPath(); ctx.arc(tutMark.x, tutMark.y, 26, 0, TAU); ctx.fill();
       }
 
       // boss drops: pulsing glowing pickups with a name tag
