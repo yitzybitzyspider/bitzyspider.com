@@ -175,7 +175,7 @@
     <div class="card">
       <div class="brand">BITZYSPIDER ARCADE</div>
       <h1>BUG<span class="red">HUNT</span></h1>
-      <div style="color:#52525b;font-size:9px;letter-spacing:0.2em;margin-top:6px" id="verLabel">v9</div>
+      <div style="color:#52525b;font-size:9px;letter-spacing:0.2em;margin-top:6px" id="verLabel">v10</div>
       <div class="sub" id="howTo"></div>
       <div class="bugLegend">
         <span>fly &middot; catch it</span>
@@ -298,7 +298,7 @@
     };
 
     // ---------- stats / upgrades ----------
-    var GAME_VERSION = 'v9';
+    var GAME_VERSION = 'v10';
     var S; // current run stats
     function freshStats(){ return { speed: 0, range: 0, silk: 0, grip: 0, tough: 0, venom: 0, heartT: 0, dblShot: 0, fortify: 0, bomb: 0, extraLife: 0 }; }
     function wrapMult(){ return 1.5 + (S ? S.venom * 0.25 : 0); } // wrapped catch bonus
@@ -932,6 +932,9 @@
     function evX(e){ return e.clientX - ofsX; }
     function evY(e){ return e.clientY - ofsY; }
     function setTarget(e){
+      // grabbing the mouse takes control back from the auto-weaver
+      if (autoWeb && now() > autoGraceUntil) stopAutoWeb();
+      if (autoWeb) return;
       target.x = evX(e); target.y = evY(e);
       clampInto(target);
       lastInputAt = now();
@@ -1005,8 +1008,8 @@
     // menu copy
     var isTouch = ('ontouchstart' in window) || navigator.maxTouchPoints;
     document.getElementById('howTo').innerHTML = isTouch
-      ? 'You are small and slow. Your silk is not.<br><b>Red meter</b> = web shots &middot; <b>white meter</b> = weaving silk. Catching bugs refills the white one.<br><b>DRAG</b> to move &middot; <b>TAP</b> to shoot a web where you tap.<br><b>WEB</b>: anchor a strand, walk, <b>PIN</b> it, keep weaving &middot; <b>DETACH</b> to stop.<br><b>AUTO</b>: auto-build a circular web around you &middot; <b>E</b> to eat a strand and reclaim silk.<br><b>Cross your own strands</b> — crossings knit the web together; loose threads fray away. Multiple bugs on one strand chew faster! Walk over stuck bugs to <b>wrap</b> them. You grow every level.'
-      : 'You are small and slow. Your silk is not.<br><b>Red meter</b> = web shots &middot; <b>white meter</b> = weaving silk. Catching bugs refills the white one.<br><b>MOVE</b> with the mouse &middot; <b>CLICK</b> to shoot a web where you click.<br><b>W</b>: anchor a strand, walk, press <b>W</b> to pin, keep weaving &middot; <b>X</b> to detach.<br><b>Q</b>: auto-build a circular web around you &middot; <b>E</b>: eat a nearby strand to reclaim silk &middot; <b>B</b>: use a bug bomb.<br><b>Cross your own strands</b> — crossings knit the web together; loose threads fray away. Multiple bugs on one strand chew faster! Walk over stuck bugs to <b>wrap</b> them. You grow every level.';
+      ? 'You are small and slow. Your silk is not.<br><b>Red meter</b> = web shots &middot; <b>white meter</b> = weaving silk. Catching bugs refills the white one.<br><b>DRAG</b> to move &middot; <b>TAP</b> to shoot a web where you tap.<br><b>WEB</b>: anchor a strand, walk, <b>PIN</b> it, keep weaving &middot; <b>DETACH</b> to stop.<br><b>AUTO</b>: the spider walks a spiral web on its own — drag to take back control.<br><b>Cross your own strands</b> — crossings knit the web together; loose threads fray away. Multiple bugs on one strand chew faster! Walk over stuck bugs to <b>wrap</b> them. You grow every level.'
+      : 'You are small and slow. Your silk is not.<br><b>Red meter</b> = web shots &middot; <b>white meter</b> = weaving silk. Catching bugs refills the white one.<br><b>MOVE</b> with the mouse &middot; <b>CLICK</b> to shoot a web where you click.<br><b>W</b>: anchor a strand, walk, press <b>W</b> to pin, keep weaving &middot; <b>X</b> to detach.<br><b>Q</b>: auto-weave — the spider walks a spiral web on its own (move the mouse to take back control) &middot; <b>E</b>: eat a nearby strand to reclaim silk &middot; <b>B</b>: use a bug bomb.<br><b>Cross your own strands</b> — crossings knit the web together; loose threads fray away. Multiple bugs on one strand chew faster! Walk over stuck bugs to <b>wrap</b> them. You grow every level.';
     document.getElementById('mHigh').textContent = hi;
     document.getElementById('mTotal').textContent = totalBugs;
     document.getElementById('btnMute').innerHTML = muted ? '&#128263;' : '&#128266;';
@@ -1308,18 +1311,33 @@
       }
       return false;
     }
-    // auto-web: automatically builds a circular web around spider's position
+    // auto-weaver: the spider actually WALKS a spiral around where you toggled
+    // it on, laying strand segments behind it exactly like manual weaving.
+    // After the first full row, it stitches connectors back to the previous
+    // row every quarter turn — the way a real orb-weaver ties its spiral to
+    // the row before. Moving the mouse takes control back and stops it.
+    var AUTO_RING = 38;   // spacing between spiral rows
+    var AUTO_SEG = 46;    // pin a segment every ~46px of walked path
+    var AUTO_ROWS = 3.2;  // spiral rows before it calls the web done
+    var autoLastConn = 0, autoGraceUntil = 0;
     function startAutoWeb(){
+      if (webSilk < 10) { floatTxt(spider.x, spider.y - 30, 'not enough web silk', '#dc2626'); SFX.deny(); return; }
       autoWeb = true;
       autoCenter = { x: spider.x, y: spider.y };
       autoAngle = 0;
-      autoTimer = 0;
+      autoLastConn = 0;
+      autoGraceUntil = now() + 600; // ignore tiny mouse jitter right after toggling
+      building = snapPoint(spider.x, spider.y); // anchor at the hub
+      syncWebBtns();
       var ba = document.getElementById('btnAuto');
       if (ba) ba.classList.add('on');
     }
-    function stopAutoWeb(){
+    function stopAutoWeb(msg){
       autoWeb = false;
       autoCenter = null;
+      building = null;
+      if (msg) floatTxt(spider.x, spider.y - 30, msg, '#9ca3af');
+      syncWebBtns();
       var ba = document.getElementById('btnAuto');
       if (ba) ba.classList.remove('on');
     }
@@ -1328,51 +1346,46 @@
       if (autoWeb) { stopAutoWeb(); return; }
       startAutoWeb();
     }
+    function layAuto(x1, y1, x2, y2, weld){
+      var p2 = weld ? snapPoint(x2, y2) : { x: x2, y: y2 };
+      var len = Math.hypot(p2.x - x1, p2.y - y1);
+      if (len < STRAND_MIN * 0.5) return true;
+      if (strands.length >= STRAND_MAX_COUNT) { stopAutoWeb('web full'); return false; }
+      var cost = strandCost(len);
+      if (webSilk < cost) { stopAutoWeb('out of web silk'); return false; }
+      webSilk -= cost;
+      strands.push({ x1: x1, y1: y1, x2: p2.x, y2: p2.y, decayAt: 0 });
+      recalcSupport();
+      updateHud(true);
+      return true;
+    }
     function updateAutoWeb(dt){
       if (!autoWeb || state !== 'play') return;
-      autoTimer -= dt;
-      if (autoTimer > 0) return;
-      autoTimer = 0.12;
-      if (strands.length >= STRAND_MAX_COUNT) { stopAutoWeb(); floatTxt(spider.x, spider.y - 30, 'web full', '#71717a'); return; }
-      // build concentric rings of spokes + rings, radiating out from center
-      var spoke = 8, rings = 4;
-      var totalSpokes = spoke;
-      var phase = autoAngle;
-      // which ring and spoke are we on?
-      var step = Math.floor(phase);
-      var ringIdx = Math.floor(step / (totalSpokes + totalSpokes));
-      var inRing = step - ringIdx * totalSpokes * 2;
-      if (ringIdx >= rings) { stopAutoWeb(); floatTxt(spider.x, spider.y - 30, 'web complete!', '#fff'); return; }
-      var rInner = 30 + ringIdx * 36;
-      var rOuter = 30 + (ringIdx + 1) * 36;
-      var x1, y1, x2, y2;
-      if (inRing < totalSpokes) {
-        // spoke: from inner ring to outer ring at this angle
-        var a = (inRing / totalSpokes) * TAU;
-        x1 = autoCenter.x + Math.cos(a) * rInner;
-        y1 = autoCenter.y + Math.sin(a) * rInner;
-        x2 = autoCenter.x + Math.cos(a) * rOuter;
-        y2 = autoCenter.y + Math.sin(a) * rOuter;
-      } else {
-        // arc segment: connect adjacent spoke tips on the outer ring
-        var seg = inRing - totalSpokes;
-        var a1 = (seg / totalSpokes) * TAU;
-        var a2 = ((seg + 1) / totalSpokes) * TAU;
-        x1 = autoCenter.x + Math.cos(a1) * rOuter;
-        y1 = autoCenter.y + Math.sin(a1) * rOuter;
-        x2 = autoCenter.x + Math.cos(a2) * rOuter;
-        y2 = autoCenter.y + Math.sin(a2) * rOuter;
+      if (autoAngle > TAU * AUTO_ROWS) { stopAutoWeb('web complete!'); return; }
+      // advance the walk target along the spiral at walking pace
+      var r = 26 + AUTO_RING * (autoAngle / TAU);
+      autoAngle += (topSpeed() * 0.85 / r) * dt;
+      r = 26 + AUTO_RING * (autoAngle / TAU);
+      target.x = autoCenter.x + Math.cos(autoAngle) * r;
+      target.y = autoCenter.y + Math.sin(autoAngle) * r;
+      clampInto(target);
+      lastInputAt = now(); // the weaver is "input" — no idle wander
+      // lay silk behind the spider: pin a segment when far enough from anchor
+      if (!building) building = snapPoint(spider.x, spider.y);
+      if (dist2(spider.x, spider.y, building.x, building.y) >= AUTO_SEG * AUTO_SEG) {
+        if (layAuto(building.x, building.y, spider.x, spider.y, false)) {
+          building = { x: spider.x, y: spider.y };
+        }
       }
-      var len = Math.hypot(x2 - x1, y2 - y1);
-      var cost = strandCost(len);
-      if (webSilk < cost) { stopAutoWeb(); floatTxt(spider.x, spider.y - 30, 'out of web silk', '#dc2626'); return; }
-      // snap endpoints
-      var ep1 = snapPoint(x1, y1), ep2 = snapPoint(x2, y2);
-      webSilk -= cost;
-      strands.push({ x1: ep1.x, y1: ep1.y, x2: ep2.x, y2: ep2.y, decayAt: 0 });
-      recalcSupport();
-      autoAngle++;
-      updateHud(true);
+      // past the first row: stitch a connector back to the previous row
+      // every quarter turn, welding onto it (T-junction support)
+      if (autoWeb && autoAngle > TAU && autoAngle - autoLastConn > TAU / 4) {
+        autoLastConn = autoAngle;
+        var inR = r - AUTO_RING;
+        var ix = autoCenter.x + Math.cos(autoAngle) * inR;
+        var iy = autoCenter.y + Math.sin(autoAngle) * inR;
+        if (layAuto(spider.x, spider.y, ix, iy, true)) SFX.wrap();
+      }
     }
     // Crossings: where strands intersect mid-line, the web "knits" together —
     // a crossing fully supports a strand, and gets a woven mesh graphic.
@@ -2110,17 +2123,21 @@
         ctx.setLineDash([]);
       }
 
-      // auto-web progress indicator
+      // auto-weaver guide: hub dot + faint upcoming spiral path
       if (autoWeb && autoCenter) {
-        var step2 = Math.floor(autoAngle);
-        var ringIdx2 = Math.floor(step2 / 16);
-        var maxR = 30 + (ringIdx2 + 1) * 36;
-        ctx.strokeStyle = 'rgba(251,191,36,0.2)';
-        ctx.setLineDash([4, 6]);
-        ctx.beginPath(); ctx.arc(autoCenter.x, autoCenter.y, maxR, 0, TAU); ctx.stroke();
+        ctx.strokeStyle = 'rgba(251,191,36,0.18)';
+        ctx.setLineDash([3, 7]);
+        ctx.beginPath();
+        for (var ga = autoAngle, gi = 0; gi <= 24; gi++, ga += TAU / 24) {
+          if (ga > TAU * 3.2) break;
+          var gr = 26 + 38 * (ga / TAU);
+          var gx = autoCenter.x + Math.cos(ga) * gr, gy = autoCenter.y + Math.sin(ga) * gr;
+          gi ? ctx.lineTo(gx, gy) : ctx.moveTo(gx, gy);
+        }
+        ctx.stroke();
         ctx.setLineDash([]);
-        ctx.fillStyle = 'rgba(251,191,36,0.15)';
-        ctx.beginPath(); ctx.arc(autoCenter.x, autoCenter.y, 6, 0, TAU); ctx.fill();
+        ctx.fillStyle = 'rgba(251,191,36,0.3)';
+        ctx.beginPath(); ctx.arc(autoCenter.x, autoCenter.y, 4, 0, TAU); ctx.fill();
       }
 
       // shots (web strands)
