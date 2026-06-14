@@ -205,11 +205,11 @@
       <div class="bugLegend">
         <span>fly &middot; catch it</span>
         <span>moth &middot; dive-bombs your web</span>
-        <span style="color:#22c55e">beetle &middot; web first</span>
+        <span style="color:#22c55e">beetle &middot; raids your nest!</span>
         <span style="color:#facc15">wasp &middot; stings!</span>
         <span style="color:#fbbf24">firefly &middot; burns webs!</span>
         <span style="color:#84cc16">stinkbug &middot; spits goo</span>
-        <span style="color:#a8a29e">slug &middot; slime trail</span>
+        <span style="color:#a8a29e">slug &middot; eats eggs!</span>
         <span style="color:#a3e635">webworm &middot; eats webs</span>
         <span style="color:#14b8a6">dragonfly &middot; tears webs</span>
         <span style="color:#eab308">&#9670; queen</span>
@@ -380,6 +380,8 @@
     var EGG_BITE = 34;          // damage/sec a raiding bug deals to an egg
     var EGG_HATCH_BASE = 16000; // ms for an egg to hatch
     var SPIDERLING_SP = 138;    // spiderling top speed
+    var SPIDERLING_HP = 55;     // a spiderling's health vs raiders
+    var RAID_BITE = 48;         // damage/sec a raider deals to a spiderling
 
     // level ranks — fun names for the climb
     var RANKS = [
@@ -428,11 +430,11 @@
     var TYPES = {
       fly:     { r: 8,  sp: 95,  score: 10,  web: false, min: 1, w: 1.0, esc: 5 },
       moth:    { r: 10, sp: 150, score: 15,  web: false, min: 2, w: 0.8, esc: 3 },
-      beetle:  { r: 12, sp: 55,  score: 30,  web: true,  min: 3, w: 0.6, esc: 8 },
+      beetle:  { r: 12, sp: 55,  score: 30,  web: true,  min: 3, w: 0.6, esc: 8, raider: true },
       wasp:    { r: 9,  sp: 175, score: 40,  web: true,  min: 4, w: 0.5, sting: true, esc: 2.5 },
       firefly: { r: 7,  sp: 230, score: 50,  web: false, min: 5, w: 0.3, ttl: 7, esc: 1.5, burns: true },
       stink:   { r: 11, sp: 120, score: 60,  web: true,  min: 6, w: 0.4, spit: true, esc: 4 },
-      slug:    { r: 12, sp: 26,  score: 70,  web: true,  min: 7, w: 0.35, slime: true, esc: 10 },
+      slug:    { r: 12, sp: 26,  score: 70,  web: true,  min: 7, w: 0.35, slime: true, esc: 10, raider: true },
       worm:    { r: 9,  sp: 70,  score: 80,  web: true,  min: 8, w: 0.3, eats: true, esc: 6 },
       // dragonfly: not a boss anymore — a tough regular that shows up
       // occasionally from level 9. 3 web shots to down, tears strands.
@@ -802,11 +804,11 @@
     var FOE_INFO = {
       fly:     'Harmless and slow. Just touch it with your fangs to catch it.',
       moth:    'Dive-bombs your web like a porch light, sticks, and chews through fast — snapping the strand. Wrap it quick.',
-      beetle:  'Armored — your fangs bounce off. Web-shoot it first, then walk over to wrap it.',
+      beetle:  'Armored — your fangs bounce off. Web-shoot it first. A NEST RAIDER: it makes a beeline for your eggs and eats spiderlings.',
       wasp:    'Hunts you and stings, costing a heart. Web it from a safe distance.',
       firefly: 'BURNS your silk! If it touches a strand it torches that one and two nearby. Snatch it before it reaches your web.',
       stink:   'Keeps its distance and spits goo that slows you. Heavy — it needs TWO strands to be held.',
-      slug:    'A slow tank that smears slime trails to bog you down. Heavy — needs TWO strands to hold.',
+      slug:    'A slow tank that smears slime trails. A NEST RAIDER: it crawls straight for your eggs and devours spiderlings. Heavy — needs TWO strands to hold.',
       worm:    'A webworm that hunts your strands and devours them. It won\'t stick — shoot it down.',
       boss:    'Dragonfly: a tough flyer. Three web-shots to down it, and it shreds any strand it crosses.',
       queen:   'BOSS — orbits the arena and spawns wasps. Wrap it to claim Royal Jelly (full hearts).',
@@ -1650,7 +1652,8 @@
     }
     function spawnSpiderling(x, y){
       spiderlings.push({ x: x, y: y, rot: Math.random() * TAU, vx: 0, vy: 0,
-        tx: x, ty: y, retargetAt: 0, phase: Math.random() * TAU });
+        tx: x, ty: y, retargetAt: 0, phase: Math.random() * TAU,
+        hp: SPIDERLING_HP, hurtUntil: 0 });
     }
     function updateEggs(dt, t){
       if (state !== 'play') return;
@@ -1698,8 +1701,29 @@
     function updateSpiderlings(dt, t){
       if (state !== 'play') return;
       var f60 = dt * 60;
-      for (var i = 0; i < spiderlings.length; i++) {
+      for (var i = spiderlings.length - 1; i >= 0; i--) {
         var s = spiderlings[i];
+        // a raider on top of a spiderling eats it — flee, and take damage
+        var threat = null, thd = 70 * 70;
+        for (var r = 0; r < bugs.length; r++) {
+          var rb = bugs[r];
+          if (rb.dead || rb.webbed || !rb.t.raider) continue;
+          var rd = dist2(s.x, s.y, rb.x, rb.y);
+          if (rd < thd) { thd = rd; threat = rb; }
+          if (rd < (11 + rb.t.r) * (11 + rb.t.r)) {
+            s.hp -= RAID_BITE * dt; s.hurtUntil = t + 120;
+            rb.vx *= 0.7; rb.vy *= 0.7; // it stops to feed
+            if (Math.random() < dt * 10) pop(s.x + rand(-6, 6), s.y + rand(-6, 6), '#dc2626', 1, 1.4);
+          }
+        }
+        if (s.hp <= 0) {
+          floatTxt(s.x, s.y - 16, 'spiderling eaten!', '#dc2626');
+          pop(s.x, s.y, '#dc2626', 12, 2.5);
+          shake = Math.max(shake, 6);
+          SFX.free();
+          spiderlings.splice(i, 1);
+          continue;
+        }
         // pick a target: nearest catchable bug (skip bosses, stingers, un-webbed armored bugs)
         var tgt = null, bd = 320 * 320;
         for (var j = 0; j < bugs.length; j++) {
@@ -1710,7 +1734,13 @@
           var d = dist2(s.x, s.y, b.x, b.y);
           if (d < bd) { bd = d; tgt = b; }
         }
-        if (tgt) { s.tx = tgt.x; s.ty = tgt.y; }
+        if (threat) {
+          // a raider is closing in — scurry directly away from it
+          var fdx = s.x - threat.x, fdy = s.y - threat.y, fL = Math.hypot(fdx, fdy) || 1;
+          s.tx = Math.min(Math.max(s.x + fdx / fL * 120, 30), W - 30);
+          s.ty = Math.min(Math.max(s.y + fdy / fL * 120, 30), H - 30);
+        }
+        else if (tgt) { s.tx = tgt.x; s.ty = tgt.y; }
         else if (t > s.retargetAt) {
           s.retargetAt = t + rand(700, 1800);
           // patrol near the nest if there is one, else roam
@@ -2377,14 +2407,28 @@
           }
         }
 
-        // nest raiders: bugs drift toward your eggs to feed on them (a mild
-        // pull layered on top of their own AI — fireflies/moths still prefer
-        // your web, but flies/beetles/wasps will come for the nest)
-        if (eggs.length && !b.t.boss && !b.webbed) {
+        // nest threat: beetles & slugs are dedicated RAIDERS — they make a
+        // beeline for the nest from far off and hunt eggs AND spiderlings.
+        // every other bug only drifts mildly toward eggs (fireflies/moths
+        // still prefer your web).
+        if (!b.t.boss && !b.webbed) {
+          var raid = b.t.raider;
+          var tx2, ty2, found = false, bestd = (raid ? 540 : 280);
+          bestd *= bestd;
           var eg2 = nearestEgg(b.x, b.y);
-          if (eg2) {
-            var gdx = eg2.x - b.x, gdy = eg2.y - b.y, gL = Math.hypot(gdx, gdy) || 1;
-            if (gL < 280) { b.vx += gdx / gL * 240 * dt; b.vy += gdy / gL * 240 * dt; }
+          if (eg2) { var ed = dist2(b.x, b.y, eg2.x, eg2.y); if (ed < bestd) { bestd = ed; tx2 = eg2.x; ty2 = eg2.y; found = true; } }
+          if (raid) {
+            for (var sp3 = 0; sp3 < spiderlings.length; sp3++) {
+              var sl3 = spiderlings[sp3];
+              var sd = dist2(b.x, b.y, sl3.x, sl3.y);
+              if (sd < bestd) { bestd = sd; tx2 = sl3.x; ty2 = sl3.y; found = true; }
+            }
+          }
+          if (found) {
+            var gdx = tx2 - b.x, gdy = ty2 - b.y, gL = Math.hypot(gdx, gdy) || 1;
+            b.vx += gdx / gL * (raid ? 650 : 240) * dt;
+            b.vy += gdy / gL * (raid ? 650 : 240) * dt;
+            if (raid) capSpeed(b, b.t.sp); // raiders commit, but at their own pace
           }
         }
 
@@ -3005,6 +3049,11 @@
     function drawSpiderling(s, t){
       var sc = 0.34;
       var c = Math.cos(s.rot), sn = Math.sin(s.rot);
+      // hurt flash when a raider is biting it
+      if (t < s.hurtUntil) {
+        ctx.fillStyle = 'rgba(220,38,38,0.3)';
+        ctx.beginPath(); ctx.arc(s.x, s.y, 13, 0, TAU); ctx.fill();
+      }
       ctx.lineCap = 'round'; ctx.lineJoin = 'round';
       for (var i = 0; i < 8; i++) {
         var hip = HIPS[i], ft = FEET[i];
@@ -3035,6 +3084,13 @@
       ctx.fillStyle = '#1a1a1a'; dot(19.5, -5, 2); dot(19.5, 5, 2);
       ctx.fillStyle = '#fff'; dot(20, -6, 1); dot(20, 4, 1);
       ctx.restore();
+      // health ring once it's been wounded
+      if (s.hp < SPIDERLING_HP) {
+        var f = Math.max(0, s.hp / SPIDERLING_HP);
+        ctx.strokeStyle = f > 0.5 ? 'rgba(34,197,94,0.75)' : 'rgba(220,38,38,0.9)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(s.x, s.y, 13, -Math.PI / 2, -Math.PI / 2 + f * TAU); ctx.stroke();
+      }
     }
     function nearestBugTo(x, y){
       var best = null, bd = Infinity;
