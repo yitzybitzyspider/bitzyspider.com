@@ -164,6 +164,50 @@
     }
     .sizeBtn.on { border-color: #dc2626; color: #fff; background: rgba(220,38,38,0.18); }
     .sizeBtn:active { transform: scale(0.96); }
+
+    /* ---------- Glossary overlay ---------- */
+    .glossCard { max-width: 520px; width: calc(100vw - 24px); max-height: 90vh; padding: 22px 18px; }
+    .glossTabs { display: flex; gap: 6px; justify-content: center; margin-bottom: 14px; }
+    .glossTab {
+      background: transparent; border: 1px solid #3f3f46; color: #71717a;
+      border-radius: 99px; padding: 7px 16px; font-size: 10px; font-weight: 700;
+      letter-spacing: 0.1em; cursor: pointer; font-family: inherit;
+    }
+    .glossTab.on { border-color: #dc2626; color: #fff; background: rgba(220,38,38,0.18); }
+    .glossTab:active { transform: scale(0.96); }
+    .glossPane { display: none; }
+    .glossPane.on { display: block; }
+    .foeRow {
+      display: flex; align-items: center; gap: 12px; text-align: left;
+      border-top: 1px solid #18181b; padding: 10px 0; font-size: 11px;
+    }
+    .foeRow:first-child { border-top: none; }
+    .foeRow canvas { flex-shrink: 0; }
+    .foeRow .fn { font-weight: 700; }
+    .foeRow .ftag { font-size: 8px; padding: 1px 5px; border-radius: 4px; margin-left: 6px; letter-spacing: 0.1em; }
+    .foeRow .fd { color: #9ca3af; font-size: 10px; margin-top: 3px; line-height: 1.5; }
+    .foeRow .fstat { color: #52525b; font-size: 9px; margin-top: 2px; letter-spacing: 0.05em; }
+    .upgRow {
+      display: flex; align-items: flex-start; gap: 10px; text-align: left;
+      border-top: 1px solid #18181b; padding: 9px 0; font-size: 11px;
+    }
+    .upgRow:first-child { border-top: none; }
+    .upgRow .uic { width: 22px; text-align: center; font-size: 16px; flex-shrink: 0; padding-top: 2px; }
+    .upgRow .un { font-weight: 700; font-size: 11px; }
+    .upgRow .upips { color: #dc2626; font-size: 9px; letter-spacing: 2px; margin-left: 4px; }
+    .upgRow .ud { color: #9ca3af; font-size: 10px; margin-top: 2px; line-height: 1.4; }
+    .dropRow { display: flex; align-items: center; gap: 8px; text-align: left; padding: 5px 0; font-size: 11px; }
+    .dropRow .dn { font-weight: 700; }
+    .dropRow .dd { color: #9ca3af; font-size: 10px; }
+    .mechRow { text-align: left; border-top: 1px solid #18181b; padding: 9px 0; font-size: 11px; color: #9ca3af; line-height: 1.5; }
+    .mechRow:first-child { border-top: none; }
+    .mechRow b { color: #fff; }
+    .mechRow .mh { font-weight: 700; color: #e4e4e7; font-size: 11px; margin-bottom: 3px; }
+
+    /* ---------- Nest / Brood meter ---------- */
+    #broodBar { height: 6px; background: #27272a; border-radius: 99px; overflow: hidden; border: 1px solid #18181b; margin-top: 4px; }
+    #broodFill { height: 100%; background: #fbbf24; width: 0%; transition: width 0.15s; }
+    #broodBar.ready #broodFill { background: #22c55e; }
   </style>
 </head>
 <body>
@@ -184,6 +228,7 @@
       <div id="hearts"></div>
       <div id="silkBar"><div id="silkFill"></div></div>
       <div id="webBar"><div id="webFill"></div></div>
+      <div id="broodBar"><div id="broodFill"></div></div>
       <div id="silkLbl">SHOT &middot; WEB</div>
     </div>
     <div class="hud" id="hudBR">
@@ -197,27 +242,27 @@
     <div class="card">
       <div class="brand">BITZYSPIDER ARCADE</div>
       <h1>BUG<span class="red">HUNT</span></h1>
-      <div style="color:#52525b;font-size:9px;letter-spacing:0.2em;margin-top:6px" id="verLabel">v15</div>
+      <div style="color:#52525b;font-size:9px;letter-spacing:0.2em;margin-top:6px" id="verLabel">v16</div>
       <div class="secHead">HOW TO PLAY</div>
       <div class="ctrlGrid" id="menuControls"></div>
       <div class="tipLine">red bar = web shots &middot; white bar = weaving silk (catches refill it)<br>crossed strands hold &middot; heavy bugs need two lines on them</div>
       <div class="secHead">KNOW YOUR BUGS</div>
       <div class="bugLegend">
-        <span>fly &middot; catch it</span>
-        <span>moth &middot; dive-bombs your web</span>
-        <span style="color:#22c55e">beetle &middot; web first</span>
-        <span style="color:#facc15">wasp &middot; stings!</span>
-        <span style="color:#fbbf24">firefly &middot; burns webs!</span>
-        <span style="color:#84cc16">stinkbug &middot; spits goo</span>
-        <span style="color:#a8a29e">slug &middot; slime trail</span>
-        <span style="color:#a3e635">webworm &middot; eats webs</span>
-        <span style="color:#14b8a6">dragonfly &middot; tears webs</span>
+        <span>fly</span>
+        <span>moth</span>
+        <span style="color:#22c55e">beetle</span>
+        <span style="color:#facc15">wasp</span>
+        <span style="color:#fbbf24">firefly</span>
+        <span style="color:#84cc16">stinkbug</span>
+        <span style="color:#a8a29e">slug</span>
+        <span style="color:#a3e635">webworm</span>
+        <span style="color:#14b8a6">dragonfly</span>
         <span style="color:#eab308">&#9670; queen</span>
         <span style="color:#22c55e">&#9670; mantis</span>
         <span style="color:#d4d4d8">&#9670; moth king</span>
         <span style="color:#f97316">&#9670; hawk</span>
-        <span style="color:#fbbf24">bosses drop power-ups!</span>
       </div>
+      <div class="tipLine">see the FIELD GUIDE for full details on each foe</div>
       <div class="statline">BEST <span class="red" id="mHigh">0</span> &nbsp;&middot;&nbsp; BUGS DEBUGGED <span class="red" id="mTotal">0</span></div>
       <div class="sizeRow">
         <span class="lbl">ARENA</span>
@@ -227,6 +272,7 @@
       </div>
       <button class="btn" id="btnStart">START HUNTING</button>
       <button class="btn ghost" id="btnTut">TUTORIAL</button>
+      <button class="btn ghost" id="btnGlossMenu">FIELD GUIDE</button>
     </div>
   </div>
 
@@ -249,6 +295,7 @@
       <div class="ctrlGrid" id="pauseControls"></div>
       <div style="margin-top:16px">
         <button class="btn" id="btnResume">RESUME</button>
+        <button class="btn ghost" id="btnGlossPause">FIELD GUIDE</button>
         <button class="btn ghost" id="btnQuit">QUIT TO MENU</button>
       </div>
     </div>
@@ -276,6 +323,22 @@
       </div>
       <button class="btn" id="btnRetry">TRY AGAIN</button>
       <button class="btn ghost" id="btnMenu">MENU</button>
+    </div>
+  </div>
+
+  <!-- Glossary (bestiary + upgrades + mechanics) -->
+  <div class="overlay" id="ovGloss">
+    <div class="card glossCard">
+      <h2>FIELD GUIDE</h2>
+      <div class="glossTabs" id="glossTabs">
+        <button class="glossTab on" data-tab="bestiary">BESTIARY</button>
+        <button class="glossTab" data-tab="upgrades">UPGRADES</button>
+        <button class="glossTab" data-tab="mechanics">MECHANICS</button>
+      </div>
+      <div class="glossPane on" id="pane_bestiary"></div>
+      <div class="glossPane" id="pane_upgrades"></div>
+      <div class="glossPane" id="pane_mechanics"></div>
+      <div style="margin-top:14px"><button class="btn ghost" id="btnGlossBack">BACK</button></div>
     </div>
   </div>
 
@@ -337,7 +400,7 @@
     };
 
     // ---------- stats / upgrades ----------
-    var GAME_VERSION = 'v15';
+    var GAME_VERSION = 'v16';
     var S; // current run stats
     function freshStats(){ return { speed: 0, range: 0, silk: 0, grip: 0, tough: 0, venom: 0, spread: 0, brood: 0, heartT: 0, dblShot: 0, fortify: 0, bomb: 0, extraLife: 0 }; }
     function wrapMult(){ return 1.5 + (S ? S.venom * 0.25 : 0); } // wrapped catch bonus
@@ -380,6 +443,12 @@
     var EGG_BITE = 34;          // damage/sec a raiding bug deals to an egg
     var EGG_HATCH_BASE = 16000; // ms for an egg to hatch
     var SPIDERLING_SP = 138;    // spiderling top speed
+    var SPIDERLING_HP = 55;     // a spiderling's health vs raiders
+    var RAID_BITE = 48;         // damage/sec a raider deals to a spiderling
+    var BROOD_MAX = 100;        // brood meter capacity (charges from catches)
+    var BROOD_PER_CATCH = 12;   // brood charge per catch
+    var BROOD_PER_WRAP = 22;    // brood charge per wrap
+    var BROOD_PASSIVE = 1.5;    // brood charge per second (slow passive regen)
 
     // level ranks — fun names for the climb
     var RANKS = [
@@ -428,11 +497,11 @@
     var TYPES = {
       fly:     { r: 8,  sp: 95,  score: 10,  web: false, min: 1, w: 1.0, esc: 5 },
       moth:    { r: 10, sp: 150, score: 15,  web: false, min: 2, w: 0.8, esc: 3 },
-      beetle:  { r: 12, sp: 55,  score: 30,  web: true,  min: 3, w: 0.6, esc: 8 },
+      beetle:  { r: 12, sp: 55,  score: 30,  web: true,  min: 3, w: 0.6, esc: 8, raider: true },
       wasp:    { r: 9,  sp: 175, score: 40,  web: true,  min: 4, w: 0.5, sting: true, esc: 2.5 },
       firefly: { r: 7,  sp: 230, score: 50,  web: false, min: 5, w: 0.3, ttl: 7, esc: 1.5, burns: true },
       stink:   { r: 11, sp: 120, score: 60,  web: true,  min: 6, w: 0.4, spit: true, esc: 4 },
-      slug:    { r: 12, sp: 26,  score: 70,  web: true,  min: 7, w: 0.35, slime: true, esc: 10 },
+      slug:    { r: 12, sp: 26,  score: 70,  web: true,  min: 7, w: 0.35, slime: true, esc: 10, raider: true },
       worm:    { r: 9,  sp: 70,  score: 80,  web: true,  min: 8, w: 0.3, eats: true, esc: 6 },
       // dragonfly: not a boss anymore — a tough regular that shows up
       // occasionally from level 9. 3 web shots to down, tears strands.
@@ -514,7 +583,24 @@
         check: function(){ return crossings.length >= 1; } },
       { msg: function(){ return '<b>TRAP</b> — a moth! Let your web snag it (or web-shoot it), then walk over and wrap it.'; },
         init: function(){ spawnBug('moth'); var b = bugs[bugs.length - 1]; b.x = W * 0.2; b.y = H * 0.3; },
-        check: function(){ return bugs.length === 0; } }
+        check: function(){ return bugs.length === 0; } },
+      { msg: function(){
+          return '<b>SPREAD</b> — ' + (isTouch ? 'DOUBLE-TAP' : 'DOUBLE-CLICK or press F') + ' to fling a web outward and trap everything nearby. Try it on these bugs!';
+        },
+        init: function(){
+          spreadAt = 0;
+          for (var i = 0; i < 3; i++) { spawnBug('fly'); var b = bugs[bugs.length - 1]; b.x = spider.x + rand(-60, 60); b.y = spider.y + rand(-60, 60); }
+        },
+        check: function(){ return bugs.length === 0; } },
+      { msg: function(){
+          if (eggReady) return '<b>LAY EGG</b> — your egg is ready! ' + (isTouch ? 'Tap EGG' : 'Press N') + ' to lay it. It will hatch into a baby spider that hunts for you!';
+          return '<b>NEST</b> — catch bugs to charge the yellow brood meter. When it\'s full you can lay an egg. Keep catching!';
+        },
+        init: function(){
+          broodMeter = 70;
+          for (var i = 0; i < 4; i++) { spawnBug('fly'); var b = bugs[bugs.length - 1]; b.x = W * 0.3 + rand(-80, 80); b.y = H * 0.5 + rand(-60, 60); }
+        },
+        check: function(){ return eggs.length >= 1; } }
     ];
     // desktop gets one extra lesson: eating silk back
     if (!('ontouchstart' in window) && !navigator.maxTouchPoints) {
@@ -536,6 +622,7 @@
       comboN = 0; comboUntil = 0; shownScore = 0; freezeUntil = 0;
       caught = 0; quota = 999;
       silk = silkMax(); webSilk = webSilkMax();
+      broodMeter = 0; eggReady = false;
       lastInputAt = now();
       if (autoWeb) stopAutoWeb();
       syncWebBtns();
@@ -569,6 +656,8 @@
     }
     var shownScore = 0;             // score ticker display value
     var hearts = 3, silk = 100, webSilk = 160, score = 0, cash = 0, level = 1, quota = 12, caught = 0;
+    var broodMeter = 0;   // charges toward next egg; full at BROOD_MAX
+    var eggReady = false;  // true when broodMeter hits max (egg visible on spider's back)
     var invulnUntil = 0, shake = 0, flash = 0, spawnTimer = 0;
     var dust = []; // ambient drifting motes
     function initDust(){
@@ -802,11 +891,11 @@
     var FOE_INFO = {
       fly:     'Harmless and slow. Just touch it with your fangs to catch it.',
       moth:    'Dive-bombs your web like a porch light, sticks, and chews through fast — snapping the strand. Wrap it quick.',
-      beetle:  'Armored — your fangs bounce off. Web-shoot it first, then walk over to wrap it.',
+      beetle:  'Armored — your fangs bounce off. Web-shoot it first. A NEST RAIDER: it makes a beeline for your eggs and eats spiderlings.',
       wasp:    'Hunts you and stings, costing a heart. Web it from a safe distance.',
       firefly: 'BURNS your silk! If it touches a strand it torches that one and two nearby. Snatch it before it reaches your web.',
       stink:   'Keeps its distance and spits goo that slows you. Heavy — it needs TWO strands to be held.',
-      slug:    'A slow tank that smears slime trails to bog you down. Heavy — needs TWO strands to hold.',
+      slug:    'A slow tank that smears slime trails. A NEST RAIDER: it crawls straight for your eggs and devours spiderlings. Heavy — needs TWO strands to hold.',
       worm:    'A webworm that hunts your strands and devours them. It won\'t stick — shoot it down.',
       boss:    'Dragonfly: a tough flyer. Three web-shots to down it, and it shreds any strand it crosses.',
       queen:   'BOSS — orbits the arena and spawns wasps. Wrap it to claim Royal Jelly (full hearts).',
@@ -892,6 +981,11 @@
       totalBugs++;
       // every catch feeds the web meter — hunting fuels building
       webSilk = Math.min(webSilkMax(), webSilk + (wrapped ? 14 : 7));
+      // catches also charge the brood meter — eggs form slowly on your back
+      if (!eggReady && eggs.length + spiderlings.length < maxBrood()) {
+        broodMeter = Math.min(BROOD_MAX, broodMeter + (wrapped ? BROOD_PER_WRAP : BROOD_PER_CATCH));
+        if (broodMeter >= BROOD_MAX) { eggReady = true; floatTxt(spider.x, spider.y - 44, 'EGG READY!', '#22c55e'); SFX.buy(); }
+      }
       // bosses release something special when they die
       if (b.t.boss && DROPS[b.k]) {
         drops.push({ x: b.x, y: b.y, k: b.k, born: t });
@@ -939,7 +1033,7 @@
       strands = []; hubs = []; crossings = []; ripples = []; fires = []; spreads = [];
       eggs = []; spiderlings = [];
       comboN = 0; comboUntil = 0; shownScore = 0; freezeUntil = 0;
-      spreadAt = 0;
+      spreadAt = 0; broodMeter = 0; eggReady = false;
       lastInputAt = now();
       autoWeb = false; autoCenter = null; bombs = 0;
       drops = []; buffScoreUntil = 0; buffSpeedUntil = 0;
@@ -1056,6 +1150,7 @@
       eggs = []; spiderlings = [];
       hubs = []; crossings = []; ripples = []; drops = [];
       building = null;
+      broodMeter = 0; eggReady = false;
       tutorial = false; tutMark = null; tutDoneAt = 0; tutMsgSet('');
       eatHeld = false; syncEatBtn();
       if (autoWeb) stopAutoWeb();
@@ -1119,7 +1214,7 @@
     }
 
     // ---------- state / overlays ----------
-    var overlays = { menu: 'ovMenu', shop: 'ovShop', pause: 'ovPause', over: 'ovOver', intro: 'ovIntro' };
+    var overlays = { menu: 'ovMenu', shop: 'ovShop', pause: 'ovPause', over: 'ovOver', intro: 'ovIntro', gloss: 'ovGloss' };
     function setState(s){
       state = s;
       for (var k in overlays) {
@@ -1245,7 +1340,7 @@
       ['&#127760;', '<b>AUTO</b> — weave a spiral web (drag = take over)'],
       ['&#127860;', '<b>EAT</b> (hold) — graze strands, reclaim silk'],
       ['&#128295;', '<b>FIX</b> — re-walk &amp; repair your last web'],
-      ['&#129370;', '<b>EGG</b> — lay an egg in your web; it hatches a helper'],
+      ['&#129370;', '<b>EGG</b> — lay when brood meter is full; hatches a helper'],
       ['&#128062;', 'walk over stuck bugs to <b>wrap</b> them']
     ] : [
       ['&#128433;', '<b>MOVE</b> — the spider follows your mouse'],
@@ -1256,7 +1351,7 @@
       ['&#127760;', '<b>Q</b> — auto-weave a spiral web (move = take over)'],
       ['&#127860;', '<b>E</b> (hold) — graze strands, reclaim silk'],
       ['&#128295;', '<b>R</b> — re-walk &amp; repair your last web'],
-      ['&#129370;', '<b>N</b> — lay an egg in your web; defend it till it hatches'],
+      ['&#129370;', '<b>N</b> — lay egg when brood meter is full; defend till hatch'],
       ['&#128163;', '<b>B</b> — bug bomb (buy in the shop)'],
       ['&#128062;', 'walk over stuck bugs to <b>wrap</b> them'],
       ['&#9208;',   '<b>P</b> — pause &middot; <b>M</b> — mute']
@@ -1291,6 +1386,138 @@
     var dbgActive = DBG.lvl || DBG.pts || DBG.boss;
     document.getElementById('verLabel').textContent = GAME_VERSION + (dbgActive ? ' · DEBUG (lvl=' + (DBG.lvl || 1) + (DBG.boss ? ' boss=' + DBG.boss : '') + ')' : '');
 
+    // ---------- glossary / field guide ----------
+    var glossReturn = 'menu';
+    var FOE_ORDER = ['fly','moth','beetle','wasp','firefly','stink','slug','worm','boss','queen','mantis','mothking','hawk'];
+    var FOE_TAGS = { beetle: ['RAIDER','#dc2626'], slug: ['RAIDER','#dc2626'], wasp: ['STINGER','#facc15'], firefly: ['BURNER','#f97316'], worm: ['WEB-EATER','#a3e635'] };
+    var FOE_DETAILS = {
+      fly:     { threat: 'None', escape: '5s', unlock: 'Lv 1', weight: 'Light' },
+      moth:    { threat: 'Dives at your web', escape: '3s', unlock: 'Lv 2', weight: 'Light' },
+      beetle:  { threat: 'Raids your nest', escape: '8s', unlock: 'Lv 3', weight: 'Heavy (2 strands)' },
+      wasp:    { threat: 'Chases and stings', escape: '2.5s', unlock: 'Lv 4', weight: 'Light' },
+      firefly: { threat: 'Burns 3 strands on contact', escape: '1.5s', unlock: 'Lv 5', weight: 'Light', note: 'Despawns after 7s' },
+      stink:   { threat: 'Spits slowing goo', escape: '4s', unlock: 'Lv 6', weight: 'Heavy (2 strands)' },
+      slug:    { threat: 'Raids nest, leaves slime', escape: '10s', unlock: 'Lv 7', weight: 'Heavy (2 strands)' },
+      worm:    { threat: 'Eats your strands', escape: '6s', unlock: 'Lv 8', weight: 'Light', note: 'Won\'t stick to webs' },
+      boss:    { threat: 'Tears strands, tough', escape: '—', unlock: 'Lv 9', weight: 'Light', note: '3 web shots to down' },
+      queen:   { threat: 'Spawns wasps', escape: '—', unlock: 'Lv 5 boss', weight: 'Boss (5 HP)', note: 'Drop: Royal Jelly (full hearts)' },
+      mantis:  { threat: 'Stalks and lunges', escape: '—', unlock: 'Lv 10 boss', weight: 'Boss (4 HP)', note: 'Drop: 2x points 20s' },
+      mothking:{ threat: 'Summons moths', escape: '—', unlock: 'Lv 15 boss', weight: 'Boss (6 HP)', note: 'Drop: 1.5x speed 20s' },
+      hawk:    { threat: 'Relentless pursuit', escape: '—', unlock: 'Lv 20 boss', weight: 'Boss (5 HP)', note: 'Drop: free bug bomb' }
+    };
+    var UPG_ICONS = { speed: '&#128062;', range: '&#127919;', silk: '&#129528;', grip: '&#129306;', tough: '&#128167;', venom: '&#129440;', spread: '&#128305;', brood: '&#129370;', heartT: '&#10084;' };
+    var SINK_ICONS = { dblShot: '&#128171;', fortify: '&#128737;', extraLife: '&#128154;', bomb: '&#128163;' };
+    var UPG_DESC = {
+      speed: 'Increases top movement speed (+40/tier).',
+      range: 'Extends web shot reach (+48/tier).',
+      silk: 'Boosts both silk meters and their regen rates.',
+      grip: 'Bigger catch radius (+6/tier) and longer web-shot stickiness.',
+      tough: 'Bugs stay stuck on strands longer (+40%/tier).',
+      venom: 'Wrapped bugs worth more points (+0.25x/tier).',
+      spread: 'Wider spread-trap radius (+28/tier) and faster recharge (-1.3s/tier).',
+      brood: 'Tougher eggs (+60 hp/tier), faster hatching (-2.5s/tier), bigger nest (+1 cap/tier).',
+      heartT: 'Adds one max heart (+1/tier).'
+    };
+    var SINK_DESC = {
+      dblShot: 'Fire two web shots per click in a spread pattern.',
+      fortify: 'Stacking +35% stuck time per tier. No cap.',
+      extraLife: 'Stacking +1 max heart per purchase.',
+      bomb: 'Homing bug bomb (B key). Webs everything in a 140px radius.'
+    };
+    var MECHANICS = [
+      { h: 'Silk Meters', t: '<b>Red bar (shots)</b> — regenerates fast, powers aimed web shots. <b>White bar (web silk)</b> — regenerates slowly, used for weaving strands. Every catch refills the web meter.' },
+      { h: 'Strand Support', t: 'A strand needs <b>2+ attachment points</b> to hold (shared endpoints, T-junctions, or crossings). Unsupported strands fray in 12s. <b>Crossings count as 2</b> and are the most stable.' },
+      { h: 'Heavy Bugs', t: 'Beetles, stinkbugs, and slugs are heavy — a single strand only <b>drags</b> them. They need <b>two strands touching</b> to actually hold.' },
+      { h: 'Hubs', t: '3+ strands meeting at one point create a <b>hub</b> — bugs inside move at 50% speed. Place eggs inside a hub for <b>fortified nest</b> protection (damage reduced to 32%).' },
+      { h: 'Combos', t: 'Wrap bugs within 4s of each other to build a <b>combo multiplier</b> (x1.5 per step, max x3). Combos stack with the Venom Fangs wrap bonus.' },
+      { h: 'Brood / Nest', t: 'Catching bugs charges the <b>yellow brood meter</b>. When full, press N to lay an egg. Protect it until it hatches into a <b>spiderling</b> that hunts bugs for you. Raiders (beetles, slugs) target eggs and spiderlings.' },
+      { h: 'Difficulty Scaling', t: 'Each bug type gets <b>faster</b> (+4.5%/level past unlock) and <b>chews out quicker</b> (-3%/level). By the teens, old bugs are noticeably tougher.' },
+      { h: 'Boss Drops', t: 'Every boss drops a unique power-up when wrapped. Don\'t miss it — uncollected drops <b>auto-apply</b> at level clear.' }
+    ];
+    function renderGlossary(){
+      var bp = document.getElementById('pane_bestiary');
+      var up = document.getElementById('pane_upgrades');
+      var mp = document.getElementById('pane_mechanics');
+      // bestiary
+      var bh = '';
+      for (var fi = 0; fi < FOE_ORDER.length; fi++) {
+        var fk = FOE_ORDER[fi];
+        var fd = FOE_DETAILS[fk];
+        var fc = foeColor(fk);
+        var fn = foeName(fk);
+        var tag = FOE_TAGS[fk] ? '<span class="ftag" style="background:' + FOE_TAGS[fk][1] + ';color:#000">' + FOE_TAGS[fk][0] + '</span>' : '';
+        var bossTag = TYPES[fk].boss ? '<span class="ftag" style="background:#fbbf24;color:#000">BOSS</span>' : '';
+        bh += '<div class="foeRow"><canvas class="foePrev" data-foe="' + fk + '" width="52" height="52" style="width:52px;height:52px"></canvas><div style="flex:1;min-width:0"><div class="fn" style="color:' + fc + '">' + fn + ' ' + tag + bossTag + '</div>';
+        bh += '<div class="fd">' + (FOE_INFO[fk] || '') + '</div>';
+        bh += '<div class="fstat">' + fd.unlock + ' · esc ' + fd.escape + ' · ' + fd.weight + (fd.note ? ' · ' + fd.note : '') + '</div>';
+        bh += '</div></div>';
+      }
+      bp.innerHTML = bh;
+      // render foe previews into the canvases
+      var prevs = bp.querySelectorAll ? bp.querySelectorAll('.foePrev') : [];
+      for (fi = 0; fi < prevs.length; fi++) {
+        var pc = prevs[fi], pk = pc.getAttribute('data-foe');
+        if (!pk || !TYPES[pk]) continue;
+        var ty = TYPES[pk], sz = 52;
+        pc.width = sz * dpr; pc.height = sz * dpr;
+        var saveCtx = ctx; ctx = pc.getContext('2d');
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, sz, sz);
+        var psc = Math.min(2.2, 24 / (ty.r || 12));
+        ctx.save(); ctx.translate(sz / 2, sz / 2 + (ty.hp ? 4 : 0)); ctx.scale(psc, psc);
+        var fb = { k: pk, t: ty, x: 0, y: 0, vx: 1, vy: 0, wing: 1.2, webbed: false, hp: ty.hp || 1, ttl: ty.ttl || 0 };
+        try { drawBug(fb, now()); } catch(e){}
+        ctx.restore();
+        ctx = saveCtx;
+      }
+      // upgrades
+      var uh = '<div class="secHead">CORE UPGRADES</div>';
+      for (var ui = 0; ui < UPG.length; ui++) {
+        var u = UPG[ui];
+        var ic = UPG_ICONS[u.key] || '&#9670;';
+        var pips = '';
+        for (var p = 0; p < u.max; p++) pips += '&#9679;';
+        uh += '<div class="upgRow"><span class="uic">' + ic + '</span><div style="flex:1;min-width:0"><div><span class="un">' + u.name + '</span><span class="upips">' + pips + '</span></div><div class="ud">' + (UPG_DESC[u.key] || '') + '</div></div></div>';
+      }
+      uh += '<div class="secHead">ADVANCED (after core maxed)</div>';
+      for (ui = 0; ui < SINKS.length; ui++) {
+        u = SINKS[ui];
+        ic = SINK_ICONS[u.key] || '&#9670;';
+        uh += '<div class="upgRow"><span class="uic">' + ic + '</span><div style="flex:1;min-width:0"><div class="un">' + u.name + '</div><div class="ud">' + (SINK_DESC[u.key] || '') + '</div></div></div>';
+      }
+      up.innerHTML = uh;
+      // mechanics
+      var mh = '';
+      for (var mi = 0; mi < MECHANICS.length; mi++) {
+        var m = MECHANICS[mi];
+        mh += '<div class="mechRow"><div class="mh">' + m.h + '</div>' + m.t + '</div>';
+      }
+      mp.innerHTML = mh;
+    }
+    function openGlossary(from){
+      glossReturn = from || 'menu';
+      renderGlossary();
+      setState('gloss');
+    }
+    function closeGlossary(){
+      setState(glossReturn);
+    }
+    // glossary tab switching
+    document.getElementById('glossTabs').addEventListener('click', function(e){
+      var btn = e.target;
+      if (!btn.dataset || !btn.dataset.tab) return;
+      var tabs = document.getElementById('glossTabs').children;
+      for (var i = 0; i < tabs.length; i++) tabs[i].classList.toggle('on', tabs[i] === btn);
+      var panes = ['bestiary', 'upgrades', 'mechanics'];
+      for (i = 0; i < panes.length; i++) {
+        var p = document.getElementById('pane_' + panes[i]);
+        if (p) p.classList.toggle('on', panes[i] === btn.dataset.tab);
+      }
+    });
+    document.getElementById('btnGlossBack').addEventListener('click', closeGlossary);
+    document.getElementById('btnGlossMenu').addEventListener('click', function(){ openGlossary('menu'); });
+    document.getElementById('btnGlossPause').addEventListener('click', function(){ openGlossary('pause'); });
+
     // ---------- update ----------
     function update(dt){
       var t = now();
@@ -1298,6 +1525,11 @@
       if (state === 'play') {
         silk = Math.min(silkMax(), silk + silkRegen() * dt);
         webSilk = Math.min(webSilkMax(), webSilk + webSilkRegen() * dt);
+        // brood meter ticks slowly from passive regen
+        if (!eggReady && eggs.length + spiderlings.length < maxBrood()) {
+          broodMeter = Math.min(BROOD_MAX, broodMeter + BROOD_PASSIVE * dt);
+          if (broodMeter >= BROOD_MAX) { eggReady = true; floatTxt(spider.x, spider.y - 44, 'EGG READY!', '#22c55e'); SFX.buy(); }
+        }
 
         // hold EAT: graze strands as you walk over them
         if (eatHeld) eatNearbyStrand();
@@ -1629,10 +1861,12 @@
       if (eggs.length + spiderlings.length >= maxBrood()) {
         floatTxt(spider.x, spider.y - 30, 'nest is full', '#71717a'); SFX.deny(); return;
       }
-      if (webSilk < EGG_COST) {
-        floatTxt(spider.x, spider.y - 30, 'not enough web silk', '#dc2626'); SFX.deny(); return;
+      if (!eggReady) {
+        var pct = Math.round(broodMeter / BROOD_MAX * 100);
+        floatTxt(spider.x, spider.y - 30, 'egg forming… ' + pct + '%', '#fbbf24'); SFX.deny(); return;
       }
-      webSilk -= EGG_COST;
+      eggReady = false;
+      broodMeter = 0;
       var t = now();
       eggs.push({ x: spider.x, y: spider.y, hp: eggHpMax(), max: eggHpMax(), born: t, hatchAt: t + eggHatchMs() });
       floatTxt(spider.x, spider.y - 30, 'EGG LAID — protect it!', '#fbbf24');
@@ -1648,9 +1882,22 @@
       }
       return best;
     }
+    function initSpiderLegs(s){
+      var sc = 0.34;
+      s.legs = [];
+      s.gaitGroup = 0;
+      for (var i = 0; i < 8; i++) {
+        var fx = s.x + FEET[i].x * sc, fy = s.y + FEET[i].y * sc;
+        s.legs.push({ fx: fx, fy: fy, ix: fx, iy: fy, prog: 1, stepping: false });
+      }
+    }
     function spawnSpiderling(x, y){
-      spiderlings.push({ x: x, y: y, rot: Math.random() * TAU, vx: 0, vy: 0,
-        tx: x, ty: y, retargetAt: 0, phase: Math.random() * TAU });
+      var s = { x: x, y: y, rot: Math.random() * TAU, vx: 0, vy: 0,
+        tx: x, ty: y, retargetAt: 0,
+        hp: SPIDERLING_HP, hurtUntil: 0,
+        legs: null, gaitGroup: 0 };
+      initSpiderLegs(s);
+      spiderlings.push(s);
     }
     function updateEggs(dt, t){
       if (state !== 'play') return;
@@ -1698,8 +1945,29 @@
     function updateSpiderlings(dt, t){
       if (state !== 'play') return;
       var f60 = dt * 60;
-      for (var i = 0; i < spiderlings.length; i++) {
+      for (var i = spiderlings.length - 1; i >= 0; i--) {
         var s = spiderlings[i];
+        // a raider on top of a spiderling eats it — flee, and take damage
+        var threat = null, thd = 70 * 70;
+        for (var r = 0; r < bugs.length; r++) {
+          var rb = bugs[r];
+          if (rb.dead || rb.webbed || !rb.t.raider) continue;
+          var rd = dist2(s.x, s.y, rb.x, rb.y);
+          if (rd < thd) { thd = rd; threat = rb; }
+          if (rd < (11 + rb.t.r) * (11 + rb.t.r)) {
+            s.hp -= RAID_BITE * dt; s.hurtUntil = t + 120;
+            rb.vx *= 0.7; rb.vy *= 0.7; // it stops to feed
+            if (Math.random() < dt * 10) pop(s.x + rand(-6, 6), s.y + rand(-6, 6), '#dc2626', 1, 1.4);
+          }
+        }
+        if (s.hp <= 0) {
+          floatTxt(s.x, s.y - 16, 'spiderling eaten!', '#dc2626');
+          pop(s.x, s.y, '#dc2626', 12, 2.5);
+          shake = Math.max(shake, 6);
+          SFX.free();
+          spiderlings.splice(i, 1);
+          continue;
+        }
         // pick a target: nearest catchable bug (skip bosses, stingers, un-webbed armored bugs)
         var tgt = null, bd = 320 * 320;
         for (var j = 0; j < bugs.length; j++) {
@@ -1710,7 +1978,13 @@
           var d = dist2(s.x, s.y, b.x, b.y);
           if (d < bd) { bd = d; tgt = b; }
         }
-        if (tgt) { s.tx = tgt.x; s.ty = tgt.y; }
+        if (threat) {
+          // a raider is closing in — scurry directly away from it
+          var fdx = s.x - threat.x, fdy = s.y - threat.y, fL = Math.hypot(fdx, fdy) || 1;
+          s.tx = Math.min(Math.max(s.x + fdx / fL * 120, 30), W - 30);
+          s.ty = Math.min(Math.max(s.y + fdy / fL * 120, 30), H - 30);
+        }
+        else if (tgt) { s.tx = tgt.x; s.ty = tgt.y; }
         else if (t > s.retargetAt) {
           s.retargetAt = t + rand(700, 1800);
           // patrol near the nest if there is one, else roam
@@ -1734,7 +2008,42 @@
           s.rot += diff * (1 - Math.pow(0.82, f60));
         } else { s.vx = 0; s.vy = 0; }
         clampInto(s);
-        s.phase += dt * 16;
+        // IK legs: same tetrapod gait as the player spider, scaled down
+        var ssc = 0.34;
+        var cR = Math.cos(s.rot), sR = Math.sin(s.rot);
+        var sStepK = 1 - Math.pow(1 - STEP_LERP, f60);
+        var sTrig2 = STEP_DIST * STEP_DIST * ssc * ssc;
+        var sGB = [false, false], sGW = [false, false];
+        var sLead = 0.14;
+        for (var li = 0; li < 8; li++) {
+          var sL = s.legs[li], sId = FEET[li];
+          var sIx = s.x + (sId.x * cR - sId.y * sR) * ssc + s.vx * sLead;
+          var sIy = s.y + (sId.x * sR + sId.y * cR) * ssc + s.vy * sLead;
+          sL.ix = sIx; sL.iy = sIy;
+          if (sL.stepping) sGB[GAIT[li]] = true;
+          else if (dist2(sL.fx, sL.fy, sIx, sIy) > sTrig2) sGW[GAIT[li]] = true;
+        }
+        if (!sGB[s.gaitGroup] && !sGW[s.gaitGroup] && sGW[1 - s.gaitGroup]) s.gaitGroup = 1 - s.gaitGroup;
+        var sEmerg2 = sTrig2 * 1.7 * 1.7, sStepping = 0, sCands = [];
+        for (li = 0; li < 8; li++) {
+          sL = s.legs[li];
+          if (sL.stepping) { sStepping++; continue; }
+          var sSt2 = dist2(sL.fx, sL.fy, sL.ix, sL.iy);
+          if (sSt2 > sTrig2 && (GAIT[li] === s.gaitGroup || sSt2 > sEmerg2)) sCands.push([sSt2, li]);
+        }
+        sCands.sort(function(a, b){ return b[0] - a[0]; });
+        for (li = 0; li < sCands.length && sStepping < 4; li++) {
+          s.legs[sCands[li][1]].stepping = true; s.legs[sCands[li][1]].prog = 0; sStepping++;
+        }
+        for (li = 0; li < 8; li++) {
+          sL = s.legs[li];
+          if (sL.stepping) {
+            sL.prog += 0.25 * f60;
+            sL.fx += (sL.ix - sL.fx) * sStepK;
+            sL.fy += (sL.iy - sL.fy) * sStepK;
+            if (sL.prog >= 1) { sL.fx = sL.ix; sL.fy = sL.iy; sL.stepping = false; }
+          }
+        }
         // catch at the mouth — wrapped bugs and small free bugs alike
         var hx = s.x + Math.cos(s.rot) * 9, hy = s.y + Math.sin(s.rot) * 9;
         for (var c = bugs.length - 1; c >= 0; c--) {
@@ -2377,14 +2686,28 @@
           }
         }
 
-        // nest raiders: bugs drift toward your eggs to feed on them (a mild
-        // pull layered on top of their own AI — fireflies/moths still prefer
-        // your web, but flies/beetles/wasps will come for the nest)
-        if (eggs.length && !b.t.boss && !b.webbed) {
+        // nest threat: beetles & slugs are dedicated RAIDERS — they make a
+        // beeline for the nest from far off and hunt eggs AND spiderlings.
+        // every other bug only drifts mildly toward eggs (fireflies/moths
+        // still prefer your web).
+        if (!b.t.boss && !b.webbed) {
+          var raid = b.t.raider;
+          var tx2, ty2, found = false, bestd = (raid ? 540 : 280);
+          bestd *= bestd;
           var eg2 = nearestEgg(b.x, b.y);
-          if (eg2) {
-            var gdx = eg2.x - b.x, gdy = eg2.y - b.y, gL = Math.hypot(gdx, gdy) || 1;
-            if (gL < 280) { b.vx += gdx / gL * 240 * dt; b.vy += gdy / gL * 240 * dt; }
+          if (eg2) { var ed = dist2(b.x, b.y, eg2.x, eg2.y); if (ed < bestd) { bestd = ed; tx2 = eg2.x; ty2 = eg2.y; found = true; } }
+          if (raid) {
+            for (var sp3 = 0; sp3 < spiderlings.length; sp3++) {
+              var sl3 = spiderlings[sp3];
+              var sd = dist2(b.x, b.y, sl3.x, sl3.y);
+              if (sd < bestd) { bestd = sd; tx2 = sl3.x; ty2 = sl3.y; found = true; }
+            }
+          }
+          if (found) {
+            var gdx = tx2 - b.x, gdy = ty2 - b.y, gL = Math.hypot(gdx, gdy) || 1;
+            b.vx += gdx / gL * (raid ? 650 : 240) * dt;
+            b.vy += gdy / gL * (raid ? 650 : 240) * dt;
+            if (raid) capSpeed(b, b.t.sp); // raiders commit, but at their own pace
           }
         }
 
@@ -2571,7 +2894,16 @@
         document.getElementById('webFill').style.width = wpct + '%';
         document.getElementById('webBar').classList.toggle('low', webSilk < 20);
       }
+      // brood meter
+      var bpct = Math.round(broodMeter / BROOD_MAX * 100);
+      if (hudCache.brood !== bpct || hudCache.eggReady !== eggReady) {
+        hudCache.brood = bpct; hudCache.eggReady = eggReady;
+        document.getElementById('broodFill').style.width = (eggReady ? 100 : bpct) + '%';
+        document.getElementById('broodBar').classList.toggle('ready', eggReady);
+      }
       var wl = autoWeb ? 'SILK · AUTO WEB…' : building ? 'SILK · WEAVING…' : 'SILK · STRANDS ' + strands.length;
+      if (eggReady) wl += ' · EGG READY';
+      else if (broodMeter > 0) wl += ' · EGG ' + bpct + '%';
       if (eggs.length) wl += ' · EGGS ' + eggs.length;
       if (spiderlings.length) wl += ' · BROOD ' + spiderlings.length;
       if (bombs > 0) wl += ' · BOMBS ' + bombs;
@@ -2944,6 +3276,19 @@
       ctx.fillStyle = '#1a1a1a'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.ellipse(-5, 0, 20, 16, 0, 0, TAU); ctx.fill(); ctx.stroke();
 
+      // egg sac forming on the spider's back (abdomen) — grows with broodMeter
+      if (broodMeter > 15 || eggReady) {
+        var ef = eggReady ? 1 : broodMeter / BROOD_MAX;
+        var er = 4 + ef * 5;
+        ctx.fillStyle = eggReady ? '#fde68a' : 'rgba(253,230,138,' + (0.3 + ef * 0.7) + ')';
+        ctx.beginPath(); ctx.ellipse(-16, 0, er, er * 0.85, 0, 0, TAU); ctx.fill();
+        if (ef > 0.4) { ctx.beginPath(); ctx.ellipse(-13, -3, er * 0.6, er * 0.5, 0.4, 0, TAU); ctx.fill(); }
+        if (ef > 0.7) { ctx.beginPath(); ctx.ellipse(-13, 3, er * 0.5, er * 0.45, -0.3, 0, TAU); ctx.fill(); }
+        if (eggReady) {
+          ctx.fillStyle = 'rgba(255,255,255,0.4)'; dot(-17, -1, 1.5); dot(-14, 2, 1);
+        }
+      }
+
       // fangs
       ctx.fillStyle = '#ff4444';
       ctx.beginPath(); ctx.moveTo(-10, -5); ctx.lineTo(-2, 0); ctx.lineTo(-10, 5); ctx.fill();
@@ -3001,25 +3346,27 @@
       ctx.strokeStyle = rc; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(eg.x, eg.y, EGG_R + 4, -Math.PI / 2, -Math.PI / 2 + frac * TAU); ctx.stroke();
     }
-    // spiderling: a tiny version of the hero spider with wiggly procedural legs
+    // spiderling: a tiny version of the hero spider with real IK legs
     function drawSpiderling(s, t){
       var sc = 0.34;
-      var c = Math.cos(s.rot), sn = Math.sin(s.rot);
+      var cR = Math.cos(s.rot), sR = Math.sin(s.rot);
+      if (t < s.hurtUntil) {
+        ctx.fillStyle = 'rgba(220,38,38,0.3)';
+        ctx.beginPath(); ctx.arc(s.x, s.y, 13, 0, TAU); ctx.fill();
+      }
       ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.4;
       for (var i = 0; i < 8; i++) {
-        var hip = HIPS[i], ft = FEET[i];
-        var hx = s.x + (hip.x * c - hip.y * sn) * sc;
-        var hy = s.y + (hip.x * sn + hip.y * c) * sc;
-        var wig = Math.sin(s.phase + i * 0.8) * 4; // little scuttle
-        var fxL = ft.x + wig, fyL = ft.y;
-        var fx = s.x + (fxL * c - fyL * sn) * sc;
-        var fy = s.y + (fxL * sn + fyL * c) * sc;
-        var qx = fx - hx, qy = fy - hy, qn = Math.hypot(qx, qy) || 1;
+        var hip = HIPS[i], sL = s.legs[i];
+        var hx = s.x + (hip.x * cR - hip.y * sR) * sc;
+        var hy = s.y + (hip.x * sR + hip.y * cR) * sc;
+        var qx = sL.fx - hx, qy = sL.fy - hy;
+        var qn = Math.hypot(qx, qy) || 1;
         var perpX = -qy / qn, perpY = qx / qn;
         var sign = hip.y < 0 ? -1 : 1;
-        var b1x = hx + qx * 0.5 + perpX * 9 * sign * sc, b1y = hy + qy * 0.5 + perpY * 9 * sign * sc;
-        ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.4;
-        ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(b1x, b1y); ctx.lineTo(fx, fy); ctx.stroke();
+        var b1x = hx + qx * 0.5 + perpX * 9 * sign * sc;
+        var b1y = hy + qy * 0.5 + perpY * 9 * sign * sc;
+        ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(b1x, b1y); ctx.lineTo(sL.fx, sL.fy); ctx.stroke();
         ctx.fillStyle = '#ff4444'; dot(b1x, b1y, 1.1);
       }
       ctx.save();
@@ -3031,10 +3378,19 @@
       ctx.beginPath(); ctx.moveTo(4, -5); ctx.lineTo(-4, 0); ctx.lineTo(4, 5); ctx.fill();
       ctx.fillStyle = '#1a1a1a';
       ctx.beginPath(); ctx.arc(15, 0, 12, 0, TAU); ctx.fill(); ctx.stroke();
+      var px = 2.5, py = 0;
+      var nb = nearestBugTo(s.x, s.y);
+      if (nb) { var ea = Math.atan2(nb.y - s.y, nb.x - s.x) - s.rot; px = Math.cos(ea) * 2.5; py = Math.sin(ea) * 2.5; }
       ctx.fillStyle = '#fff'; dot(19, -5, 4.5); dot(19, 5, 4.5);
-      ctx.fillStyle = '#1a1a1a'; dot(19.5, -5, 2); dot(19.5, 5, 2);
+      ctx.fillStyle = '#1a1a1a'; dot(19 + px, -5 + py, 2); dot(19 + px, 5 + py, 2);
       ctx.fillStyle = '#fff'; dot(20, -6, 1); dot(20, 4, 1);
       ctx.restore();
+      if (s.hp < SPIDERLING_HP) {
+        var f = Math.max(0, s.hp / SPIDERLING_HP);
+        ctx.strokeStyle = f > 0.5 ? 'rgba(34,197,94,0.75)' : 'rgba(220,38,38,0.9)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(s.x, s.y, 13, -Math.PI / 2, -Math.PI / 2 + f * TAU); ctx.stroke();
+      }
     }
     function nearestBugTo(x, y){
       var best = null, bd = Infinity;
