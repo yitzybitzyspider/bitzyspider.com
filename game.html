@@ -443,7 +443,7 @@
     var EGG_BITE = 34;          // damage/sec a raiding bug deals to an egg
     var EGG_HATCH_BASE = 16000; // ms for an egg to hatch
     var SPIDERLING_SP = 138;    // spiderling top speed
-    var SPIDERLING_HP = 55;     // a spiderling's health vs raiders
+    var SPIDERLING_HP = 28;     // a spiderling's health vs raiders — fragile, easy to lose
     var RAID_BITE = 48;         // damage/sec a raider deals to a spiderling
     var BROOD_MAX = 100;        // brood meter capacity (charges from catches)
     var BROOD_PER_CATCH = 12;   // brood charge per catch
@@ -681,6 +681,15 @@
     var STEP_LERP = 0.3;  // per-frame foot lerp while stepping
     // alternating tetrapod gait: opposite groups so 4 feet always planted
     var GAIT = [0, 1, 0, 1, 1, 0, 1, 0];
+    // spiderlings get stubbier legs — each foot pulled ~36% back toward its hip
+    // so the babies don't look long and spindly at their tiny scale
+    var SPIDERLING_FEET = [];
+    for (var sfi = 0; sfi < 8; sfi++) {
+      SPIDERLING_FEET.push({
+        x: HIPS[sfi].x + (FEET[sfi].x - HIPS[sfi].x) * 0.64,
+        y: HIPS[sfi].y + (FEET[sfi].y - HIPS[sfi].y) * 0.64
+      });
+    }
     var legs = [];
     function initLegs(){
       legs = [];
@@ -914,6 +923,47 @@
       b.x = W / 2; b.y = -40;
       floatTxt(W / 2, 80, BOSS_NAMES[kind] + '!', BOSS_COLORS[kind]);
     }
+    // a defeated boss can return later as a ROGUE — same look & personality,
+    // but no longer a true boss: it can be webbed/trapped/slowed like a regular
+    // enemy, takes only 2 web hits, doesn't tear strands, and won't summon
+    // minions. counts as a tough bonus kill (qv 2).
+    var bossesBeaten = {};   // bosses defeated this run — eligible to return rogue
+    var ROGUE_TYPES = {};    // cached non-boss variant of each boss type
+    function rogueType(kind){
+      if (ROGUE_TYPES[kind]) return ROGUE_TYPES[kind];
+      var t = TYPES[kind], r = {};
+      for (var k in t) r[k] = t[k];
+      r.boss = false;   // trappable, slowable, no boss drop
+      r.tears = false;  // doesn't shred your web
+      r.hp = 2;         // two web shots to down
+      r.qv = 2;         // worth two bugs toward quota
+      r.score = Math.round(t.score * 0.4);
+      r.esc = 4;        // can be stuck on strands now
+      ROGUE_TYPES[kind] = r;
+      return r;
+    }
+    function anyRogueAlive(){
+      for (var i = 0; i < bugs.length; i++) if (bugs[i].rogue && !bugs[i].dead) return true;
+      return false;
+    }
+    function spawnRogueBoss(){
+      var beaten = [];
+      for (var bk in bossesBeaten) if (bossesBeaten[bk]) beaten.push(bk);
+      if (!beaten.length) return false;
+      var kind = beaten[Math.floor(Math.random() * beaten.length)];
+      spawnBug(kind);
+      var b = bugs[bugs.length - 1];
+      b.t = rogueType(kind);
+      b.rogue = true;
+      b.hp = b.t.hp; b.qv = b.t.qv;
+      b.spdK = 1; b.escMult = 1;
+      // bosses spawn with zero velocity (sp 0) — give the rogue a real heading
+      var ang = Math.atan2(H / 2 - b.y, W / 2 - b.x) + rand(-0.4, 0.4);
+      b.vx = Math.cos(ang) * b.t.sp; b.vy = Math.sin(ang) * b.t.sp;
+      floatTxt(Math.min(Math.max(b.x, 60), W - 60), Math.min(Math.max(b.y, 60), H - 60),
+        'ROGUE ' + foeName(kind) + '!', BOSS_COLORS[kind]);
+      return true;
+    }
 
     // ---------- web shots (aimed at where you click) ----------
     function shootWeb(ax, ay){
@@ -990,6 +1040,7 @@
       if (b.t.boss && DROPS[b.k]) {
         drops.push({ x: b.x, y: b.y, k: b.k, born: t });
         floatTxt(b.x, b.y - 34, DROPS[b.k].name + ' dropped!', DROPS[b.k].color);
+        bossesBeaten[b.k] = true; // it can return later as a rogue enemy
       }
       if (score > hi) hi = score;
       floatTxt(b.x, b.y - 14, '+' + pts, wrapped ? '#dc2626' : '#fff');
@@ -1040,6 +1091,7 @@
       tutorial = false; tutMark = null; tutMsgSet('');
       eatHeld = false; syncEatBtn();
       foesSeen = { fly: true }; introQueue = []; // the fly is self-evident — no reveal
+      bossesBeaten = {}; // no rogue returns until you've actually beaten a boss
       var ba = document.getElementById('btnAuto');
       if (ba) ba.classList.remove('on');
       initLegs();
@@ -1539,7 +1591,13 @@
           spawnTimer -= dt;
           var maxAlive = 3 + Math.min(level, 7);
           if (spawnTimer <= 0 && bugs.length < maxAlive) {
-            spawnBug(pickType());
+            // a defeated boss occasionally returns as a rogue (not on boss
+            // levels — the real boss is already out there)
+            var rogued = false;
+            if (level >= 6 && level % 5 !== 0 && Math.random() < 0.06 && !anyRogueAlive()) {
+              rogued = spawnRogueBoss();
+            }
+            if (!rogued) spawnBug(pickType());
             spawnTimer = Math.max(0.45, 2.2 - level * 0.13);
           }
         } else {
@@ -1887,12 +1945,13 @@
       s.legs = [];
       s.gaitGroup = 0;
       for (var i = 0; i < 8; i++) {
-        var fx = s.x + FEET[i].x * sc, fy = s.y + FEET[i].y * sc;
+        var fx = s.x + SPIDERLING_FEET[i].x * sc, fy = s.y + SPIDERLING_FEET[i].y * sc;
         s.legs.push({ fx: fx, fy: fy, ix: fx, iy: fy, prog: 1, stepping: false });
       }
     }
     function spawnSpiderling(x, y){
       var s = { x: x, y: y, rot: Math.random() * TAU, vx: 0, vy: 0,
+        svx: 0, svy: 0, // smoothed velocity for steady foot placement (no jitter)
         tx: x, ty: y, retargetAt: 0,
         hp: SPIDERLING_HP, hurtUntil: 0,
         legs: null, gaitGroup: 0 };
@@ -1993,32 +2052,41 @@
           s.tx = Math.min(Math.max(ax + rand(-90, 90), 30), W - 30);
           s.ty = Math.min(Math.max(ay + rand(-90, 90), 30), H - 30);
         }
-        // move toward target with a small spider's lerp + speed cap
+        // move toward target with a small spider's lerp + speed cap.
+        // a deadzone keeps it from twitching when it's right on top of a bug —
+        // micro start-stops were what made the legs look like they vibrate
         var dx = s.tx - s.x, dy = s.ty - s.y, dd = Math.hypot(dx, dy);
-        if (dd > 1) {
+        if (dd > 4) {
           var k = 1 - Math.pow(1 - 0.12, f60);
           var mx = dx * k, my = dy * k, cap = SPIDERLING_SP * dt;
           var ml = Math.hypot(mx, my);
           if (ml > cap) { mx *= cap / ml; my *= cap / ml; }
           s.x += mx; s.y += my;
           s.vx = dt > 0 ? mx / dt : 0; s.vy = dt > 0 ? my / dt : 0;
+          // only turn while actually travelling — no spinning in place near a bug
           var diff = Math.atan2(dy, dx) - s.rot;
           while (diff > Math.PI) diff -= TAU;
           while (diff < -Math.PI) diff += TAU;
           s.rot += diff * (1 - Math.pow(0.82, f60));
         } else { s.vx = 0; s.vy = 0; }
+        // smooth the velocity used for foot lead so jittery chase-targets don't
+        // make the feet flicker back and forth
+        s.svx += (s.vx - s.svx) * (1 - Math.pow(0.78, f60));
+        s.svy += (s.vy - s.svy) * (1 - Math.pow(0.78, f60));
         clampInto(s);
-        // IK legs: same tetrapod gait as the player spider, scaled down
+        // IK legs: same tetrapod gait as the player spider, scaled down. feet
+        // are stickier than the player's (1.35x trigger) so they stay planted
+        // longer — less re-stepping, no vibration at this tiny scale
         var ssc = 0.34;
         var cR = Math.cos(s.rot), sR = Math.sin(s.rot);
         var sStepK = 1 - Math.pow(1 - STEP_LERP, f60);
-        var sTrig2 = STEP_DIST * STEP_DIST * ssc * ssc;
+        var sTrig2 = (STEP_DIST * 1.35) * (STEP_DIST * 1.35) * ssc * ssc;
         var sGB = [false, false], sGW = [false, false];
-        var sLead = 0.14;
+        var sLead = 0.1;
         for (var li = 0; li < 8; li++) {
-          var sL = s.legs[li], sId = FEET[li];
-          var sIx = s.x + (sId.x * cR - sId.y * sR) * ssc + s.vx * sLead;
-          var sIy = s.y + (sId.x * sR + sId.y * cR) * ssc + s.vy * sLead;
+          var sL = s.legs[li], sId = SPIDERLING_FEET[li];
+          var sIx = s.x + (sId.x * cR - sId.y * sR) * ssc + s.svx * sLead;
+          var sIy = s.y + (sId.x * sR + sId.y * cR) * ssc + s.svy * sLead;
           sL.ix = sIx; sL.iy = sIy;
           if (sL.stepping) sGB[GAIT[li]] = true;
           else if (dist2(sL.fx, sL.fy, sIx, sIy) > sTrig2) sGW[GAIT[li]] = true;
@@ -2590,9 +2658,9 @@
             var qdx = ox - b.x, qdy = oy - b.y, ql = Math.hypot(qdx, qdy) || 1;
             b.vx = qdx / ql * b.t.sp; b.vy = qdy / ql * b.t.sp;
           }
-          // spawn wasps (max 3 alive queen-spawned wasps)
+          // spawn wasps (max 3 alive queen-spawned wasps) — rogues don't summon
           b.spawnT = (b.spawnT || rand(2, 3.5)) - dt;
-          if (b.spawnT <= 0 && state === 'play') {
+          if (b.spawnT <= 0 && state === 'play' && !b.rogue) {
             b.spawnT = rand(3, 5);
             var qWasps = 0;
             for (var qi = 0; qi < bugs.length; qi++) if (bugs[qi].k === 'wasp' && bugs[qi].queenSpawn && !bugs[qi].dead) qWasps++;
@@ -2649,7 +2717,7 @@
           wander(b, dt, 2600);
           b.vy += Math.sin(t * 0.004 + b.wing) * 120 * dt;
           b.spawnT = (b.spawnT || rand(2.5, 4)) - dt;
-          if (b.spawnT <= 0 && state === 'play') {
+          if (b.spawnT <= 0 && state === 'play' && !b.rogue) {
             b.spawnT = rand(3.5, 5.5);
             var kMoths = 0;
             for (var ki = 0; ki < bugs.length; ki++) if (bugs[ki].k === 'moth' && bugs[ki].kingSpawn && !bugs[ki].dead) kMoths++;
