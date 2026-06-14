@@ -60,11 +60,13 @@
     }
     #btnAuto.on { border-color: #fbbf24; color: #fff; background: rgba(251,191,36,0.2); }
     #btnAuto:active { transform: scale(0.95); }
-    #btnEat, #btnFix {
+    #btnEat, #btnFix, #btnEgg {
       background: rgba(0,0,0,0.55); border: 1px solid #3f3f46; color: #a1a1aa;
       border-radius: 14px; padding: 12px 14px; font-size: 12px; font-weight: 700;
       letter-spacing: 0.08em; cursor: pointer; font-family: inherit; margin-right: 8px;
     }
+    #btnEgg { border-color: #a16207; color: #fde68a; }
+    #btnEgg:active { transform: scale(0.95); }
     #btnEat.on { border-color: #22c55e; color: #fff; background: rgba(34,197,94,0.2); }
     #btnFix.on { border-color: #fbbf24; color: #fff; background: rgba(251,191,36,0.2); }
     #btnEat:active, #btnFix:active { transform: scale(0.95); }
@@ -185,7 +187,7 @@
       <div id="silkLbl">SHOT &middot; WEB</div>
     </div>
     <div class="hud" id="hudBR">
-      <button id="btnCut">&#10005; DETACH</button><button id="btnEat">&#127860; EAT</button><button id="btnFix">&#128295; FIX</button><button id="btnAuto">&#127760; AUTO</button><button id="btnWeb">&#128376; WEB</button>
+      <button id="btnCut">&#10005; DETACH</button><button id="btnEgg">&#129370; EGG</button><button id="btnEat">&#127860; EAT</button><button id="btnFix">&#128295; FIX</button><button id="btnAuto">&#127760; AUTO</button><button id="btnWeb">&#128376; WEB</button>
     </div>
     <div class="hud" id="tutMsg"></div>
   </div>
@@ -195,7 +197,7 @@
     <div class="card">
       <div class="brand">BITZYSPIDER ARCADE</div>
       <h1>BUG<span class="red">HUNT</span></h1>
-      <div style="color:#52525b;font-size:9px;letter-spacing:0.2em;margin-top:6px" id="verLabel">v14</div>
+      <div style="color:#52525b;font-size:9px;letter-spacing:0.2em;margin-top:6px" id="verLabel">v15</div>
       <div class="secHead">HOW TO PLAY</div>
       <div class="ctrlGrid" id="menuControls"></div>
       <div class="tipLine">red bar = web shots &middot; white bar = weaving silk (catches refill it)<br>crossed strands hold &middot; heavy bugs need two lines on them</div>
@@ -335,9 +337,9 @@
     };
 
     // ---------- stats / upgrades ----------
-    var GAME_VERSION = 'v14';
+    var GAME_VERSION = 'v15';
     var S; // current run stats
-    function freshStats(){ return { speed: 0, range: 0, silk: 0, grip: 0, tough: 0, venom: 0, spread: 0, heartT: 0, dblShot: 0, fortify: 0, bomb: 0, extraLife: 0 }; }
+    function freshStats(){ return { speed: 0, range: 0, silk: 0, grip: 0, tough: 0, venom: 0, spread: 0, brood: 0, heartT: 0, dblShot: 0, fortify: 0, bomb: 0, extraLife: 0 }; }
     function wrapMult(){ return 1.5 + (S ? S.venom * 0.25 : 0); } // wrapped catch bonus
     function followK(){ return 0.10; }                      // lerp/frame toward cursor (original spider feel)
     function topSpeed(){ return 150 + (S ? S.speed * 40 : 80); } // hard speed cap px/s — slow on purpose
@@ -356,6 +358,11 @@
     // spread-trap: wider reach and faster recharge as you upgrade it
     function spreadR(){ return SPREAD_R + (S ? S.spread * 28 : 0); }
     function spreadCD(){ return Math.max(2500, SPREAD_CD - (S ? S.spread * 1300 : 0)); }
+    // nest: egg sacs hatch into spiderlings. NEST upgrade toughens eggs,
+    // speeds the hatch, and raises how many can live in the nest at once
+    function eggHpMax(){ return EGG_HP_BASE + (S ? S.brood * 60 : 0); }
+    function eggHatchMs(){ return Math.max(9000, EGG_HATCH_BASE - (S ? S.brood * 2500 : 0)); }
+    function maxBrood(){ return 2 + (S ? S.brood : 0); } // eggs + spiderlings combined
     // start small, grow a little every level cleared (plus grip)
     function spiderScale(){
       var lv = state === 'menu' ? 4 : level;
@@ -366,6 +373,13 @@
     var STRAND_MIN = 24, STRAND_SNAP = 18, STRAND_MAX_COUNT = 48;
     var BOMB_RADIUS = 140;
     var BOMB_COST = 200;
+    // nest mechanic: lay egg sacs (N), defend them, they hatch into spiderlings
+    var EGG_COST = 60;          // webSilk to lay one egg sac
+    var EGG_R = 13;             // egg sac radius
+    var EGG_HP_BASE = 100;      // egg sac health
+    var EGG_BITE = 34;          // damage/sec a raiding bug deals to an egg
+    var EGG_HATCH_BASE = 16000; // ms for an egg to hatch
+    var SPIDERLING_SP = 138;    // spiderling top speed
 
     // level ranks — fun names for the climb
     var RANKS = [
@@ -392,6 +406,8 @@
         desc: function(){ return 'Wrapped bugs worth x' + wrapMult().toFixed(2) + ' → x' + (wrapMult() + 0.25).toFixed(2); } },
       { key: 'spread', name: 'SPREAD SILK',  max: 3, cost: [80, 170, 300],
         desc: function(){ var nextCd = Math.max(2500, SPREAD_CD - (S.spread + 1) * 1300); return 'Spread-trap reach ' + Math.round(spreadR()) + ' → ' + Math.round(spreadR() + 28) + ', recharge ' + (spreadCD() / 1000).toFixed(1) + 's → ' + (nextCd / 1000).toFixed(1) + 's'; } },
+      { key: 'brood',  name: 'NEST INSTINCT', max: 3, cost: [90, 190, 330],
+        desc: function(){ return 'Tougher eggs (' + eggHpMax() + ' → ' + (eggHpMax() + 60) + ' hp), faster hatch, nest holds ' + maxBrood() + ' → ' + (maxBrood() + 1); } },
       { key: 'heartT', name: 'EXTRA HEART',  max: 2, cost: [150, 300],
         desc: function(){ return '+1 max health (' + maxHearts() + ' → ' + (maxHearts() + 1) + ')'; } }
     ];
@@ -434,6 +450,7 @@
     var trail = [], lastTrail = { x: 0, y: 0 };
     var bugs = [], shots = [], parts = [], floats = [];
     var strands = [], globs = [], slimes = []; // built web strands, enemy spit, slug slime
+    var eggs = [], spiderlings = []; // nest: laid egg sacs + hatched helpers
     var building = null; // anchor point while laying a strand
     var hubs = [];       // points where 3+ strands meet — true webs with a slow field
     var ripples = [];    // expanding ring fx (web twang)
@@ -514,6 +531,7 @@
       spider.slowUntil = 0;
       bugs = []; shots = []; globs = []; slimes = [];
       strands = []; hubs = []; crossings = []; ripples = []; drops = [];
+      eggs = []; spiderlings = [];
       building = null; bombs = 0; buffScoreUntil = 0; buffSpeedUntil = 0;
       comboN = 0; comboUntil = 0; shownScore = 0; freezeUntil = 0;
       caught = 0; quota = 999;
@@ -643,6 +661,8 @@
         st.x1 = Math.min(Math.max(st.x1, 18), W - 18); st.y1 = Math.min(Math.max(st.y1, 18), H - 18);
         st.x2 = Math.min(Math.max(st.x2, 18), W - 18); st.y2 = Math.min(Math.max(st.y2, 18), H - 18);
       }
+      for (i = 0; i < eggs.length; i++) clampInto(eggs[i]);
+      for (i = 0; i < spiderlings.length; i++) clampInto(spiderlings[i]);
     }
     // each level gets a faintly different mood — a near-black tint that rotates
     // through cool/warm hues so the arena doesn't read as flat black
@@ -917,6 +937,7 @@
       spider.x = target.x = W / 2; spider.y = target.y = H / 2;
       spider.slowUntil = 0;
       strands = []; hubs = []; crossings = []; ripples = []; fires = []; spreads = [];
+      eggs = []; spiderlings = [];
       comboN = 0; comboUntil = 0; shownScore = 0; freezeUntil = 0;
       spreadAt = 0;
       lastInputAt = now();
@@ -1032,6 +1053,7 @@
     function toMenu(){
       save('hi', hi); save('total', totalBugs);
       bugs = []; shots = []; strands = []; globs = []; slimes = []; fires = []; spreads = [];
+      eggs = []; spiderlings = [];
       hubs = []; crossings = []; ripples = []; drops = [];
       building = null;
       tutorial = false; tutMark = null; tutDoneAt = 0; tutMsgSet('');
@@ -1157,6 +1179,7 @@
       if (e.key === 'r' || e.key === 'R') startRepair();
       if (e.key === 'b' || e.key === 'B') useBomb();
       if (e.key === 'f' || e.key === 'F') doSpread();
+      if (e.key === 'n' || e.key === 'N') layEgg();
     });
     window.addEventListener('keyup', function(e){
       if (e.key === 'e' || e.key === 'E') { eatHeld = false; syncEatBtn(); }
@@ -1194,6 +1217,7 @@
     document.getElementById('btnCut').addEventListener('click', function(e){ e.stopPropagation(); detach(); });
     document.getElementById('btnAuto').addEventListener('click', function(e){ e.stopPropagation(); audio(); toggleAutoWeb(); });
     document.getElementById('btnFix').addEventListener('click', function(e){ e.stopPropagation(); audio(); startRepair(); });
+    document.getElementById('btnEgg').addEventListener('click', function(e){ e.stopPropagation(); audio(); layEgg(); });
     // EAT is hold-to-graze: down = start eating, up/leave = stop
     (function(){
       var be = document.getElementById('btnEat');
@@ -1221,6 +1245,7 @@
       ['&#127760;', '<b>AUTO</b> — weave a spiral web (drag = take over)'],
       ['&#127860;', '<b>EAT</b> (hold) — graze strands, reclaim silk'],
       ['&#128295;', '<b>FIX</b> — re-walk &amp; repair your last web'],
+      ['&#129370;', '<b>EGG</b> — lay an egg in your web; it hatches a helper'],
       ['&#128062;', 'walk over stuck bugs to <b>wrap</b> them']
     ] : [
       ['&#128433;', '<b>MOVE</b> — the spider follows your mouse'],
@@ -1231,6 +1256,7 @@
       ['&#127760;', '<b>Q</b> — auto-weave a spiral web (move = take over)'],
       ['&#127860;', '<b>E</b> (hold) — graze strands, reclaim silk'],
       ['&#128295;', '<b>R</b> — re-walk &amp; repair your last web'],
+      ['&#129370;', '<b>N</b> — lay an egg in your web; defend it till it hatches'],
       ['&#128163;', '<b>B</b> — bug bomb (buy in the shop)'],
       ['&#128062;', 'walk over stuck bugs to <b>wrap</b> them'],
       ['&#9208;',   '<b>P</b> — pause &middot; <b>M</b> — mute']
@@ -1257,6 +1283,7 @@
       // are just clutter there
       document.getElementById('btnWeb').style.display = 'none';
       document.getElementById('btnCut').style.display = 'none';
+      document.getElementById('btnEgg').style.display = 'none'; // N lays eggs
     }
     document.getElementById('mHigh').textContent = hi;
     document.getElementById('mTotal').textContent = totalBugs;
@@ -1324,6 +1351,8 @@
       updateGlobs(dt, t);
       updateTrailSnare(t);
       updateAutoWeb(dt);
+      updateEggs(dt, t);
+      updateSpiderlings(dt, t);
       updateFx(dt);
 
       if (state === 'play') {
@@ -1591,6 +1620,135 @@
       }
       return false;
     }
+    // ---------- nest: eggs & spiderlings ----------
+    // lay an egg sac at your position. it's vulnerable on the ground — bugs
+    // raid it — but strands/hubs around it shield it. it hatches into a
+    // spiderling that roams and catches bugs for you.
+    function layEgg(){
+      if (state !== 'play') return;
+      if (eggs.length + spiderlings.length >= maxBrood()) {
+        floatTxt(spider.x, spider.y - 30, 'nest is full', '#71717a'); SFX.deny(); return;
+      }
+      if (webSilk < EGG_COST) {
+        floatTxt(spider.x, spider.y - 30, 'not enough web silk', '#dc2626'); SFX.deny(); return;
+      }
+      webSilk -= EGG_COST;
+      var t = now();
+      eggs.push({ x: spider.x, y: spider.y, hp: eggHpMax(), max: eggHpMax(), born: t, hatchAt: t + eggHatchMs() });
+      floatTxt(spider.x, spider.y - 30, 'EGG LAID — protect it!', '#fbbf24');
+      pop(spider.x, spider.y, '#fde68a', 8, 2);
+      SFX.wrap();
+      updateHud(true);
+    }
+    function nearestEgg(x, y){
+      var best = null, bd = Infinity;
+      for (var i = 0; i < eggs.length; i++) {
+        var d = dist2(x, y, eggs[i].x, eggs[i].y);
+        if (d < bd) { bd = d; best = eggs[i]; }
+      }
+      return best;
+    }
+    function spawnSpiderling(x, y){
+      spiderlings.push({ x: x, y: y, rot: Math.random() * TAU, vx: 0, vy: 0,
+        tx: x, ty: y, retargetAt: 0, phase: Math.random() * TAU });
+    }
+    function updateEggs(dt, t){
+      if (state !== 'play') return;
+      for (var i = eggs.length - 1; i >= 0; i--) {
+        var eg = eggs[i];
+        // hatch
+        if (t >= eg.hatchAt) {
+          spawnSpiderling(eg.x, eg.y);
+          floatTxt(eg.x, eg.y - 20, 'HATCHED!', '#22c55e');
+          pop(eg.x, eg.y, '#fde68a', 14, 2.5);
+          ripples.push({ x: eg.x, y: eg.y, r: 6, life: 1 });
+          SFX.wrap();
+          eggs.splice(i, 1);
+          continue;
+        }
+        // a true web (hub) over the egg makes it a fortified nest — far less bite damage
+        var prot = 1;
+        for (var h = 0; h < hubs.length; h++) {
+          if (dist2(eg.x, eg.y, hubs[h].x, hubs[h].y) < (HUB_R + 8) * (HUB_R + 8)) { prot = 0.32; break; }
+        }
+        // raiding bugs bite the egg (webbed/boss bugs can't)
+        var bitten = false;
+        for (var j = 0; j < bugs.length; j++) {
+          var b = bugs[j];
+          if (b.dead || b.webbed || b.t.boss) continue;
+          if (dist2(b.x, b.y, eg.x, eg.y) < (EGG_R + b.t.r) * (EGG_R + b.t.r)) {
+            eg.hp -= EGG_BITE * dt * prot;
+            b.vx *= 0.7; b.vy *= 0.7; // it stops to feed
+            bitten = true;
+            if (Math.random() < dt * 10) pop(eg.x + rand(-8, 8), eg.y + rand(-8, 8), '#fde68a', 1, 1.4);
+          }
+        }
+        if (bitten && Math.random() < dt * 3) floatTxt(eg.x, eg.y - 22, 'EGG UNDER ATTACK!', '#dc2626');
+        if (eg.hp <= 0) {
+          floatTxt(eg.x, eg.y - 18, 'EGG LOST!', '#dc2626');
+          pop(eg.x, eg.y, '#dc2626', 14, 3);
+          shake = Math.max(shake, 8);
+          SFX.sting();
+          eggs.splice(i, 1);
+        }
+      }
+    }
+    // spiderlings: little hatchlings that hunt on their own — they chase the
+    // nearest catchable bug and grab it at their mouth, wandering otherwise
+    function updateSpiderlings(dt, t){
+      if (state !== 'play') return;
+      var f60 = dt * 60;
+      for (var i = 0; i < spiderlings.length; i++) {
+        var s = spiderlings[i];
+        // pick a target: nearest catchable bug (skip bosses, stingers, un-webbed armored bugs)
+        var tgt = null, bd = 320 * 320;
+        for (var j = 0; j < bugs.length; j++) {
+          var b = bugs[j];
+          if (b.dead || b.t.boss) continue;
+          var catchable = (b.webbed && b.hp <= 0) || (!b.webbed && !b.t.web && !b.t.sting);
+          if (!catchable) continue;
+          var d = dist2(s.x, s.y, b.x, b.y);
+          if (d < bd) { bd = d; tgt = b; }
+        }
+        if (tgt) { s.tx = tgt.x; s.ty = tgt.y; }
+        else if (t > s.retargetAt) {
+          s.retargetAt = t + rand(700, 1800);
+          // patrol near the nest if there is one, else roam
+          var anchor = nearestEgg(s.x, s.y);
+          var ax = anchor ? anchor.x : rand(40, W - 40), ay = anchor ? anchor.y : rand(40, H - 40);
+          s.tx = Math.min(Math.max(ax + rand(-90, 90), 30), W - 30);
+          s.ty = Math.min(Math.max(ay + rand(-90, 90), 30), H - 30);
+        }
+        // move toward target with a small spider's lerp + speed cap
+        var dx = s.tx - s.x, dy = s.ty - s.y, dd = Math.hypot(dx, dy);
+        if (dd > 1) {
+          var k = 1 - Math.pow(1 - 0.12, f60);
+          var mx = dx * k, my = dy * k, cap = SPIDERLING_SP * dt;
+          var ml = Math.hypot(mx, my);
+          if (ml > cap) { mx *= cap / ml; my *= cap / ml; }
+          s.x += mx; s.y += my;
+          s.vx = dt > 0 ? mx / dt : 0; s.vy = dt > 0 ? my / dt : 0;
+          var diff = Math.atan2(dy, dx) - s.rot;
+          while (diff > Math.PI) diff -= TAU;
+          while (diff < -Math.PI) diff += TAU;
+          s.rot += diff * (1 - Math.pow(0.82, f60));
+        } else { s.vx = 0; s.vy = 0; }
+        clampInto(s);
+        s.phase += dt * 16;
+        // catch at the mouth — wrapped bugs and small free bugs alike
+        var hx = s.x + Math.cos(s.rot) * 9, hy = s.y + Math.sin(s.rot) * 9;
+        for (var c = bugs.length - 1; c >= 0; c--) {
+          var cb = bugs[c];
+          if (cb.dead || cb.t.boss) continue;
+          if (dist2(hx, hy, cb.x, cb.y) < (11 + cb.t.r) * (11 + cb.t.r)) {
+            if ((cb.webbed && cb.hp <= 0) || (!cb.webbed && !cb.t.web && !cb.t.sting)) {
+              catchBug(cb, false); // no wrap-freeze for helper catches
+            }
+          }
+        }
+      }
+    }
+
     // auto-weaver: the spider actually WALKS a spiral around where you toggled
     // it on, laying strand segments behind it exactly like manual weaving.
     // After the first full row, it stitches connectors back to the previous
@@ -2219,6 +2377,17 @@
           }
         }
 
+        // nest raiders: bugs drift toward your eggs to feed on them (a mild
+        // pull layered on top of their own AI — fireflies/moths still prefer
+        // your web, but flies/beetles/wasps will come for the nest)
+        if (eggs.length && !b.t.boss && !b.webbed) {
+          var eg2 = nearestEgg(b.x, b.y);
+          if (eg2) {
+            var gdx = eg2.x - b.x, gdy = eg2.y - b.y, gL = Math.hypot(gdx, gdy) || 1;
+            if (gL < 280) { b.vx += gdx / gL * 240 * dt; b.vy += gdy / gL * 240 * dt; }
+          }
+        }
+
         // snared by your silk trail: crawl speed
         var snared = b.snaredUntil && t < b.snaredUntil;
         var mv = snared ? 0.18 : 1;
@@ -2403,6 +2572,8 @@
         document.getElementById('webBar').classList.toggle('low', webSilk < 20);
       }
       var wl = autoWeb ? 'SILK · AUTO WEB…' : building ? 'SILK · WEAVING…' : 'SILK · STRANDS ' + strands.length;
+      if (eggs.length) wl += ' · EGGS ' + eggs.length;
+      if (spiderlings.length) wl += ' · BROOD ' + spiderlings.length;
       if (bombs > 0) wl += ' · BOMBS ' + bombs;
       var tb = now();
       wl += tb < spreadAt ? ' · SPREAD ' + Math.ceil((spreadAt - tb) / 1000) + 's' : ' · SPREAD ✓';
@@ -2690,8 +2861,14 @@
         ctx.fillText(dInfo.name, drp.x, drp.y + 22);
       }
 
+      // egg sacs (ground layer, under the bugs)
+      for (i = 0; i < eggs.length; i++) drawEgg(eggs[i], t);
+
       // bugs
       for (i = 0; i < bugs.length; i++) drawBug(bugs[i], t);
+
+      // spiderlings (little hatchlings)
+      for (i = 0; i < spiderlings.length; i++) drawSpiderling(spiderlings[i], t);
 
       // spider (blink while invulnerable)
       var blink = t < invulnUntil && Math.floor(t / 100) % 2 === 0;
@@ -2794,6 +2971,71 @@
       ctx.restore();
     }
     function dot(x, y, r){ ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill(); }
+    // egg sac: a silk-wrapped cluster with a health ring; jiggles near hatching
+    function drawEgg(eg, t){
+      var hatchSoon = eg.hatchAt - t < 3000;
+      var jig = hatchSoon ? Math.sin(t * 0.02) * 1.6 : 0;
+      // soft glow (warmer as it nears hatching)
+      var glow = hatchSoon ? 0.18 + Math.sin(t * 0.01) * 0.08 : 0.1;
+      ctx.fillStyle = 'rgba(253,230,138,' + glow + ')';
+      ctx.beginPath(); ctx.arc(eg.x, eg.y, EGG_R + 7, 0, TAU); ctx.fill();
+      ctx.save();
+      ctx.translate(eg.x + jig, eg.y);
+      // egg cluster
+      ctx.fillStyle = '#fde68a';
+      ctx.beginPath(); ctx.ellipse(-4, -2, 7, 9, -0.3, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(5, -1, 6, 8, 0.3, 0, TAU); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(0, 5, 7, 8, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.45)';
+      dot(-5, -4, 2); dot(4, -3, 1.6);
+      // silk wrap
+      ctx.strokeStyle = 'rgba(255,255,255,0.65)'; ctx.lineWidth = 1;
+      for (var w = -1; w <= 1; w++) {
+        ctx.beginPath(); ctx.moveTo(-EGG_R, w * 5); ctx.lineTo(EGG_R, w * 5 - 2); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(w * 5, -EGG_R); ctx.lineTo(w * 5 - 2, EGG_R); ctx.stroke();
+      }
+      ctx.restore();
+      // health ring (drains green → amber → red)
+      var frac = Math.max(0, eg.hp / eg.max);
+      var rc = frac > 0.5 ? 'rgba(34,197,94,0.85)' : frac > 0.25 ? 'rgba(251,191,36,0.9)' : 'rgba(220,38,38,0.95)';
+      ctx.strokeStyle = rc; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(eg.x, eg.y, EGG_R + 4, -Math.PI / 2, -Math.PI / 2 + frac * TAU); ctx.stroke();
+    }
+    // spiderling: a tiny version of the hero spider with wiggly procedural legs
+    function drawSpiderling(s, t){
+      var sc = 0.34;
+      var c = Math.cos(s.rot), sn = Math.sin(s.rot);
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      for (var i = 0; i < 8; i++) {
+        var hip = HIPS[i], ft = FEET[i];
+        var hx = s.x + (hip.x * c - hip.y * sn) * sc;
+        var hy = s.y + (hip.x * sn + hip.y * c) * sc;
+        var wig = Math.sin(s.phase + i * 0.8) * 4; // little scuttle
+        var fxL = ft.x + wig, fyL = ft.y;
+        var fx = s.x + (fxL * c - fyL * sn) * sc;
+        var fy = s.y + (fxL * sn + fyL * c) * sc;
+        var qx = fx - hx, qy = fy - hy, qn = Math.hypot(qx, qy) || 1;
+        var perpX = -qy / qn, perpY = qx / qn;
+        var sign = hip.y < 0 ? -1 : 1;
+        var b1x = hx + qx * 0.5 + perpX * 9 * sign * sc, b1y = hy + qy * 0.5 + perpY * 9 * sign * sc;
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.4;
+        ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(b1x, b1y); ctx.lineTo(fx, fy); ctx.stroke();
+        ctx.fillStyle = '#ff4444'; dot(b1x, b1y, 1.1);
+      }
+      ctx.save();
+      ctx.translate(s.x, s.y); ctx.rotate(s.rot); ctx.scale(sc, sc);
+      ctx.fillStyle = '#1a1a1a'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.4;
+      ctx.beginPath(); ctx.ellipse(-5, 0, 20, 16, 0, 0, TAU); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#ff4444';
+      ctx.beginPath(); ctx.moveTo(-10, -5); ctx.lineTo(-2, 0); ctx.lineTo(-10, 5); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(4, -5); ctx.lineTo(-4, 0); ctx.lineTo(4, 5); ctx.fill();
+      ctx.fillStyle = '#1a1a1a';
+      ctx.beginPath(); ctx.arc(15, 0, 12, 0, TAU); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#fff'; dot(19, -5, 4.5); dot(19, 5, 4.5);
+      ctx.fillStyle = '#1a1a1a'; dot(19.5, -5, 2); dot(19.5, 5, 2);
+      ctx.fillStyle = '#fff'; dot(20, -6, 1); dot(20, 4, 1);
+      ctx.restore();
+    }
     function nearestBugTo(x, y){
       var best = null, bd = Infinity;
       for (var i = 0; i < bugs.length; i++) {
