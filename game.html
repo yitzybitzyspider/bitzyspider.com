@@ -400,7 +400,7 @@
     };
 
     // ---------- stats / upgrades ----------
-    var GAME_VERSION = 'v17';
+    var GAME_VERSION = 'v18';
     var S; // current run stats
     function freshStats(){ return { speed: 0, range: 0, silk: 0, grip: 0, tough: 0, venom: 0, spread: 0, brood: 0, heartT: 0, dblShot: 0, fortify: 0, bomb: 0, extraLife: 0 }; }
     function wrapMult(){ return 1.5 + (S ? S.venom * 0.25 : 0); } // wrapped catch bonus
@@ -537,9 +537,8 @@
     var freezeUntil = 0;            // hit-stop
     var lastInputAt = 0;            // idle wander timer
     var wanderVel = { x: 0, y: 0 };
-    var autoWeb = false;            // auto-build circular web mode
-    var autoAngle = 0;              // current angle in auto-web spiral
-    var autoCenter = null;          // center of auto-web spiral
+    var autoWeb = false;            // auto-build hub-and-spoke web mode
+    var autoCenter = null;          // center of the auto-web
     var autoTimer = 0;              // time until next auto-strand
     var bombs = 0;                  // purchased bombs available this run
     var drops = [];                 // boss death pickups — walk over to collect
@@ -1112,7 +1111,7 @@
       comboN = 0; comboUntil = 0; shownScore = 0; freezeUntil = 0;
       spreadAt = 0; broodMeter = 0; eggReady = false;
       lastInputAt = now();
-      autoWeb = false; autoCenter = null; bombs = 0;
+      autoWeb = false; autoCenter = null; autoEdges = null; bombs = 0;
       drops = []; buffScoreUntil = 0; buffSpeedUntil = 0; shieldHits = 0;
       tutorial = false; tutMark = null; tutMsgSet('');
       eatHeld = false; syncEatBtn();
@@ -1790,13 +1789,14 @@
         if (trail.length > 60) trail.shift();
       }
     }
-    function inSlime(){
+    function inSlimeAt(x, y){
       for (var i = 0; i < slimes.length; i++) {
         var sl = slimes[i];
-        if (dist2(spider.x, spider.y, sl.x, sl.y) < sl.r * sl.r) return true;
+        if (dist2(x, y, sl.x, sl.y) < sl.r * sl.r) return true;
       }
       return false;
     }
+    function inSlime(){ return inSlimeAt(spider.x, spider.y); }
 
     // ---------- web building (lay strands point to point) ----------
     // Press W / the WEB button to anchor a strand at your position; move,
@@ -2082,17 +2082,35 @@
           s.tx = Math.min(Math.max(ax + rand(-90, 90), 30), W - 30);
           s.ty = Math.min(Math.max(ay + rand(-90, 90), 30), H - 30);
         }
+        // separation: babies that pile onto the same bug fuse into one blob
+        // and waste the extra legs — push siblings apart when they get too
+        // close so the brood spreads out and covers more ground
+        var sepx = 0, sepy = 0, SEP_D = 26;
+        for (var q = 0; q < spiderlings.length; q++) {
+          if (q === i) continue;
+          var os = spiderlings[q];
+          var od2 = dist2(s.x, s.y, os.x, os.y);
+          if (od2 < SEP_D * SEP_D && od2 > 0.01) {
+            var od = Math.sqrt(od2), push = (SEP_D - od) / SEP_D;
+            sepx += (s.x - os.x) / od * push; sepy += (s.y - os.y) / od * push;
+          }
+        }
+        s.x += sepx * 90 * dt; s.y += sepy * 90 * dt;
+        // slug slime traps the babies too — they wrangle out slowly, kicking up
+        // slime as they struggle (they're light, so it grips them hard)
+        var slimed = inSlimeAt(s.x, s.y);
         // move toward target with a small spider's lerp + speed cap.
         // a deadzone keeps it from twitching when it's right on top of a bug —
         // micro start-stops were what made the legs look like they vibrate
         var dx = s.tx - s.x, dy = s.ty - s.y, dd = Math.hypot(dx, dy);
         if (dd > 4) {
-          var k = 1 - Math.pow(1 - 0.12, f60);
-          var mx = dx * k, my = dy * k, cap = SPIDERLING_SP * dt;
+          var k = 1 - Math.pow(1 - (slimed ? 0.07 : 0.12), f60);
+          var mx = dx * k, my = dy * k, cap = SPIDERLING_SP * (slimed ? 0.4 : 1) * dt;
           var ml = Math.hypot(mx, my);
           if (ml > cap) { mx *= cap / ml; my *= cap / ml; }
           s.x += mx; s.y += my;
           s.vx = dt > 0 ? mx / dt : 0; s.vy = dt > 0 ? my / dt : 0;
+          if (slimed && Math.random() < dt * 6) pop(s.x + rand(-5, 5), s.y + rand(-5, 5), '#65a30d', 1, 1.2);
           // only turn while actually travelling — no spinning in place near a bug
           var diff = Math.atan2(dy, dx) - s.rot;
           while (diff > Math.PI) diff -= TAU;
@@ -2161,15 +2179,64 @@
     // After the first full row, it stitches connectors back to the previous
     // row every quarter turn — the way a real orb-weaver ties its spiral to
     // the row before. Moving the mouse takes control back and stops it.
-    var AUTO_RING = 38;   // spacing between spiral rows
-    var AUTO_SEG = 46;    // pin a segment every ~46px of walked path
-    var AUTO_ROWS = 3.2;  // spiral rows before it calls the web done
-    var AUTO_SPOKES = 6;  // radial spokes per turn — aligned across rows
-    var autoLastConn = 0, autoGraceUntil = 0;
-    var autoRepair = false;   // R: re-walk the last web, fill only the gaps
-    var autoArmed = true;     // repair: don't lay silk until on the spiral path
-    var lastWebCenter = null; // remembered spiral center for repairs
+    var AUTO_RING = 44;   // radius between concentric rings (hub → ring 1 = 44)
+    var AUTO_RINGS = 3;   // number of concentric rings
+    var AUTO_SPOKES = 6;  // radial spokes — straight lines out from the hub
+    var autoGraceUntil = 0;
+    var autoRepair = false;   // R: lay only the web's missing segments
+    var autoArmed = true;     // (kept for compatibility with other refs)
+    var autoEdges = null;     // queue of canonical edges still to lay
+    var lastWebCenter = null; // remembered web center for repairs
     var eatHeld = false;      // hold E / EAT to graze strands as you walk
+    function ringRadius(ring){ return AUTO_RING * ring; }
+    // The canonical hub-and-spoke web centered at (cx,cy): straight radial
+    // spokes plus concentric rings whose segments connect adjacent spoke
+    // vertices DIRECTLY (no overlapping spiral) — every ring edge meets the
+    // spokes at a shared vertex. Returns a flat list of {x1,y1,x2,y2} edges.
+    function autoWebEdges(cx, cy){
+      var N = AUTO_SPOKES, R = AUTO_RINGS, edges = [], ring, k;
+      var verts = [];
+      for (ring = 0; ring <= R; ring++){
+        verts[ring] = [];
+        var rr = ringRadius(ring); // ring 0 → 0 (the hub)
+        for (k = 0; k < N; k++){
+          var a = k * TAU / N;
+          verts[ring][k] = { x: cx + Math.cos(a) * rr, y: cy + Math.sin(a) * rr };
+        }
+      }
+      // radial spokes: hub → ring1 → … → ringR, one straight chain per angle
+      for (k = 0; k < N; k++){
+        edges.push({ x1: cx, y1: cy, x2: verts[1][k].x, y2: verts[1][k].y });
+        for (ring = 2; ring <= R; ring++){
+          edges.push({ x1: verts[ring-1][k].x, y1: verts[ring-1][k].y, x2: verts[ring][k].x, y2: verts[ring][k].y });
+        }
+      }
+      // ring segments: connect each spoke vertex straight to its neighbour
+      for (ring = 1; ring <= R; ring++){
+        for (k = 0; k < N; k++){
+          var k2 = (k + 1) % N;
+          edges.push({ x1: verts[ring][k].x, y1: verts[ring][k].y, x2: verts[ring][k2].x, y2: verts[ring][k2].y });
+        }
+      }
+      return edges;
+    }
+    // order the pending edges so the spider always heads to the nearest one,
+    // and walks to whichever of its endpoints is closer first
+    function reorderAutoEdges(){
+      if (!autoEdges || !autoEdges.length) return;
+      var sx = spider.x, sy = spider.y, best = 0, bestd = Infinity;
+      for (var i = 0; i < autoEdges.length; i++){
+        var e = autoEdges[i];
+        var d = Math.min(dist2(sx, sy, e.x1, e.y1), dist2(sx, sy, e.x2, e.y2));
+        if (d < bestd){ bestd = d; best = i; }
+      }
+      if (best > 0){ autoEdges.unshift(autoEdges.splice(best, 1)[0]); }
+      var f = autoEdges[0];
+      if (dist2(sx, sy, f.x2, f.y2) < dist2(sx, sy, f.x1, f.y1)){
+        var tx = f.x1, ty = f.y1; f.x1 = f.x2; f.y1 = f.y2; f.x2 = tx; f.y2 = ty;
+      }
+      f.phase = 'goA';
+    }
     function startAutoWeb(){
       if (webSilk < 10) { floatTxt(spider.x, spider.y - 30, 'not enough web silk', '#dc2626'); SFX.deny(); return; }
       autoWeb = true;
@@ -2177,30 +2244,36 @@
       autoArmed = true;
       autoCenter = { x: spider.x, y: spider.y };
       lastWebCenter = { x: spider.x, y: spider.y };
-      autoAngle = 0;
-      autoLastConn = 0;
+      autoEdges = autoWebEdges(autoCenter.x, autoCenter.y);
+      reorderAutoEdges();
       autoGraceUntil = now() + 600; // ignore tiny mouse jitter right after toggling
-      building = snapPoint(spider.x, spider.y); // anchor at the hub
+      building = null;
       syncWebBtns();
       var ba = document.getElementById('btnAuto');
       if (ba) ba.classList.add('on');
     }
-    // R / FIX: walk the last web's spiral again — segments that are still
-    // intact are skipped for free; anything chewed away gets re-laid
+    // R / FIX: rebuild only the web's MISSING segments — find every canonical
+    // edge that isn't currently covered and lay those, nearest-first, so the
+    // spider goes straight to the gaps instead of re-walking intact strands
     function startRepair(){
       if (state !== 'play') return;
       if (autoWeb) { stopAutoWeb(); return; }
       if (!lastWebCenter) { floatTxt(spider.x, spider.y - 30, 'no web to repair — weave one first (Q)', '#71717a'); SFX.deny(); return; }
       if (webSilk < 10) { floatTxt(spider.x, spider.y - 30, 'not enough web silk', '#dc2626'); SFX.deny(); return; }
+      var all = autoWebEdges(lastWebCenter.x, lastWebCenter.y), missing = [];
+      for (var i = 0; i < all.length; i++){
+        if (!strandCovered(all[i].x1, all[i].y1, all[i].x2, all[i].y2)) missing.push(all[i]);
+      }
+      if (!missing.length) { floatTxt(spider.x, spider.y - 30, 'web intact — nothing to repair', '#71717a'); SFX.deny(); return; }
       autoWeb = true;
       autoRepair = true;
-      autoArmed = false; // walk to the web before laying anything
+      autoArmed = false;
       autoCenter = { x: lastWebCenter.x, y: lastWebCenter.y };
-      autoAngle = 0;
-      autoLastConn = 0;
+      autoEdges = missing;
+      reorderAutoEdges();
       autoGraceUntil = now() + 600;
       building = null;
-      floatTxt(spider.x, spider.y - 30, 'repairing web…', '#fbbf24');
+      floatTxt(spider.x, spider.y - 30, 'repairing ' + missing.length + ' gap' + (missing.length > 1 ? 's' : '') + '…', '#fbbf24');
       syncWebBtns();
       var bf = document.getElementById('btnFix');
       if (bf) bf.classList.add('on');
@@ -2210,6 +2283,7 @@
       autoRepair = false;
       autoArmed = true;
       autoCenter = null;
+      autoEdges = null;
       building = null;
       if (msg) floatTxt(spider.x, spider.y - 30, msg, '#9ca3af');
       syncWebBtns();
@@ -2248,54 +2322,28 @@
     }
     function updateAutoWeb(dt){
       if (!autoWeb || state !== 'play') return;
-      if (autoAngle > TAU * AUTO_ROWS) { stopAutoWeb(autoRepair ? 'web repaired!' : 'web complete!'); return; }
-      var r = 26 + AUTO_RING * (autoAngle / TAU);
-      // repair starts away from the web: walk to the spiral first, lay nothing
-      if (!autoArmed) {
-        target.x = autoCenter.x + Math.cos(autoAngle) * r;
-        target.y = autoCenter.y + Math.sin(autoAngle) * r;
-        clampInto(target);
-        lastInputAt = now();
-        if (dist2(spider.x, spider.y, target.x, target.y) < 30 * 30) {
-          autoArmed = true;
-          building = snapPoint(spider.x, spider.y);
+      if (!autoEdges || !autoEdges.length) { stopAutoWeb(autoRepair ? 'web repaired!' : 'web complete!'); return; }
+      var e = autoEdges[0];
+      lastInputAt = now(); // the weaver is "input" — no idle wander
+      // phase 1: walk to the segment's near endpoint, laying nothing yet
+      if (e.phase !== 'layB') {
+        target.x = e.x1; target.y = e.y1; clampInto(target);
+        if (dist2(spider.x, spider.y, e.x1, e.y1) < 26 * 26) {
+          e.phase = 'layB';
+          building = snapPoint(e.x1, e.y1); // anchor at the vertex (welds on repair)
         }
         return;
       }
-      // advance the walk target along the spiral at walking pace
-      autoAngle += (topSpeed() * 0.85 / r) * dt;
-      r = 26 + AUTO_RING * (autoAngle / TAU);
-      target.x = autoCenter.x + Math.cos(autoAngle) * r;
-      target.y = autoCenter.y + Math.sin(autoAngle) * r;
-      clampInto(target);
-      lastInputAt = now(); // the weaver is "input" — no idle wander
-      // lay silk behind the spider: pin a segment when far enough from anchor
-      if (!building) building = snapPoint(spider.x, spider.y);
-      if (dist2(spider.x, spider.y, building.x, building.y) >= AUTO_SEG * AUTO_SEG) {
-        if (layAuto(building.x, building.y, spider.x, spider.y, false)) {
-          building = { x: spider.x, y: spider.y };
-        }
-      }
-      // RADIAL SPOKES: every time the walk crosses one of the fixed spoke
-      // angles (6 per turn), tie a connector straight inward — to the hub
-      // on the first row, to the previous row after that. Because the
-      // angles repeat every row, the spokes line up into continuous
-      // radials and the web visibly grows outward from its center.
-      var spokeStep = TAU / AUTO_SPOKES;
-      var nextSpoke = (Math.floor(autoLastConn / spokeStep) + 1) * spokeStep;
-      if (autoWeb && autoAngle >= nextSpoke) {
-        autoLastConn = nextSpoke;
-        var sa = nextSpoke % TAU;
-        var sr = 26 + AUTO_RING * (nextSpoke / TAU);
-        var op = snapPoint(autoCenter.x + Math.cos(sa) * sr, autoCenter.y + Math.sin(sa) * sr);
-        var inner;
-        if (nextSpoke <= TAU) {
-          inner = { x: autoCenter.x, y: autoCenter.y }; // first row: all spokes share the hub
-        } else {
-          var ir = sr - AUTO_RING;
-          inner = snapPoint(autoCenter.x + Math.cos(sa) * ir, autoCenter.y + Math.sin(sa) * ir);
-        }
-        if (layAuto(op.x, op.y, inner.x, inner.y, false)) SFX.wrap();
+      // phase 2: walk to the far endpoint; pin the whole segment on arrival,
+      // so the laid strand connects the two vertices DIRECTLY (no spiral)
+      target.x = e.x2; target.y = e.y2; clampInto(target);
+      if (dist2(spider.x, spider.y, e.x2, e.y2) < 22 * 22) {
+        var ok = layAuto(building.x, building.y, e.x2, e.y2, true);
+        building = null;
+        autoEdges.shift();
+        if (!ok) return; // out of silk / web full — stopAutoWeb already fired
+        SFX.wrap();
+        if (autoEdges.length) reorderAutoEdges();
       }
     }
     // Crossings: where strands intersect mid-line, the web "knits" together —
@@ -2362,6 +2410,28 @@
       hubs = [];
       for (key in pts) {
         if (pts[key].n >= 3) hubs.push(pts[key]);
+      }
+      // for each hub, the radius of its woven-ring graphic is clamped to the
+      // nearest connected strand's far endpoint, so the decorative web never
+      // extends past the actual silk (it only fills the internal cell)
+      for (i = 0; i < hubs.length; i++) {
+        var hb = hubs[i], rMax = Infinity;
+        for (j = 0; j < strands.length; j++) {
+          var sj = strands[j], far = null;
+          if (dist2(hb.x, hb.y, sj.x1, sj.y1) < 4) far = { x: sj.x2, y: sj.y2 };
+          else if (dist2(hb.x, hb.y, sj.x2, sj.y2) < 4) far = { x: sj.x1, y: sj.y1 };
+          if (far) { var fl = Math.hypot(far.x - hb.x, far.y - hb.y); if (fl < rMax) rMax = fl; }
+        }
+        hb.rMax = isFinite(rMax) ? rMax : 0;
+      }
+      // likewise, each crossing's woven diamond is bounded by the closest of
+      // the four strand endpoints around it, so the knit stays inside the web
+      for (i = 0; i < crossings.length; i++) {
+        var c = crossings[i];
+        c.rMax = Math.sqrt(Math.min(
+          dist2(c.x, c.y, c.a.x1, c.a.y1), dist2(c.x, c.y, c.a.x2, c.a.y2),
+          dist2(c.x, c.y, c.b.x1, c.b.y1), dist2(c.x, c.y, c.b.x2, c.b.y2)
+        ));
       }
     }
     function breakStrand(s){
@@ -3275,19 +3345,25 @@
       // inside the field are slowed
       for (i = 0; i < hubs.length; i++) {
         var hb = hubs[i];
-        ctx.strokeStyle = 'rgba(255,255,255,0.16)';
-        ctx.lineWidth = 1;
-        for (var ring2 = 1; ring2 <= 3; ring2++) {
-          var hr = ring2 * 13;
-          ctx.beginPath();
-          for (var hs2 = 0; hs2 <= 26; hs2++) {
-            var ha2 = (hs2 / 26) * TAU;
-            var hw = Math.sin(hs2 * 2.4 + ring2 * 1.6) * 1.6;
-            var hpx = hb.x + Math.cos(ha2) * (hr + hw), hpy = hb.y + Math.sin(ha2) * (hr + hw);
-            hs2 ? ctx.lineTo(hpx, hpy) : ctx.moveTo(hpx, hpy);
+        // the woven rings only read as a web when the hub is well enclosed —
+        // keep them inside the connected silk (hb.rMax), never poking outside
+        var hRoom = (hb.rMax || 0) - 3;
+        if (hb.n >= 4 && hRoom > 12) {
+          ctx.strokeStyle = 'rgba(255,255,255,0.16)';
+          ctx.lineWidth = 1;
+          for (var ring2 = 1; ring2 <= 3; ring2++) {
+            var hr = ring2 * 13;
+            if (hr + 2 > hRoom) break; // stop before the rings reach the silk
+            ctx.beginPath();
+            for (var hs2 = 0; hs2 <= 26; hs2++) {
+              var ha2 = (hs2 / 26) * TAU;
+              var hw = Math.sin(hs2 * 2.4 + ring2 * 1.6) * 1.6;
+              var hpx = hb.x + Math.cos(ha2) * (hr + hw), hpy = hb.y + Math.sin(ha2) * (hr + hw);
+              hs2 ? ctx.lineTo(hpx, hpy) : ctx.moveTo(hpx, hpy);
+            }
+            ctx.closePath();
+            ctx.stroke();
           }
-          ctx.closePath();
-          ctx.stroke();
         }
         // faint slow-field
         ctx.fillStyle = 'rgba(255,255,255,0.025)';
@@ -3353,9 +3429,13 @@
         var cr = crossings[i];
         var c1 = Math.cos(cr.ang1), s1 = Math.sin(cr.ang1);
         var c2 = Math.cos(cr.ang2), s2 = Math.sin(cr.ang2);
+        // bound the knit to the closest strand endpoint so it never spills
+        // past the strands that actually cross here
+        var crRoom = (cr.rMax || 21) - 2;
         ctx.strokeStyle = 'rgba(255,255,255,0.28)';
         for (var ring = 1; ring <= 3; ring++) {
           var rr = ring * 7;
+          if (rr > crRoom) break;
           ctx.beginPath();
           ctx.moveTo(cr.x + c1 * rr, cr.y + s1 * rr);
           ctx.lineTo(cr.x + c2 * rr, cr.y + s2 * rr);
@@ -3425,16 +3505,14 @@
         }
       }
 
-      // auto-weaver guide: hub dot + faint upcoming spiral path
-      if (autoWeb && autoCenter) {
-        ctx.strokeStyle = 'rgba(251,191,36,0.18)';
+      // auto-weaver guide: hub dot + faint outline of the segments still to lay
+      if (autoWeb && autoCenter && autoEdges) {
+        ctx.strokeStyle = 'rgba(251,191,36,0.16)';
         ctx.setLineDash([3, 7]);
         ctx.beginPath();
-        for (var ga = autoAngle, gi = 0; gi <= 24; gi++, ga += TAU / 24) {
-          if (ga > TAU * 3.2) break;
-          var gr = 26 + 38 * (ga / TAU);
-          var gx = autoCenter.x + Math.cos(ga) * gr, gy = autoCenter.y + Math.sin(ga) * gr;
-          gi ? ctx.lineTo(gx, gy) : ctx.moveTo(gx, gy);
+        for (var gi = 0; gi < autoEdges.length; gi++) {
+          var ge = autoEdges[gi];
+          ctx.moveTo(ge.x1, ge.y1); ctx.lineTo(ge.x2, ge.y2);
         }
         ctx.stroke();
         ctx.setLineDash([]);
