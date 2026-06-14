@@ -195,7 +195,7 @@
     <div class="card">
       <div class="brand">BITZYSPIDER ARCADE</div>
       <h1>BUG<span class="red">HUNT</span></h1>
-      <div style="color:#52525b;font-size:9px;letter-spacing:0.2em;margin-top:6px" id="verLabel">v12</div>
+      <div style="color:#52525b;font-size:9px;letter-spacing:0.2em;margin-top:6px" id="verLabel">v13</div>
       <div class="secHead">HOW TO PLAY</div>
       <div class="ctrlGrid" id="menuControls"></div>
       <div class="tipLine">red bar = web shots &middot; white bar = weaving silk (catches refill it)<br>crossed strands hold &middot; heavy bugs need two lines on them</div>
@@ -205,7 +205,7 @@
         <span>moth &middot; dive-bombs your web</span>
         <span style="color:#22c55e">beetle &middot; web first</span>
         <span style="color:#facc15">wasp &middot; stings!</span>
-        <span style="color:#fbbf24">firefly &middot; bonus</span>
+        <span style="color:#fbbf24">firefly &middot; burns webs!</span>
         <span style="color:#84cc16">stinkbug &middot; spits goo</span>
         <span style="color:#a8a29e">slug &middot; slime trail</span>
         <span style="color:#a3e635">webworm &middot; eats webs</span>
@@ -249,6 +249,17 @@
         <button class="btn" id="btnResume">RESUME</button>
         <button class="btn ghost" id="btnQuit">QUIT TO MENU</button>
       </div>
+    </div>
+  </div>
+
+  <!-- New foe intro (before a level that introduces something) -->
+  <div class="overlay" id="ovIntro">
+    <div class="card">
+      <div class="brand" id="introTag">NEW FOE</div>
+      <canvas id="foeCanvas" width="132" height="132" style="display:block;margin:10px auto 6px"></canvas>
+      <h2 id="introName" style="margin-top:4px">FOE</h2>
+      <div class="sub" id="introDesc" style="min-height:2.4em"></div>
+      <button class="btn" id="btnIntro">LET'S GO &rarr;</button>
     </div>
   </div>
 
@@ -324,7 +335,7 @@
     };
 
     // ---------- stats / upgrades ----------
-    var GAME_VERSION = 'v12';
+    var GAME_VERSION = 'v13';
     var S; // current run stats
     function freshStats(){ return { speed: 0, range: 0, silk: 0, grip: 0, tough: 0, venom: 0, heartT: 0, dblShot: 0, fortify: 0, bomb: 0, extraLife: 0 }; }
     function wrapMult(){ return 1.5 + (S ? S.venom * 0.25 : 0); } // wrapped catch bonus
@@ -398,7 +409,7 @@
       moth:    { r: 10, sp: 150, score: 15,  web: false, min: 2, w: 0.8, esc: 3 },
       beetle:  { r: 12, sp: 55,  score: 30,  web: true,  min: 3, w: 0.6, esc: 8 },
       wasp:    { r: 9,  sp: 175, score: 40,  web: true,  min: 4, w: 0.5, sting: true, esc: 2.5 },
-      firefly: { r: 7,  sp: 230, score: 50,  web: false, min: 5, w: 0.3, ttl: 7, esc: 1.5 },
+      firefly: { r: 7,  sp: 230, score: 50,  web: false, min: 5, w: 0.3, ttl: 7, esc: 1.5, burns: true },
       stink:   { r: 11, sp: 120, score: 60,  web: true,  min: 6, w: 0.4, spit: true, esc: 4 },
       slug:    { r: 12, sp: 26,  score: 70,  web: true,  min: 7, w: 0.35, slime: true, esc: 10 },
       worm:    { r: 9,  sp: 70,  score: 80,  web: true,  min: 8, w: 0.3, eats: true, esc: 6 },
@@ -421,6 +432,10 @@
     var building = null; // anchor point while laying a strand
     var hubs = [];       // points where 3+ strands meet — true webs with a slow field
     var ripples = [];    // expanding ring fx (web twang)
+    var fires = [];      // burning-web fx (firefly)
+    var spreadAt = 0;    // time the spread-trap is ready again (double-click)
+    var SPREAD_CD = 7000; // spread recharge (ms) — slow on purpose
+    var SPREAD_R = 110;   // spread trap radius
     var HUB_R = 48;      // hub slow-field radius
     var comboN = 0, comboUntil = 0; // wrap-combo multiplier
     var freezeUntil = 0;            // hit-stop
@@ -701,6 +716,27 @@
     }
     var BOSS_NAMES = { boss: 'DRAGONFLY', queen: 'HORNET QUEEN', mantis: 'MANTIS', mothking: 'MOTH KING', hawk: 'TARANTULA HAWK' };
     var BOSS_COLORS = { boss: '#14b8a6', queen: '#eab308', mantis: '#22c55e', mothking: '#d4d4d8', hawk: '#f97316' };
+    var FOE_COLORS = { fly: '#d4d4d8', moth: '#e4e4e7', beetle: '#22c55e', wasp: '#facc15', firefly: '#fbbf24', stink: '#84cc16', slug: '#a8a29e', worm: '#a3e635' };
+    // one-line "what it does" for the pre-level reveal card
+    var FOE_INFO = {
+      fly:     'Harmless and slow. Just touch it with your fangs to catch it.',
+      moth:    'Dive-bombs your web like a porch light, sticks, and chews through fast — snapping the strand. Wrap it quick.',
+      beetle:  'Armored — your fangs bounce off. Web-shoot it first, then walk over to wrap it.',
+      wasp:    'Hunts you and stings, costing a heart. Web it from a safe distance.',
+      firefly: 'BURNS your silk! If it touches a strand it torches that one and two nearby. Snatch it before it reaches your web.',
+      stink:   'Keeps its distance and spits goo that slows you. Heavy — it needs TWO strands to be held.',
+      slug:    'A slow tank that smears slime trails to bog you down. Heavy — needs TWO strands to hold.',
+      worm:    'A webworm that hunts your strands and devours them. It won\'t stick — shoot it down.',
+      boss:    'Dragonfly: a tough flyer. Three web-shots to down it, and it shreds any strand it crosses.',
+      queen:   'BOSS — orbits the arena and spawns wasps. Wrap it to claim Royal Jelly (full hearts).',
+      mantis:  'BOSS — stalks you and lunges to sting. Wrap it for a 2x-points charm.',
+      mothking:'BOSS — a giant moth that summons swarms. Wrap it for a speed boost.',
+      hawk:    'BOSS — a spider-hunter that dives straight at YOU. Wrap it for a free bug bomb.'
+    };
+    function foeName(k){ return BOSS_NAMES[k] || k.toUpperCase(); }
+    function foeColor(k){ return BOSS_COLORS[k] || FOE_COLORS[k] || '#fff'; }
+    var foesSeen = {};     // which foes have already had their reveal this run
+    var introQueue = [];   // foes queued to introduce before the level starts
     function spawnBoss(){
       var kind = pickBoss();
       spawnBug(kind);
@@ -819,21 +855,75 @@
       if (+DBG.pts > 0) cash = +DBG.pts;
       spider.x = target.x = W / 2; spider.y = target.y = H / 2;
       spider.slowUntil = 0;
-      strands = []; hubs = []; crossings = []; ripples = [];
+      strands = []; hubs = []; crossings = []; ripples = []; fires = [];
       comboN = 0; comboUntil = 0; shownScore = 0; freezeUntil = 0;
+      spreadAt = 0;
       lastInputAt = now();
       autoWeb = false; autoCenter = null; bombs = 0;
       drops = []; buffScoreUntil = 0; buffSpeedUntil = 0;
       tutorial = false; tutMark = null; tutMsgSet('');
       eatHeld = false; syncEatBtn();
+      foesSeen = { fly: true }; introQueue = []; // the fly is self-evident — no reveal
       var ba = document.getElementById('btnAuto');
       if (ba) ba.classList.remove('on');
       initLegs();
+      beginLevel();
+    }
+    // figure out what (if anything) is new this level, mark it seen, return it
+    function newFoesThisLevel(){
+      var out = [], k;
+      for (k in TYPES) {
+        var ty = TYPES[k];
+        if (ty.boss) continue; // true bosses handled below; dragonfly falls here via min
+        if (ty.min === level && !foesSeen[k]) out.push(k);
+      }
+      if (level % 5 === 0) { var bk = pickBoss(); if (!foesSeen[bk]) out.push(bk); }
+      if (DBG.boss && TYPES[DBG.boss] && !foesSeen[DBG.boss]) out.push(DBG.boss);
+      for (var i = 0; i < out.length; i++) foesSeen[out[i]] = true;
+      return out;
+    }
+    // set up the level, then reveal any new foe(s) before play begins
+    function beginLevel(){
       startLevel();
-      setState('play');
+      introQueue = newFoesThisLevel();
+      if (introQueue.length) showNextIntro();
+      else setState('play');
+    }
+    function showNextIntro(){
+      if (!introQueue.length) { setState('play'); return; }
+      var k = introQueue[0];
+      var nm = document.getElementById('introName');
+      nm.textContent = foeName(k); nm.style.color = foeColor(k);
+      document.getElementById('introTag').textContent = TYPES[k].boss ? 'NEW BOSS' : 'NEW FOE';
+      document.getElementById('introDesc').textContent = FOE_INFO[k] || '';
+      document.getElementById('btnIntro').textContent = introQueue.length > 1 ? 'NEXT →' : "LET'S GO →";
+      renderFoePreview(k);
+      setState('intro');
+    }
+    // draw a single foe big into the intro card's canvas, reusing drawBug by
+    // temporarily pointing the module ctx at the preview canvas
+    function renderFoePreview(k){
+      var pc = document.getElementById('foeCanvas');
+      if (!pc || !pc.getContext) return;
+      var size = 132, ty = TYPES[k];
+      pc.width = size * dpr; pc.height = size * dpr;
+      pc.style.width = size + 'px'; pc.style.height = size + 'px';
+      var pctx = pc.getContext('2d');
+      var saveCtx = ctx;
+      ctx = pctx;
+      pctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      pctx.clearRect(0, 0, size, size);
+      var sc = Math.min(3.4, 46 / (ty.r || 12));
+      pctx.save();
+      pctx.translate(size / 2, size / 2 + (ty.hp ? 8 : 0));
+      pctx.scale(sc, sc);
+      var b = { k: k, t: ty, x: 0, y: 0, vx: 1, vy: 0, wing: 1.2, webbed: false, hp: ty.hp || 1, ttl: ty.ttl || 0 };
+      try { drawBug(b, now()); } catch(e){}
+      pctx.restore();
+      ctx = saveCtx;
     }
     function startLevel(){
-      bugs = []; shots = []; globs = []; slimes = [];
+      bugs = []; shots = []; globs = []; slimes = []; fires = [];
       building = null;
       syncWebBtns();
       caught = 0; spawnTimer = 0;
@@ -868,8 +958,7 @@
     }
     function nextLevel(){
       level++;
-      startLevel();
-      setState('play');
+      beginLevel();
     }
     function gameOver(){
       save('hi', hi); save('total', totalBugs);
@@ -880,7 +969,7 @@
     }
     function toMenu(){
       save('hi', hi); save('total', totalBugs);
-      bugs = []; shots = []; strands = []; globs = []; slimes = [];
+      bugs = []; shots = []; strands = []; globs = []; slimes = []; fires = [];
       hubs = []; crossings = []; ripples = []; drops = [];
       building = null;
       tutorial = false; tutMark = null; tutDoneAt = 0; tutMsgSet('');
@@ -946,7 +1035,7 @@
     }
 
     // ---------- state / overlays ----------
-    var overlays = { menu: 'ovMenu', shop: 'ovShop', pause: 'ovPause', over: 'ovOver' };
+    var overlays = { menu: 'ovMenu', shop: 'ovShop', pause: 'ovPause', over: 'ovOver', intro: 'ovIntro' };
     function setState(s){
       state = s;
       for (var k in overlays) {
@@ -981,13 +1070,17 @@
       if (state !== 'play') return;
       if (pDown || e.pointerType === 'mouse') setTarget(e);
     });
+    var lastTapT = 0;
     window.addEventListener('pointerup', function(e){
       if (!pDown) return;
       pDown = false;
       if (state === 'play' && pStart) {
         var d = Math.hypot(evX(e) - pStart.x, evY(e) - pStart.y);
-        // tap = aimed shot at the tap point
-        if (Date.now() - pStart.t < 280 && d < 16) shootWeb(evX(e), evY(e));
+        // tap = aimed shot; double-tap = spread-trap around the spider
+        if (Date.now() - pStart.t < 280 && d < 16) {
+          if (Date.now() - lastTapT < 320) { doSpread(); lastTapT = 0; }
+          else { shootWeb(evX(e), evY(e)); lastTapT = Date.now(); }
+        }
       }
       pStart = null;
     });
@@ -1001,6 +1094,7 @@
       if (e.key === 'e' || e.key === 'E') { eatHeld = true; eatNearbyStrand(); syncEatBtn(); }
       if (e.key === 'r' || e.key === 'R') startRepair();
       if (e.key === 'b' || e.key === 'B') useBomb();
+      if (e.key === 'f' || e.key === 'F') doSpread();
     });
     window.addEventListener('keyup', function(e){
       if (e.key === 'e' || e.key === 'E') { eatHeld = false; syncEatBtn(); }
@@ -1027,6 +1121,7 @@
     document.getElementById('btnStart').addEventListener('click', function(){ audio(); startGame(); });
     document.getElementById('btnTut').addEventListener('click', function(){ audio(); startTutorial(); });
     document.getElementById('btnNext').addEventListener('click', nextLevel);
+    document.getElementById('btnIntro').addEventListener('click', function(){ audio(); introQueue.shift(); showNextIntro(); });
     document.getElementById('btnPause').addEventListener('click', function(e){ e.stopPropagation(); togglePause(); });
     document.getElementById('btnResume').addEventListener('click', function(){ setState('play'); });
     document.getElementById('btnQuit').addEventListener('click', toMenu);
@@ -1058,6 +1153,7 @@
     var CTRL_ROWS = isTouch ? [
       ['&#128070;', '<b>DRAG</b> — move the spider'],
       ['&#127919;', '<b>TAP</b> — shoot a web where you tap'],
+      ['&#128305;', '<b>DOUBLE-TAP</b> — spread-trap everything near you'],
       ['&#128376;', '<b>WEB</b> — anchor &middot; walk &middot; <b>PIN</b> a strand'],
       ['&#10005;',  '<b>DETACH</b> — stop weaving'],
       ['&#127760;', '<b>AUTO</b> — weave a spiral web (drag = take over)'],
@@ -1067,6 +1163,7 @@
     ] : [
       ['&#128433;', '<b>MOVE</b> — the spider follows your mouse'],
       ['&#127919;', '<b>CLICK</b> — shoot a web where you aim'],
+      ['&#128305;', '<b>DOUBLE-CLICK</b> / <b>F</b> — spread-trap near you'],
       ['&#128376;', '<b>W</b> — anchor &middot; walk &middot; pin a strand'],
       ['&#10005;',  '<b>X</b> — stop weaving'],
       ['&#127760;', '<b>Q</b> — auto-weave a spiral web (move = take over)'],
@@ -1087,10 +1184,13 @@
     }
     renderControls('menuControls');
     renderControls('pauseControls');
-    // desktop has keys for these; only touch needs the buttons
+    // desktop has keys for these; only touch needs the buttons. the AUTO and
+    // pause icons are just clutter on desktop (Q and P do the same).
     if (!isTouch) {
       document.getElementById('btnEat').style.display = 'none';
       document.getElementById('btnFix').style.display = 'none';
+      document.getElementById('btnAuto').style.display = 'none';
+      document.getElementById('btnPause').style.display = 'none';
     }
     document.getElementById('mHigh').textContent = hi;
     document.getElementById('mTotal').textContent = totalBugs;
@@ -1373,6 +1473,32 @@
       }
       updateHud(true);
     }
+    // SPREAD: double-click the spider to fling silk in a ring around you,
+    // trapping everything close — including bugs you've walked on top of and
+    // can't shoot. Free to use but recharges slowly.
+    function doSpread(){
+      if (state !== 'play') return;
+      var t = now();
+      if (t < spreadAt) { floatTxt(spider.x, spider.y - 30, 'spread charging…', '#71717a'); SFX.deny(); return; }
+      spreadAt = t + SPREAD_CD;
+      SFX.wrap();
+      ripples.push({ x: spider.x, y: spider.y, r: 8, life: 1.1 });
+      pop(spider.x, spider.y, '#fff', 16, 2.5);
+      freezeUntil = t + 60;
+      for (var i = 0; i < bugs.length; i++) {
+        var b = bugs[i];
+        if (b.dead || b.webbed) continue;
+        if (b.t.boss || b.t.tears) continue; // bosses & dragonfly shrug it off
+        if (dist2(spider.x, spider.y, b.x, b.y) < SPREAD_R * SPREAD_R) {
+          b.webbed = true; b.hp = 0;
+          b.vx = 0; b.vy = 0;
+          b.webT = t + (b.t.esc || 4) * 1000 * toughMult();
+          b.strand = null; // free-floating cocoon, no strand to break
+          pop(b.x, b.y, '#fff', 6, 1.5);
+        }
+      }
+      updateHud(true);
+    }
     // eat your own strands to reclaim silk
     function eatNearbyStrand(){
       if (state !== 'play') return;
@@ -1614,6 +1740,41 @@
       recalcSupport();
       updateHud(true);
     }
+    // firefly fire: burn the given strand plus the two nearest others to (x,y),
+    // any bugs stuck on them break free, and a flame fx blooms at the spot
+    function burnWebAt(x, y, hit){
+      var victims = [];
+      if (hit && strands.indexOf(hit) !== -1) victims.push(hit);
+      // gather the two nearest OTHER strands by their closest point
+      var ranked = [];
+      for (var i = 0; i < strands.length; i++) {
+        if (strands[i] === hit) continue;
+        var cp = closestOnSeg(x, y, strands[i]);
+        ranked.push([dist2(x, y, cp.x, cp.y), strands[i]]);
+      }
+      ranked.sort(function(a, b){ return a[0] - b[0]; });
+      for (i = 0; i < ranked.length && victims.length < 3; i++) victims.push(ranked[i][1]);
+      for (i = 0; i < victims.length; i++) {
+        var v = victims[i];
+        var idx = strands.indexOf(v);
+        if (idx === -1) continue;
+        var bx = (v.x1 + v.x2) / 2, by = (v.y1 + v.y2) / 2;
+        // free any bug that was stuck on this strand
+        for (var bi = 0; bi < bugs.length; bi++) {
+          if (bugs[bi].strand === v) { bugs[bi].webbed = false; bugs[bi].strand = null; bugs[bi].strandImmune = now() + 1500; }
+        }
+        strands.splice(idx, 1);
+        fires.push({ x: bx, y: by, r: 8, life: 1 });
+        pop(bx, by, '#f97316', 10, 2.5);
+        pop(bx, by, '#fbbf24', 6, 2);
+      }
+      fires.push({ x: x, y: y, r: 14, life: 1.2 });
+      shake = Math.max(shake, 7);
+      SFX.sting();
+      if (victims.length) floatTxt(x, y - 20, 'WEB BURNED!', '#f97316');
+      recalcSupport();
+      updateHud(true);
+    }
     function closestOnSeg(px, py, s){
       var dx = s.x2 - s.x1, dy = s.y2 - s.y1;
       var L2 = dx * dx + dy * dy;
@@ -1678,6 +1839,13 @@
           }
         }
         if (!nearest) continue;
+        // firefly: torches the strand it touched plus the two nearest others,
+        // then flits off (brief immunity) — every firefly is a fire hazard
+        if (b.t.burns) {
+          burnWebAt(nearest.cp.x, nearest.cp.y, nearest.s);
+          b.strandImmune = t + 900;
+          continue;
+        }
         var need = b.t.r >= 11 ? 2 : 1;
         if (touching.length >= need) {
           b.webbed = true; b.hp = 0;
@@ -1781,7 +1949,20 @@
         }
         else if (b.k === 'beetle') { wander(b, dt, 160); }
         else if (b.k === 'firefly') {
-          wander(b, dt, 1800);
+          // drifts erratically, but veers toward your nearest web to torch it
+          var fTgt = null, fNd = 260 * 260;
+          for (var fi2 = 0; fi2 < strands.length; fi2++) {
+            var fcp = closestOnSeg(b.x, b.y, strands[fi2]);
+            var fdd = dist2(b.x, b.y, fcp.x, fcp.y);
+            if (fdd < fNd) { fNd = fdd; fTgt = fcp; }
+          }
+          if (fTgt && (!b.strandImmune || t > b.strandImmune)) {
+            var fdx = fTgt.x - b.x, fdy = fTgt.y - b.y, fln = Math.hypot(fdx, fdy) || 1;
+            b.vx += fdx / fln * 900 * dt; b.vy += fdy / fln * 900 * dt;
+            capSpeed(b, b.t.sp);
+          } else {
+            wander(b, dt, 1800);
+          }
           b.ttl -= dt;
           if (b.ttl <= 0) { pop(b.x, b.y, '#fbbf24', 8, 2); bugs.splice(i, 1); continue; }
         }
@@ -2092,6 +2273,12 @@
         rp.r += 90 * dt; rp.life -= dt * 2.6;
         if (rp.life <= 0) ripples.splice(i, 1);
       }
+      // firefly flames flicker out
+      for (i = fires.length - 1; i >= 0; i--) {
+        var fr = fires[i];
+        fr.r += 30 * dt; fr.life -= dt * 1.5;
+        if (fr.life <= 0) fires.splice(i, 1);
+      }
     }
 
     // ---------- HUD ----------
@@ -2141,6 +2328,7 @@
       var wl = autoWeb ? 'SILK · AUTO WEB…' : building ? 'SILK · WEAVING…' : 'SILK · STRANDS ' + strands.length;
       if (bombs > 0) wl += ' · BOMBS ' + bombs;
       var tb = now();
+      wl += tb < spreadAt ? ' · SPREAD ' + Math.ceil((spreadAt - tb) / 1000) + 's' : ' · SPREAD ✓';
       if (tb < buffScoreUntil) wl += ' · 2x PTS ' + Math.ceil((buffScoreUntil - tb) / 1000) + 's';
       if (tb < buffSpeedUntil) wl += ' · FAST ' + Math.ceil((buffSpeedUntil - tb) / 1000) + 's';
       if (hudCache.webs !== wl) {
@@ -2251,6 +2439,16 @@
         ctx.beginPath(); ctx.arc(rp.x, rp.y, rp.r, 0, TAU); ctx.stroke();
       }
 
+      // firefly flames — burning web
+      for (i = 0; i < fires.length; i++) {
+        var fr = fires[i];
+        var fl = Math.max(0, fr.life);
+        ctx.fillStyle = 'rgba(249,115,22,' + (0.4 * fl) + ')';
+        ctx.beginPath(); ctx.arc(fr.x, fr.y, fr.r, 0, TAU); ctx.fill();
+        ctx.fillStyle = 'rgba(251,191,36,' + (0.5 * fl) + ')';
+        ctx.beginPath(); ctx.arc(fr.x, fr.y, fr.r * 0.55, 0, TAU); ctx.fill();
+      }
+
       // woven mesh where strands cross — this is what makes it look like a web
       ctx.lineWidth = 1;
       for (i = 0; i < crossings.length; i++) {
@@ -2306,6 +2504,14 @@
         ctx.setLineDash([4, 8]);
         ctx.beginPath(); ctx.arc(spider.x, spider.y, webRange(), 0, TAU); ctx.stroke();
         ctx.setLineDash([]);
+        // spread-trap ready: a faint pulsing ring shows its reach (double-click)
+        if (t >= spreadAt) {
+          var sp = 0.5 + Math.sin(t * 0.005) * 0.5;
+          ctx.strokeStyle = 'rgba(255,255,255,' + (0.06 + sp * 0.06) + ')';
+          ctx.setLineDash([2, 6]);
+          ctx.beginPath(); ctx.arc(spider.x, spider.y, SPREAD_R, 0, TAU); ctx.stroke();
+          ctx.setLineDash([]);
+        }
       }
 
       // auto-weaver guide: hub dot + faint upcoming spiral path
