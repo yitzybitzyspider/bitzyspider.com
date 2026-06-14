@@ -195,7 +195,7 @@
     <div class="card">
       <div class="brand">BITZYSPIDER ARCADE</div>
       <h1>BUG<span class="red">HUNT</span></h1>
-      <div style="color:#52525b;font-size:9px;letter-spacing:0.2em;margin-top:6px" id="verLabel">v13</div>
+      <div style="color:#52525b;font-size:9px;letter-spacing:0.2em;margin-top:6px" id="verLabel">v14</div>
       <div class="secHead">HOW TO PLAY</div>
       <div class="ctrlGrid" id="menuControls"></div>
       <div class="tipLine">red bar = web shots &middot; white bar = weaving silk (catches refill it)<br>crossed strands hold &middot; heavy bugs need two lines on them</div>
@@ -335,9 +335,9 @@
     };
 
     // ---------- stats / upgrades ----------
-    var GAME_VERSION = 'v13';
+    var GAME_VERSION = 'v14';
     var S; // current run stats
-    function freshStats(){ return { speed: 0, range: 0, silk: 0, grip: 0, tough: 0, venom: 0, heartT: 0, dblShot: 0, fortify: 0, bomb: 0, extraLife: 0 }; }
+    function freshStats(){ return { speed: 0, range: 0, silk: 0, grip: 0, tough: 0, venom: 0, spread: 0, heartT: 0, dblShot: 0, fortify: 0, bomb: 0, extraLife: 0 }; }
     function wrapMult(){ return 1.5 + (S ? S.venom * 0.25 : 0); } // wrapped catch bonus
     function followK(){ return 0.10; }                      // lerp/frame toward cursor (original spider feel)
     function topSpeed(){ return 150 + (S ? S.speed * 40 : 80); } // hard speed cap px/s — slow on purpose
@@ -353,6 +353,9 @@
     function webDur(){ return 4000 + S.grip * 700; }
     function toughMult(){ return 1 + S.tough * 0.4 + (S ? S.fortify * 0.35 : 0); }
     function maxHearts(){ return 3 + S.heartT + (S ? S.extraLife : 0); }
+    // spread-trap: wider reach and faster recharge as you upgrade it
+    function spreadR(){ return SPREAD_R + (S ? S.spread * 28 : 0); }
+    function spreadCD(){ return Math.max(2500, SPREAD_CD - (S ? S.spread * 1300 : 0)); }
     // start small, grow a little every level cleared (plus grip)
     function spiderScale(){
       var lv = state === 'menu' ? 4 : level;
@@ -387,6 +390,8 @@
         desc: function(){ return 'Bugs stuck ' + Math.round((toughMult() - (S ? S.fortify * 0.35 : 0)) * 100) + '% → ' + Math.round((toughMult() - (S ? S.fortify * 0.35 : 0) + 0.4) * 100) + '% as long'; } },
       { key: 'venom',  name: 'VENOM FANGS',  max: 2, cost: [100, 220],
         desc: function(){ return 'Wrapped bugs worth x' + wrapMult().toFixed(2) + ' → x' + (wrapMult() + 0.25).toFixed(2); } },
+      { key: 'spread', name: 'SPREAD SILK',  max: 3, cost: [80, 170, 300],
+        desc: function(){ var nextCd = Math.max(2500, SPREAD_CD - (S.spread + 1) * 1300); return 'Spread-trap reach ' + Math.round(spreadR()) + ' → ' + Math.round(spreadR() + 28) + ', recharge ' + (spreadCD() / 1000).toFixed(1) + 's → ' + (nextCd / 1000).toFixed(1) + 's'; } },
       { key: 'heartT', name: 'EXTRA HEART',  max: 2, cost: [150, 300],
         desc: function(){ return '+1 max health (' + maxHearts() + ' → ' + (maxHearts() + 1) + ')'; } }
     ];
@@ -433,6 +438,7 @@
     var hubs = [];       // points where 3+ strands meet — true webs with a slow field
     var ripples = [];    // expanding ring fx (web twang)
     var fires = [];      // burning-web fx (firefly)
+    var spreads = [];    // expanding spider-web burst fx (spread trap)
     var spreadAt = 0;    // time the spread-trap is ready again (double-click)
     var SPREAD_CD = 7000; // spread recharge (ms) — slow on purpose
     var SPREAD_R = 110;   // spread trap radius
@@ -638,17 +644,65 @@
         st.x2 = Math.min(Math.max(st.x2, 18), W - 18); st.y2 = Math.min(Math.max(st.y2, 18), H - 18);
       }
     }
+    // each level gets a faintly different mood — a near-black tint that rotates
+    // through cool/warm hues so the arena doesn't read as flat black
+    function bgTint(){
+      var lv = (state === 'play' || state === 'shop' || state === 'pause') ? level : 1;
+      var hue = (200 + (lv - 1) * 33) % 360;
+      return 'hsl(' + hue + ',38%,7%)';
+    }
     function renderBg(){
       bgCvs = document.createElement('canvas');
       bgCvs.width = W * dpr; bgCvs.height = H * dpr;
       var b = bgCvs.getContext('2d');
       b.scale(dpr, dpr);
-      var g = b.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(W, H) * 0.8);
-      g.addColorStop(0, '#0c0c0e'); g.addColorStop(1, '#000');
+      // base: a deep radial gradient with a subtle per-level tint at the core
+      var g = b.createRadialGradient(W / 2, H * 0.42, 0, W / 2, H * 0.42, Math.max(W, H) * 0.85);
+      g.addColorStop(0, bgTint());
+      g.addColorStop(0.55, '#070708');
+      g.addColorStop(1, '#000');
       b.fillStyle = g; b.fillRect(0, 0, W, H);
+
+      // baked starfield — faint distant motes for depth (deterministic per size)
+      var seed = 1337;
+      function rnd(){ seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; }
+      var stars = Math.round((W * H) / 9000);
+      for (var si = 0; si < stars; si++) {
+        var sx = rnd() * W, sy = rnd() * H, sr = 0.4 + rnd() * 1.1, sa = 0.03 + rnd() * 0.07;
+        b.fillStyle = 'rgba(255,255,255,' + sa + ')';
+        b.beginPath(); b.arc(sx, sy, sr, 0, Math.PI * 2); b.fill();
+      }
+
+      // a large, very faint orb-web sprawling from the upper-center — the
+      // brand motif, baked so it costs nothing per frame
+      bigWeb(b, W / 2, H * 0.4, Math.max(W, H) * 0.62);
+
       // faint corner webs (brand)
       cornerWeb(b, 0, 0, 0, Math.PI / 2);
       cornerWeb(b, W, H, Math.PI, Math.PI * 1.5);
+    }
+    // full-web motif: radial spokes + a wobbling capture spiral, very low alpha
+    function bigWeb(b, cx, cy, R){
+      var spokes = 14, i, s;
+      b.strokeStyle = 'rgba(255,255,255,0.022)'; b.lineWidth = 1;
+      for (i = 0; i < spokes; i++) {
+        var a = (i / spokes) * Math.PI * 2;
+        b.beginPath(); b.moveTo(cx, cy);
+        b.lineTo(cx + Math.cos(a) * R, cy + Math.sin(a) * R);
+        b.stroke();
+      }
+      for (i = 1; i <= 9; i++) {
+        var rr = (i / 9) * R;
+        b.beginPath();
+        for (s = 0; s <= 56; s++) {
+          var a2 = (s / 56) * Math.PI * 2;
+          var wob = Math.sin(s * 1.3 + i * 0.9) * 3;
+          var px = cx + Math.cos(a2) * (rr + wob), py = cy + Math.sin(a2) * (rr + wob);
+          s ? b.lineTo(px, py) : b.moveTo(px, py);
+        }
+        b.closePath();
+        b.stroke();
+      }
     }
     function cornerWeb(b, cx, cy, a0, a1){
       var R = Math.min(W, H) * 0.34;
@@ -699,12 +753,19 @@
       else if (side === 2) { x = rand(0, W); y = -m; }
       else { x = rand(0, W); y = H + m; }
       var ang = Math.atan2(H / 2 - y, W / 2 - x) + rand(-0.5, 0.5);
-      var sp = t.boss ? 0 : t.sp;
+      // gradual difficulty: the longer a bug type has been in rotation, the
+      // faster it moves and the quicker it chews out of your web. Bosses are
+      // exempt — they're already tuned per fight.
+      var over = t.boss ? 0 : Math.max(0, level - (t.min || 1));
+      var spdK = t.boss ? 1 : Math.min(1.45, 1 + over * 0.045); // up to +45% speed
+      var escMult = t.boss ? 1 : Math.max(0.62, 1 - over * 0.03); // chews out up to ~38% faster
+      var sp = t.boss ? 0 : t.sp * spdK;
       bugs.push({
         k: kind, t: t, x: x, y: y,
         vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp,
         hp: t.hp || 1, webbed: false, webT: 0,
         wing: Math.random() * 6, ttl: t.ttl || 0,
+        spdK: spdK, escMult: escMult,
         dashT: 0, pauseT: 0.4, qv: t.qv || (t.boss ? 5 : 1), dead: false
       });
       if (kind === 'boss' && state === 'play') floatTxt(Math.min(Math.max(x, 60), W - 60), Math.min(Math.max(y, 60), H - 60), 'dragonfly!', '#14b8a6');
@@ -855,7 +916,7 @@
       if (+DBG.pts > 0) cash = +DBG.pts;
       spider.x = target.x = W / 2; spider.y = target.y = H / 2;
       spider.slowUntil = 0;
-      strands = []; hubs = []; crossings = []; ripples = []; fires = [];
+      strands = []; hubs = []; crossings = []; ripples = []; fires = []; spreads = [];
       comboN = 0; comboUntil = 0; shownScore = 0; freezeUntil = 0;
       spreadAt = 0;
       lastInputAt = now();
@@ -930,6 +991,7 @@
       quota = 8 + level * 4;
       silk = silkMax();
       webSilk = webSilkMax();
+      renderBg(); // refresh the per-level background tint
       hearts = Math.min(maxHearts(), hearts + 1);
       if (level % 5 === 0) spawnBoss();
       // debug: force-spawn any bug/boss each level (?boss=mantis)
@@ -969,7 +1031,7 @@
     }
     function toMenu(){
       save('hi', hi); save('total', totalBugs);
-      bugs = []; shots = []; strands = []; globs = []; slimes = []; fires = [];
+      bugs = []; shots = []; strands = []; globs = []; slimes = []; fires = []; spreads = [];
       hubs = []; crossings = []; ripples = []; drops = [];
       building = null;
       tutorial = false; tutMark = null; tutDoneAt = 0; tutMsgSet('');
@@ -1191,6 +1253,10 @@
       document.getElementById('btnFix').style.display = 'none';
       document.getElementById('btnAuto').style.display = 'none';
       document.getElementById('btnPause').style.display = 'none';
+      // W and X handle weaving on desktop — the on-screen WEB/DETACH pills
+      // are just clutter there
+      document.getElementById('btnWeb').style.display = 'none';
+      document.getElementById('btnCut').style.display = 'none';
     }
     document.getElementById('mHigh').textContent = hi;
     document.getElementById('mTotal').textContent = totalBugs;
@@ -1480,19 +1546,22 @@
       if (state !== 'play') return;
       var t = now();
       if (t < spreadAt) { floatTxt(spider.x, spider.y - 30, 'spread charging…', '#71717a'); SFX.deny(); return; }
-      spreadAt = t + SPREAD_CD;
+      spreadAt = t + spreadCD();
+      var R = spreadR();
       SFX.wrap();
-      ripples.push({ x: spider.x, y: spider.y, r: 8, life: 1.1 });
+      // a real spider web flinging outward: rotating radial spokes + rings
+      // that grow to the trap radius and fade. Anchored to the spider.
+      spreads.push({ x: spider.x, y: spider.y, R: R, born: t, life: 1, rot: Math.random() * TAU });
       pop(spider.x, spider.y, '#fff', 16, 2.5);
       freezeUntil = t + 60;
       for (var i = 0; i < bugs.length; i++) {
         var b = bugs[i];
         if (b.dead || b.webbed) continue;
         if (b.t.boss || b.t.tears) continue; // bosses & dragonfly shrug it off
-        if (dist2(spider.x, spider.y, b.x, b.y) < SPREAD_R * SPREAD_R) {
+        if (dist2(spider.x, spider.y, b.x, b.y) < R * R) {
           b.webbed = true; b.hp = 0;
           b.vx = 0; b.vy = 0;
-          b.webT = t + (b.t.esc || 4) * 1000 * toughMult();
+          b.webT = t + (b.t.esc || 4) * 1000 * toughMult() * (b.escMult || 1);
           b.strand = null; // free-floating cocoon, no strand to break
           pop(b.x, b.y, '#fff', 6, 1.5);
         }
@@ -1851,7 +1920,7 @@
           b.webbed = true; b.hp = 0;
           b.vx = 0; b.vy = 0;
           b.x = nearest.cp.x; b.y = nearest.cp.y;
-          b.webT = t + b.t.esc * 1000 * toughMult();
+          b.webT = t + b.t.esc * 1000 * toughMult() * (b.escMult || 1);
           b.strand = nearest.s;
           ripples.push({ x: nearest.cp.x, y: nearest.cp.y, r: 4, life: 1 });
           pop(b.x, b.y, '#fff', 5, 1.5);
@@ -2161,7 +2230,10 @@
             if (dist2(b.x, b.y, hubs[hi2].x, hubs[hi2].y) < HUB_R * HUB_R) { mv *= 0.5; break; }
           }
         }
-        b.x += b.vx * dt * mv; b.y += b.vy * dt * mv;
+        // gradual difficulty: scale displacement by the bug's speed factor so
+        // the per-type AI (which caps velocity to base sp) still speeds up
+        var sk = b.spdK || 1;
+        b.x += b.vx * dt * mv * sk; b.y += b.vy * dt * mv * sk;
         // bounce off edges (once inside)
         var m = 18;
         if (b.x < m && b.vx < 0) b.vx = Math.abs(b.vx);
@@ -2279,6 +2351,11 @@
         fr.r += 30 * dt; fr.life -= dt * 1.5;
         if (fr.life <= 0) fires.splice(i, 1);
       }
+      // spread-trap web bursts grow out then fade
+      for (i = spreads.length - 1; i >= 0; i--) {
+        spreads[i].life -= dt * 1.7;
+        if (spreads[i].life <= 0) spreads.splice(i, 1);
+      }
     }
 
     // ---------- HUD ----------
@@ -2342,6 +2419,14 @@
       var t = now();
       ctx.clearRect(0, 0, W, H);
       if (bgCvs) ctx.drawImage(bgCvs, 0, 0, W, H);
+
+      // a slow breathing glow over the baked background — keeps the dark arena
+      // from reading as dead-flat black without costing a re-render
+      var breathe = 0.5 + Math.sin(t * 0.0006) * 0.5;
+      var bg2 = ctx.createRadialGradient(W / 2, H * 0.42, 0, W / 2, H * 0.42, Math.max(W, H) * 0.6);
+      bg2.addColorStop(0, 'rgba(255,255,255,' + (0.014 + breathe * 0.018) + ')');
+      bg2.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = bg2; ctx.fillRect(0, 0, W, H);
 
       ctx.save();
       if (shake > 0) ctx.translate(rand(-shake, shake) * 0.5, rand(-shake, shake) * 0.5);
@@ -2449,6 +2534,41 @@
         ctx.beginPath(); ctx.arc(fr.x, fr.y, fr.r * 0.55, 0, TAU); ctx.fill();
       }
 
+      // spread-trap: a spider web flung outward — radial spokes + woven rings
+      // that snap out to the trap radius in ~280ms, then fade
+      var SPOKES = 12;
+      for (i = 0; i < spreads.length; i++) {
+        var sw = spreads[i];
+        var grow = Math.min(1, (t - sw.born) / 280);
+        var ease = 1 - Math.pow(1 - grow, 3); // ease-out
+        var rr = sw.R * ease;
+        var a = Math.max(0, sw.life);
+        ctx.lineWidth = 1.2;
+        ctx.strokeStyle = 'rgba(255,255,255,' + (0.55 * a) + ')';
+        // radial spokes
+        ctx.beginPath();
+        for (var sk = 0; sk < SPOKES; sk++) {
+          var aa = sw.rot + (sk / SPOKES) * TAU;
+          ctx.moveTo(sw.x, sw.y);
+          ctx.lineTo(sw.x + Math.cos(aa) * rr, sw.y + Math.sin(aa) * rr);
+        }
+        ctx.stroke();
+        // woven rings (slightly wobbled, like capture spiral)
+        ctx.strokeStyle = 'rgba(255,255,255,' + (0.4 * a) + ')';
+        for (var rg = 1; rg <= 3; rg++) {
+          var ringR = rr * (rg / 3);
+          ctx.beginPath();
+          for (var pp = 0; pp <= SPOKES; pp++) {
+            var pa = sw.rot + (pp / SPOKES) * TAU;
+            var wob = Math.sin(pp * 1.7 + rg) * 2;
+            var rx = sw.x + Math.cos(pa) * (ringR + wob);
+            var ry = sw.y + Math.sin(pa) * (ringR + wob);
+            pp ? ctx.lineTo(rx, ry) : ctx.moveTo(rx, ry);
+          }
+          ctx.stroke();
+        }
+      }
+
       // woven mesh where strands cross — this is what makes it look like a web
       ctx.lineWidth = 1;
       for (i = 0; i < crossings.length; i++) {
@@ -2509,7 +2629,7 @@
           var sp = 0.5 + Math.sin(t * 0.005) * 0.5;
           ctx.strokeStyle = 'rgba(255,255,255,' + (0.06 + sp * 0.06) + ')';
           ctx.setLineDash([2, 6]);
-          ctx.beginPath(); ctx.arc(spider.x, spider.y, SPREAD_R, 0, TAU); ctx.stroke();
+          ctx.beginPath(); ctx.arc(spider.x, spider.y, spreadR(), 0, TAU); ctx.stroke();
           ctx.setLineDash([]);
         }
       }
