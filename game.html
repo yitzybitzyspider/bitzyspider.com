@@ -400,7 +400,7 @@
     };
 
     // ---------- stats / upgrades ----------
-    var GAME_VERSION = 'v18';
+    var GAME_VERSION = 'v19';
     var S; // current run stats
     function freshStats(){ return { speed: 0, range: 0, silk: 0, grip: 0, tough: 0, venom: 0, spread: 0, brood: 0, heartT: 0, dblShot: 0, fortify: 0, bomb: 0, extraLife: 0 }; }
     function wrapMult(){ return 1.5 + (S ? S.venom * 0.25 : 0); } // wrapped catch bonus
@@ -568,7 +568,7 @@
     // ---------- tutorial (optional, from the menu) ----------
     // a guided practice run: no quota, no enemies you didn't ask for.
     // each step has a message, a setup, and a completion check.
-    var tutorial = false, tutStep = 0, tutMark = null, tutDoneAt = 0, tutStrandN = 0;
+    var tutorial = false, tutStep = 0, tutMark = null, tutDoneAt = 0, tutStrandN = 0, tutHeldStill = false;
     function tutMsgSet(s){
       var el = document.getElementById('tutMsg');
       if (el) { el.innerHTML = s; el.style.display = s ? 'block' : 'none'; }
@@ -593,8 +593,16 @@
       { msg: function(){ return '<b>CROSS</b> — lay a second strand ACROSS the first. Crossings lock the web together so it doesn\'t fray away.'; },
         init: function(){},
         check: function(){ return crossings.length >= 1; } },
+      { msg: function(){ return '<b>AUTO-WEB</b> — ' + (isTouch ? 'tap AUTO' : 'press Q') + ' and the spider weaves a full hub-and-spoke web by itself. Let it work!'; },
+        init: function(){ if (autoWeb) stopAutoWeb(); webSilk = webSilkMax(); tutStrandN = strands.length; },
+        check: function(){ return strands.length >= tutStrandN + 5; } },
+      { msg: function(){ return '<b>REPAIR</b> — some strands tore loose! ' + (isTouch ? 'Tap FIX' : 'Press R') + ' and the spider re-weaves only the missing gaps (' + (isTouch ? 'tap FIX' : 'press R') + ' again to cancel).'; },
+        init: function(){ if (autoWeb) stopAutoWeb(); webSilk = webSilkMax();
+          for (var i = 0; i < 4 && strands.length > 1; i++) strands.splice(0, 1);
+          recalcSupport(); tutStrandN = strands.length; },
+        check: function(){ return strands.length > tutStrandN; } },
       { msg: function(){ return '<b>TRAP</b> — a moth! Let your web snag it (or web-shoot it), then walk over and wrap it.'; },
-        init: function(){ spawnBug('moth'); var b = bugs[bugs.length - 1]; b.x = W * 0.2; b.y = H * 0.3; },
+        init: function(){ if (autoWeb) stopAutoWeb(); spawnBug('moth'); var b = bugs[bugs.length - 1]; b.x = W * 0.2; b.y = H * 0.3; },
         check: function(){ return bugs.length === 0; } },
       { msg: function(){
           return '<b>SPREAD</b> — ' + (isTouch ? 'DOUBLE-TAP' : 'DOUBLE-CLICK or press F') + ' to fling a web outward and trap everything nearby. Try it on these bugs!';
@@ -614,11 +622,28 @@
         },
         check: function(){ return eggs.length >= 1; } }
     ];
-    // desktop gets one extra lesson: eating silk back
+    // desktop gets extra keyboard-only lessons: hold-still aiming, bug bomb,
+    // and reclaiming silk
     if (!('ontouchstart' in window) && !navigator.maxTouchPoints) {
+      // teach HOLD STILL right after MOVE
+      TUT_STEPS.splice(1, 0, {
+        msg: function(){ return '<b>HOLD STILL</b> — hold <b>SPACE</b> to plant your feet and stay put, so you can turn and aim without drifting. Hold it for a second.'; },
+        init: function(){ tutMark = null; tutHeldStill = false; },
+        check: function(){ return tutHeldStill; }
+      });
+      TUT_STEPS.push({
+        msg: function(){ return '<b>BUG BOMB</b> — you\'ve got one! Press <b>B</b> to web every bug around you. Use it on the swarm!'; },
+        init: function(){ bombs = 1; for (var i = 0; i < 4; i++) { spawnBug('fly'); var b = bugs[bugs.length - 1]; b.x = spider.x + rand(-70, 70); b.y = spider.y + rand(-70, 70); clampInto(b); } },
+        check: function(){ return bombs === 0; }
+      });
       TUT_STEPS.push({
         msg: function(){ return '<b>RECLAIM</b> — press E next to a strand to eat it and recover web silk.'; },
-        init: function(){ tutStrandN = strands.length; },
+        // make sure there's at least one strand to reclaim, even if the web
+        // decayed away on the way here — otherwise the step can't be cleared
+        init: function(){
+          if (strands.length === 0) strands.push({ x1: spider.x - 35, y1: spider.y - 10, x2: spider.x + 35, y2: spider.y + 10, decayAt: 0 });
+          tutStrandN = strands.length;
+        },
         check: function(){ return strands.length < tutStrandN; }
       });
     }
@@ -636,6 +661,7 @@
       silk = silkMax(); webSilk = webSilkMax();
       broodMeter = 0; eggReady = false;
       lastInputAt = now();
+      holdStill = false; tutHeldStill = false;
       if (autoWeb) stopAutoWeb();
       syncWebBtns();
       initLegs();
@@ -1294,6 +1320,7 @@
     var overlays = { menu: 'ovMenu', shop: 'ovShop', pause: 'ovPause', over: 'ovOver', intro: 'ovIntro', gloss: 'ovGloss' };
     function setState(s){
       state = s;
+      if (s !== 'play') holdStill = false; // never stay frozen outside play
       for (var k in overlays) {
         document.getElementById(overlays[k]).classList.toggle('show', k === s);
       }
@@ -1301,12 +1328,13 @@
     }
 
     // ---------- input ----------
-    var pDown = false, pStart = null;
+    var pDown = false, pStart = null, holdStill = false;
     function evX(e){ return e.clientX - ofsX; }
     function evY(e){ return e.clientY - ofsY; }
     function setTarget(e){
-      // grabbing the mouse takes control back from the auto-weaver
-      if (autoWeb && now() > autoGraceUntil) stopAutoWeb();
+      // grabbing the mouse takes control back from the auto-weaver — but NOT
+      // from repair mode, which stays locked in until you press R again
+      if (autoWeb && !autoRepair && now() > autoGraceUntil) stopAutoWeb();
       if (autoWeb) return;
       target.x = evX(e); target.y = evY(e);
       clampInto(target);
@@ -1341,7 +1369,9 @@
       pStart = null;
     });
     window.addEventListener('keydown', function(e){
-      if (e.code === 'Space') { e.preventDefault(); shootWeb(target.x, target.y); }
+      // hold SPACE to plant your feet — stay put and aim instead of chasing
+      // the cursor (the spider still turns to face where you point)
+      if (e.code === 'Space') { e.preventDefault(); holdStill = true; lastInputAt = now(); if (tutorial) tutHeldStill = true; return; }
       if (e.key === 'w' || e.key === 'W') startOrPin();
       if (e.key === 'x' || e.key === 'X' || e.key === 'Escape') detach();
       if (e.key === 'p' || e.key === 'P') togglePause();
@@ -1354,6 +1384,7 @@
       if (e.key === 'n' || e.key === 'N') layEgg();
     });
     window.addEventListener('keyup', function(e){
+      if (e.code === 'Space') { holdStill = false; lastInputAt = now(); }
       if (e.key === 'e' || e.key === 'E') { eatHeld = false; syncEatBtn(); }
     });
     function syncEatBtn(){
@@ -1414,20 +1445,21 @@
       ['&#128305;', '<b>DOUBLE-TAP</b> — spread-trap everything near you'],
       ['&#128376;', '<b>WEB</b> — anchor &middot; walk &middot; <b>PIN</b> a strand'],
       ['&#10005;',  '<b>DETACH</b> — stop weaving'],
-      ['&#127760;', '<b>AUTO</b> — weave a spiral web (drag = take over)'],
+      ['&#127760;', '<b>AUTO</b> — weave a hub-and-spoke web (drag = take over)'],
       ['&#127860;', '<b>EAT</b> (hold) — graze strands, reclaim silk'],
-      ['&#128295;', '<b>FIX</b> — re-walk &amp; repair your last web'],
+      ['&#128295;', '<b>FIX</b> — repair your last web\'s gaps (tap again to cancel)'],
       ['&#129370;', '<b>EGG</b> — lay when brood meter is full; hatches a helper'],
       ['&#128062;', 'walk over stuck bugs to <b>wrap</b> them']
     ] : [
       ['&#128433;', '<b>MOVE</b> — the spider follows your mouse'],
+      ['&#9995;',   '<b>HOLD SPACE</b> — plant your feet &amp; aim (stay put)'],
       ['&#127919;', '<b>CLICK</b> — shoot a web where you aim'],
       ['&#128305;', '<b>DOUBLE-CLICK</b> / <b>F</b> — spread-trap near you'],
       ['&#128376;', '<b>W</b> — anchor &middot; walk &middot; pin a strand'],
       ['&#10005;',  '<b>X</b> — stop weaving'],
-      ['&#127760;', '<b>Q</b> — auto-weave a spiral web (move = take over)'],
+      ['&#127760;', '<b>Q</b> — auto-weave a hub-and-spoke web (move = take over)'],
+      ['&#128295;', '<b>R</b> — repair your last web\'s gaps (R again to cancel)'],
       ['&#127860;', '<b>E</b> (hold) — graze strands, reclaim silk'],
-      ['&#128295;', '<b>R</b> — re-walk &amp; repair your last web'],
       ['&#129370;', '<b>N</b> — lay egg when brood meter is full; defend till hatch'],
       ['&#128163;', '<b>B</b> — bug bomb (buy in the shop)'],
       ['&#128062;', 'walk over stuck bugs to <b>wrap</b> them'],
@@ -1713,6 +1745,9 @@
       else if (inSlime()) cap *= 0.55;       // slug slime
       var mlen = Math.hypot(mx, my);
       if (mlen > cap) { mx *= cap / mlen; my *= cap / mlen; }
+      // hold SPACE: plant the feet and stay put so you can aim. the auto-weaver
+      // still drives itself (don't freeze it), and idle-wander is kept at bay.
+      if (holdStill && !autoWeb && state === 'play') { mx = 0; my = 0; lastInputAt = t; }
       spider.x += mx;
       spider.y += my;
       spider.vx = dt > 0 ? mx / dt : 0;
@@ -2340,8 +2375,10 @@
       if (dist2(spider.x, spider.y, e.x2, e.y2) < 22 * 22) {
         var ok = layAuto(building.x, building.y, e.x2, e.y2, true);
         building = null;
+        // out of silk / web full → layAuto already called stopAutoWeb (which
+        // nulls autoEdges), so bail BEFORE touching the queue again
+        if (!ok) return;
         autoEdges.shift();
-        if (!ok) return; // out of silk / web full — stopAutoWeb already fired
         SFX.wrap();
         if (autoEdges.length) reorderAutoEdges();
       }
