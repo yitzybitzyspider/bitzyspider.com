@@ -385,6 +385,8 @@
     var ctx = cvs.getContext('2d');
     var W = 0, H = 0, dpr = 1;
     var bgCvs = null; // pre-rendered background
+    var bgStars = []; // bright stars stored for per-frame twinkling
+    var shootingStar = null; // current shooting star streak
 
     // ---------- persistence ----------
     function load(k){ try { return localStorage.getItem('bughunt_' + k); } catch(e){ return null; } }
@@ -465,7 +467,7 @@
     };
 
     // ---------- stats / upgrades ----------
-    var GAME_VERSION = 'v21';
+    var GAME_VERSION = 'v22';
     var S; // current run stats
     function freshStats(){ return { speed: 0, range: 0, silk: 0, grip: 0, tough: 0, venom: 0, spread: 0, brood: 0, heartT: 0, dblShot: 0, fortify: 0, bomb: 0, extraLife: 0 }; }
     function wrapMult(){ return 1.5 + (S ? S.venom * 0.25 : 0); } // wrapped catch bonus
@@ -780,9 +782,13 @@
     var dust = []; // ambient drifting motes
     function initDust(){
       dust = [];
-      for (var i = 0; i < 16; i++) {
+      for (var i = 0; i < 18; i++) {
         dust.push({ x: Math.random() * W, y: Math.random() * H,
-          vx: rand(-6, 6), vy: rand(-4, 4), r: rand(0.6, 1.6), a: rand(0.05, 0.16) });
+          vx: rand(-6, 6), vy: rand(-4, 4), r: rand(0.6, 1.6), a: rand(0.04, 0.14), tint: 0 });
+      }
+      for (var j = 0; j < 8; j++) {
+        dust.push({ x: Math.random() * W, y: Math.random() * H,
+          vx: rand(-2, 2), vy: rand(-1.5, 1.5), r: rand(2.0, 4.0), a: rand(0.015, 0.04), tint: 1 });
       }
     }
 
@@ -880,42 +886,80 @@
       for (i = 0; i < eggs.length; i++) clampInto(eggs[i]);
       for (i = 0; i < spiderlings.length; i++) clampInto(spiderlings[i]);
     }
-    // each level gets a faintly different mood — a near-black tint that rotates
-    // through cool/warm hues so the arena doesn't read as flat black
-    function bgTint(){
+    function bgHue(){
       var lv = (state === 'play' || state === 'shop' || state === 'pause') ? level : 1;
-      var hue = (200 + (lv - 1) * 33) % 360;
-      return 'hsl(' + hue + ',38%,7%)';
+      return (200 + (lv - 1) * 33) % 360;
+    }
+    function bgTint(){
+      return 'hsl(' + bgHue() + ',38%,7%)';
     }
     function renderBg(){
       bgCvs = document.createElement('canvas');
       bgCvs.width = W * dpr; bgCvs.height = H * dpr;
       var b = bgCvs.getContext('2d');
       b.scale(dpr, dpr);
-      // base: a deep radial gradient with a subtle per-level tint at the core
+      var lv = (state === 'play' || state === 'shop' || state === 'pause') ? level : 1;
+      var hue = bgHue();
+      var seed = 1337 + lv * 7919;
+      function rnd(){ seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; }
+
       var g = b.createRadialGradient(W / 2, H * 0.42, 0, W / 2, H * 0.42, Math.max(W, H) * 0.85);
       g.addColorStop(0, bgTint());
       g.addColorStop(0.55, '#070708');
       g.addColorStop(1, '#000');
       b.fillStyle = g; b.fillRect(0, 0, W, H);
 
-      // baked starfield — faint distant motes for depth (deterministic per size)
-      var seed = 1337;
-      function rnd(){ seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; }
-      var stars = Math.round((W * H) / 9000);
-      for (var si = 0; si < stars; si++) {
-        var sx = rnd() * W, sy = rnd() * H, sr = 0.4 + rnd() * 1.1, sa = 0.03 + rnd() * 0.07;
-        b.fillStyle = 'rgba(255,255,255,' + sa + ')';
-        b.beginPath(); b.arc(sx, sy, sr, 0, Math.PI * 2); b.fill();
+      var nClouds = 4 + Math.floor(rnd() * 3), ci;
+      for (ci = 0; ci < nClouds; ci++) {
+        var ccx = rnd() * W, ccy = rnd() * H;
+        var cR = Math.max(W, H) * (0.18 + rnd() * 0.28);
+        var cH = (hue + rnd() * 60 - 30 + 360) % 360;
+        var cA = 0.025 + rnd() * 0.025;
+        var ng = b.createRadialGradient(ccx, ccy, 0, ccx, ccy, cR);
+        ng.addColorStop(0, 'hsla(' + cH + ',50%,20%,' + cA + ')');
+        ng.addColorStop(0.5, 'hsla(' + cH + ',40%,12%,' + (cA * 0.5) + ')');
+        ng.addColorStop(1, 'hsla(' + cH + ',30%,8%,0)');
+        b.fillStyle = ng; b.fillRect(0, 0, W, H);
       }
 
-      // a large, very faint orb-web sprawling from the upper-center — the
-      // brand motif, baked so it costs nothing per frame
-      bigWeb(b, W / 2, H * 0.4, Math.max(W, H) * 0.62);
+      var si, sx, sy, sr, sa, sH;
+      var dimN = Math.round((W * H) / 9000);
+      for (si = 0; si < dimN; si++) {
+        sx = rnd() * W; sy = rnd() * H; sr = 0.4 + rnd() * 1.0; sa = 0.03 + rnd() * 0.06;
+        b.fillStyle = 'rgba(255,255,255,' + sa + ')';
+        b.beginPath(); b.arc(sx, sy, sr, 0, TAU); b.fill();
+      }
+      var medN = Math.round((W * H) / 40000);
+      for (si = 0; si < medN; si++) {
+        sx = rnd() * W; sy = rnd() * H; sr = 1.0 + rnd() * 0.8;
+        sH = rnd() < 0.5 ? (200 + rnd() * 40) : (30 + rnd() * 20);
+        sa = 0.07 + rnd() * 0.06;
+        b.fillStyle = 'hsla(' + sH + ',40%,80%,' + sa + ')';
+        b.beginPath(); b.arc(sx, sy, sr, 0, TAU); b.fill();
+      }
+      bgStars = [];
+      var brightN = 6 + Math.floor(rnd() * 5);
+      for (si = 0; si < brightN; si++) {
+        sx = rnd() * W; sy = rnd() * H; sr = 1.2 + rnd() * 0.6;
+        sH = rnd() < 0.3 ? ((hue + rnd() * 30) % 360) : (rnd() < 0.5 ? (220 + rnd() * 40) : (40 + rnd() * 20));
+        sa = 0.15 + rnd() * 0.12;
+        var sg = b.createRadialGradient(sx, sy, 0, sx, sy, sr * 4);
+        sg.addColorStop(0, 'hsla(' + sH + ',50%,85%,' + (sa * 0.5) + ')');
+        sg.addColorStop(1, 'hsla(' + sH + ',50%,85%,0)');
+        b.fillStyle = sg; b.fillRect(sx - sr * 4, sy - sr * 4, sr * 8, sr * 8);
+        b.fillStyle = 'hsla(' + sH + ',30%,90%,' + sa + ')';
+        b.beginPath(); b.arc(sx, sy, sr, 0, TAU); b.fill();
+        bgStars.push({ x: sx, y: sy, r: sr, hue: sH, a: sa, phase: rnd() * TAU });
+      }
 
-      // faint corner webs (brand)
+      bigWeb(b, W / 2, H * 0.4, Math.max(W, H) * 0.62);
       cornerWeb(b, 0, 0, 0, Math.PI / 2);
       cornerWeb(b, W, H, Math.PI, Math.PI * 1.5);
+
+      var vg = b.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.3, W / 2, H / 2, Math.max(W, H) * 0.72);
+      vg.addColorStop(0, 'rgba(0,0,0,0)');
+      vg.addColorStop(1, 'rgba(0,0,0,0.3)');
+      b.fillStyle = vg; b.fillRect(0, 0, W, H);
     }
     // full-web motif: radial spokes + a wobbling capture spiral, very low alpha
     function bigWeb(b, cx, cy, R){
@@ -3510,13 +3554,49 @@
       bg2.addColorStop(1, 'rgba(255,255,255,0)');
       ctx.fillStyle = bg2; ctx.fillRect(0, 0, W, H);
 
+      for (var ti = 0; ti < bgStars.length; ti++) {
+        var bs = bgStars[ti];
+        var twk = 0.5 + Math.sin(t * 0.003 + bs.phase) * 0.5;
+        var ta = bs.a * (0.3 + twk * 0.7);
+        ctx.fillStyle = 'hsla(' + bs.hue + ',40%,90%,' + ta + ')';
+        ctx.beginPath(); ctx.arc(bs.x, bs.y, bs.r * (0.8 + twk * 0.4), 0, TAU); ctx.fill();
+        if (twk > 0.7) {
+          var tg = ctx.createRadialGradient(bs.x, bs.y, 0, bs.x, bs.y, bs.r * 5);
+          tg.addColorStop(0, 'hsla(' + bs.hue + ',50%,85%,' + (ta * 0.4) + ')');
+          tg.addColorStop(1, 'hsla(' + bs.hue + ',50%,85%,0)');
+          ctx.fillStyle = tg; ctx.fillRect(bs.x - bs.r * 5, bs.y - bs.r * 5, bs.r * 10, bs.r * 10);
+        }
+      }
+
+      if (!shootingStar && Math.random() < 0.0004) {
+        shootingStar = { x: Math.random() * W * 0.7 + W * 0.1, y: Math.random() * H * 0.25,
+          vx: 280 + Math.random() * 220, vy: 80 + Math.random() * 60, life: 1 };
+      }
+      if (shootingStar) {
+        var ss = shootingStar, sDt = 0.016;
+        ss.x += ss.vx * sDt; ss.y += ss.vy * sDt; ss.life -= sDt * 1.6;
+        if (ss.life <= 0 || ss.x > W + 40 || ss.y > H + 40) shootingStar = null;
+        else {
+          var sLen = 0.06 * ss.life;
+          ctx.strokeStyle = 'rgba(255,255,255,' + (ss.life * 0.45) + ')';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath(); ctx.moveTo(ss.x, ss.y);
+          ctx.lineTo(ss.x - ss.vx * sLen, ss.y - ss.vy * sLen);
+          ctx.stroke();
+        }
+      }
+
       ctx.save();
       if (shake > 0) ctx.translate(rand(-shake, shake) * 0.5, rand(-shake, shake) * 0.5);
 
-      // ambient dust motes
+      var dHue = bgHue();
       for (var di = 0; di < dust.length; di++) {
         var dm = dust[di];
-        ctx.fillStyle = 'rgba(255,255,255,' + dm.a + ')';
+        if (dm.tint) {
+          ctx.fillStyle = 'hsla(' + dHue + ',30%,60%,' + dm.a + ')';
+        } else {
+          ctx.fillStyle = 'rgba(255,255,255,' + dm.a + ')';
+        }
         ctx.beginPath(); ctx.arc(dm.x, dm.y, dm.r, 0, TAU); ctx.fill();
       }
 
