@@ -137,6 +137,20 @@
 
     .bugLegend { display: flex; flex-wrap: wrap; gap: 4px 12px; justify-content: center; font-size: 10px; color: #71717a; margin: 6px 0 4px; line-height: 1.7; }
 
+    /* ---------- High scores ---------- */
+    .scoreRow {
+      display: flex; align-items: center; gap: 12px; text-align: left;
+      border-top: 1px solid #18181b; padding: 10px 2px; font-size: 13px;
+    }
+    .scoreRow:first-child { border-top: none; }
+    .scoreRow .rk { color: #52525b; font-weight: 700; font-size: 12px; width: 26px; flex-shrink: 0; }
+    .scoreRow.top .rk { color: #fbbf24; }
+    .scoreRow .sc { color: #dc2626; font-weight: 700; font-size: 15px; flex: 1; }
+    .scoreRow .meta { color: #71717a; font-size: 10px; text-align: right; line-height: 1.4; }
+    .scoreRow.fresh { background: rgba(251,191,36,0.08); border-radius: 8px; }
+    .scoreRow.fresh .rk { color: #fbbf24; }
+    .scoreEmpty { color: #52525b; font-size: 12px; padding: 20px 0; }
+
     /* ---------- Controls reference (menu + pause) ---------- */
     .secHead { font-size: 9px; letter-spacing: 0.28em; color: #52525b; margin: 16px 0 8px; }
     .ctrlGrid {
@@ -256,26 +270,7 @@
       <div class="brand">BITZYSPIDER ARCADE</div>
       <h1>BUG<span class="red">HUNT</span></h1>
       <div style="color:#52525b;font-size:9px;letter-spacing:0.2em;margin-top:6px" id="verLabel">v16</div>
-      <div class="secHead">HOW TO PLAY</div>
-      <div class="ctrlGrid" id="menuControls"></div>
-      <div class="tipLine">red bar = web shots &middot; white bar = weaving silk (catches refill it) &middot; orange bar = rage<br>crossed strands hold &middot; heavy bugs need two lines on them</div>
-      <div class="secHead">KNOW YOUR BUGS</div>
-      <div class="bugLegend">
-        <span>fly</span>
-        <span>moth</span>
-        <span style="color:#22c55e">beetle</span>
-        <span style="color:#facc15">wasp</span>
-        <span style="color:#fbbf24">firefly</span>
-        <span style="color:#84cc16">stinkbug</span>
-        <span style="color:#a8a29e">slug</span>
-        <span style="color:#a3e635">webworm</span>
-        <span style="color:#14b8a6">dragonfly</span>
-        <span style="color:#eab308">&#9670; queen</span>
-        <span style="color:#22c55e">&#9670; mantis</span>
-        <span style="color:#d4d4d8">&#9670; moth king</span>
-        <span style="color:#f97316">&#9670; hawk</span>
-      </div>
-      <div class="tipLine">see the FIELD GUIDE for full details on each foe</div>
+      <div class="sub" style="margin:14px 0 6px">Catch the bugs. Weave the web. Don't get debugged.</div>
       <div class="statline">BEST <span class="red" id="mHigh">0</span> &nbsp;&middot;&nbsp; BUGS DEBUGGED <span class="red" id="mTotal">0</span></div>
       <div class="sizeRow">
         <span class="lbl">ARENA</span>
@@ -284,8 +279,33 @@
         <button class="sizeBtn" id="sz_full">FULL</button>
       </div>
       <button class="btn" id="btnStart">START HUNTING</button>
-      <button class="btn ghost" id="btnTut">TUTORIAL</button>
-      <button class="btn ghost" id="btnGlossMenu">FIELD GUIDE</button>
+      <div style="margin-top:8px">
+        <button class="btn ghost" id="btnTut">TUTORIAL</button>
+        <button class="btn ghost" id="btnControlsMenu">CONTROLS</button>
+        <button class="btn ghost" id="btnGlossMenu">FIELD GUIDE</button>
+        <button class="btn ghost" id="btnScoresMenu">HIGH SCORES</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="overlay" id="ovControls">
+    <div class="card">
+      <h2>CONTROLS</h2>
+      <div class="secHead">HOW TO PLAY</div>
+      <div class="ctrlGrid" id="menuControls"></div>
+      <div class="tipLine">red bar = web shots &middot; white bar = weaving silk (catches refill it) &middot; orange bar = rage<br>crossed strands hold &middot; heavy bugs need two lines on them</div>
+      <div style="margin-top:16px"><button class="btn ghost" id="btnControlsBack">BACK</button></div>
+    </div>
+  </div>
+
+  <!-- High scores -->
+  <div class="overlay" id="ovScores">
+    <div class="card">
+      <h2>HIGH <span class="red">SCORES</span></h2>
+      <div id="scoreRows" style="margin-top:14px"></div>
+      <div class="statline" style="margin-top:14px">LIFETIME BUGS DEBUGGED <span class="red" id="sTotal">0</span></div>
+      <div style="margin-top:8px"><button class="btn ghost" id="btnScoresBack">BACK</button></div>
     </div>
   </div>
 
@@ -330,11 +350,13 @@
     <div class="card">
       <h2 style="color:#dc2626">GAME OVER</h2>
       <div class="sub">You got debugged.</div>
+      <div id="oRank" style="color:#fbbf24;font-size:13px;font-weight:700;letter-spacing:0.12em;margin:8px 0;display:none"></div>
       <div class="statline">
         SCORE <span class="red" id="oScore">0</span> &nbsp;&middot;&nbsp; BEST <span class="red" id="oHigh">0</span><br>
         <span id="oLvl"></span>
       </div>
       <button class="btn" id="btnRetry">TRY AGAIN</button>
+      <button class="btn ghost" id="btnScoresOver">HIGH SCORES</button>
       <button class="btn ghost" id="btnMenu">MENU</button>
     </div>
   </div>
@@ -370,6 +392,35 @@
     var hi = +load('hi') || 0;
     var totalBugs = +load('total') || 0;
     var muted = load('mute') === '1';
+
+    // ---------- high score board ----------
+    // top runs, persisted as JSON: [{ s: score, lv: level, d: epoch-ms }]
+    var SCORE_KEEP = 8; // how many runs to remember
+    function loadScores(){
+      try { var a = JSON.parse(load('scores') || '[]'); return Array.isArray(a) ? a : []; }
+      catch(e){ return []; }
+    }
+    var scores = loadScores();
+    // record a finished run; returns its 1-based placement (0 if it didn't make the board)
+    function recordScore(sc, lv){
+      if (sc <= 0) return 0;
+      var entry = { s: sc, lv: lv, d: Date.now() };
+      scores.push(entry);
+      scores.sort(function(a, b){ return b.s - a.s; });
+      scores = scores.slice(0, SCORE_KEEP);
+      try { save('scores', JSON.stringify(scores)); } catch(e){}
+      var place = scores.indexOf(entry);
+      return place >= 0 ? place + 1 : 0;
+    }
+    // "3m ago", "2h ago", "5d ago", or a date for older runs
+    function agoStr(ms){
+      var s = (Date.now() - ms) / 1000;
+      if (s < 60) return 'just now';
+      if (s < 3600) return Math.floor(s / 60) + 'm ago';
+      if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+      if (s < 86400 * 7) return Math.floor(s / 86400) + 'd ago';
+      try { return new Date(ms).toLocaleDateString(); } catch(e){ return ''; }
+    }
 
     // debug params for internal testing: ?lvl=15&pts=2000&boss=mantis
     // jump straight to a level, start with shop points, force-spawn a boss
@@ -414,7 +465,7 @@
     };
 
     // ---------- stats / upgrades ----------
-    var GAME_VERSION = 'v20';
+    var GAME_VERSION = 'v21';
     var S; // current run stats
     function freshStats(){ return { speed: 0, range: 0, silk: 0, grip: 0, tough: 0, venom: 0, spread: 0, brood: 0, heartT: 0, dblShot: 0, fortify: 0, bomb: 0, extraLife: 0 }; }
     function wrapMult(){ return 1.5 + (S ? S.venom * 0.25 : 0); } // wrapped catch bonus
@@ -1278,11 +1329,18 @@
     }
     function gameOver(){
       save('hi', hi); save('total', totalBugs);
+      var place = recordScore(score, level);
       document.getElementById('oScore').textContent = score;
       document.getElementById('oHigh').textContent = hi;
       document.getElementById('oLvl').textContent = 'made it to level ' + level;
+      var rk = document.getElementById('oRank');
+      if (place === 1 && score > 0) { rk.textContent = '🏆 NEW HIGH SCORE!'; rk.style.display = 'block'; }
+      else if (place > 0) { rk.textContent = '#' + place + ' ON THE BOARD!'; rk.style.display = 'block'; }
+      else { rk.style.display = 'none'; }
+      lastPlace = place;
       setState('over');
     }
+    var lastPlace = 0;
     function toMenu(){
       save('hi', hi); save('total', totalBugs);
       bugs = []; shots = []; strands = []; globs = []; slimes = []; fires = []; spreads = [];
@@ -1354,7 +1412,7 @@
     }
 
     // ---------- state / overlays ----------
-    var overlays = { menu: 'ovMenu', shop: 'ovShop', pause: 'ovPause', over: 'ovOver', intro: 'ovIntro', gloss: 'ovGloss' };
+    var overlays = { menu: 'ovMenu', shop: 'ovShop', pause: 'ovPause', over: 'ovOver', intro: 'ovIntro', gloss: 'ovGloss', controls: 'ovControls', scores: 'ovScores' };
     function setState(s){
       state = s;
       if (s !== 'play') holdStill = false; // never stay frozen outside play
@@ -1673,6 +1731,34 @@
     document.getElementById('btnGlossBack').addEventListener('click', closeGlossary);
     document.getElementById('btnGlossMenu').addEventListener('click', function(){ openGlossary('menu'); });
     document.getElementById('btnGlossPause').addEventListener('click', function(){ openGlossary('pause'); });
+
+    // ---------- controls overlay ----------
+    var controlsReturn = 'menu';
+    function openControls(from){ controlsReturn = from || 'menu'; setState('controls'); }
+    document.getElementById('btnControlsMenu').addEventListener('click', function(){ openControls('menu'); });
+    document.getElementById('btnControlsBack').addEventListener('click', function(){ setState(controlsReturn); });
+
+    // ---------- high scores overlay ----------
+    var scoresReturn = 'menu';
+    function renderScores(freshIdx){
+      var el = document.getElementById('scoreRows');
+      if (!el) return;
+      document.getElementById('sTotal').textContent = totalBugs;
+      if (!scores.length) { el.innerHTML = '<div class="scoreEmpty">No runs yet — go catch some bugs!</div>'; return; }
+      var html = '';
+      for (var i = 0; i < scores.length; i++) {
+        var e = scores[i];
+        var cls = 'scoreRow' + (i === 0 ? ' top' : '') + (i === freshIdx ? ' fresh' : '');
+        html += '<div class="' + cls + '"><span class="rk">#' + (i + 1) + '</span>'
+          + '<span class="sc">' + e.s.toLocaleString() + '</span>'
+          + '<span class="meta">LV ' + e.lv + ' &middot; ' + rankName(e.lv) + '<br>' + agoStr(e.d) + '</span></div>';
+      }
+      el.innerHTML = html;
+    }
+    function openScores(from, freshIdx){ scoresReturn = from || 'menu'; renderScores(typeof freshIdx === 'number' ? freshIdx : -1); setState('scores'); }
+    document.getElementById('btnScoresMenu').addEventListener('click', function(){ openScores('menu'); });
+    document.getElementById('btnScoresOver').addEventListener('click', function(){ openScores('over', lastPlace > 0 ? lastPlace - 1 : -1); });
+    document.getElementById('btnScoresBack').addEventListener('click', function(){ setState(scoresReturn); });
 
     // ---------- update ----------
     function update(dt){
