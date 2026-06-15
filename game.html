@@ -67,6 +67,13 @@
     }
     #btnEgg { border-color: #a16207; color: #fde68a; }
     #btnEgg:active { transform: scale(0.95); }
+    #btnRage {
+      background: rgba(0,0,0,0.55); border: 1px solid #3f3f46; color: #a1a1aa;
+      border-radius: 14px; padding: 12px 14px; font-size: 12px; font-weight: 700;
+      letter-spacing: 0.08em; cursor: pointer; font-family: inherit; margin-right: 8px;
+    }
+    #btnRage.ready { border-color: #f97316; color: #fff; background: rgba(249,115,22,0.25); }
+    #btnRage:active { transform: scale(0.95); }
     #btnEat.on { border-color: #22c55e; color: #fff; background: rgba(34,197,94,0.2); }
     #btnFix.on { border-color: #fbbf24; color: #fff; background: rgba(251,191,36,0.2); }
     #btnEat:active, #btnFix:active { transform: scale(0.95); }
@@ -208,6 +215,11 @@
     #broodBar { height: 6px; background: #27272a; border-radius: 99px; overflow: hidden; border: 1px solid #18181b; margin-top: 4px; }
     #broodFill { height: 100%; background: #fbbf24; width: 0%; transition: width 0.15s; }
     #broodBar.ready #broodFill { background: #22c55e; }
+    #rageBar { height: 6px; background: #27272a; border-radius: 99px; overflow: hidden; border: 1px solid #18181b; margin-top: 4px; }
+    #rageFill { height: 100%; background: #f97316; width: 0%; transition: width 0.15s; }
+    #rageBar.ready #rageFill { background: #dc2626; }
+    #rageBar.active #rageFill { background: #dc2626; animation: ragePulse 0.4s infinite alternate; }
+    @keyframes ragePulse { from { background: #dc2626; } to { background: #f97316; } }
   </style>
 </head>
 <body>
@@ -229,10 +241,11 @@
       <div id="silkBar"><div id="silkFill"></div></div>
       <div id="webBar"><div id="webFill"></div></div>
       <div id="broodBar"><div id="broodFill"></div></div>
+      <div id="rageBar"><div id="rageFill"></div></div>
       <div id="silkLbl">SHOT &middot; WEB</div>
     </div>
     <div class="hud" id="hudBR">
-      <button id="btnCut">&#10005; DETACH</button><button id="btnEgg">&#129370; EGG</button><button id="btnEat">&#127860; EAT</button><button id="btnFix">&#128295; FIX</button><button id="btnAuto">&#127760; AUTO</button><button id="btnWeb">&#128376; WEB</button>
+      <button id="btnCut">&#10005; DETACH</button><button id="btnEgg">&#129370; EGG</button><button id="btnRage">&#128293; RAGE</button><button id="btnEat">&#127860; EAT</button><button id="btnFix">&#128295; FIX</button><button id="btnAuto">&#127760; AUTO</button><button id="btnWeb">&#128376; WEB</button>
     </div>
     <div class="hud" id="tutMsg"></div>
   </div>
@@ -245,7 +258,7 @@
       <div style="color:#52525b;font-size:9px;letter-spacing:0.2em;margin-top:6px" id="verLabel">v16</div>
       <div class="secHead">HOW TO PLAY</div>
       <div class="ctrlGrid" id="menuControls"></div>
-      <div class="tipLine">red bar = web shots &middot; white bar = weaving silk (catches refill it)<br>crossed strands hold &middot; heavy bugs need two lines on them</div>
+      <div class="tipLine">red bar = web shots &middot; white bar = weaving silk (catches refill it) &middot; orange bar = rage<br>crossed strands hold &middot; heavy bugs need two lines on them</div>
       <div class="secHead">KNOW YOUR BUGS</div>
       <div class="bugLegend">
         <span>fly</span>
@@ -395,12 +408,13 @@
       sting: function(){ beep(160, 0.3, 'sawtooth', 0.07, 60); },
       free:  function(){ beep(300, 0.14, 'sawtooth', 0.035, 150); },
       deny:  function(){ beep(180, 0.1, 'square', 0.04); },
+      rage:  function(){ beep(200, 0.25, 'sawtooth', 0.06, 800); setTimeout(function(){ beep(400, 0.3, 'sawtooth', 0.06, 1200); }, 100); },
       buy:   function(){ beep(1200, 0.06, 'square', 0.05); },
       level: function(){ [523, 659, 784, 1047].forEach(function(f, i){ setTimeout(function(){ beep(f, 0.12, 'square', 0.05); }, i * 90); }); }
     };
 
     // ---------- stats / upgrades ----------
-    var GAME_VERSION = 'v19';
+    var GAME_VERSION = 'v20';
     var S; // current run stats
     function freshStats(){ return { speed: 0, range: 0, silk: 0, grip: 0, tough: 0, venom: 0, spread: 0, brood: 0, heartT: 0, dblShot: 0, fortify: 0, bomb: 0, extraLife: 0 }; }
     function wrapMult(){ return 1.5 + (S ? S.venom * 0.25 : 0); } // wrapped catch bonus
@@ -449,6 +463,10 @@
     var BROOD_PER_CATCH = 12;   // brood charge per catch
     var BROOD_PER_WRAP = 22;    // brood charge per wrap
     var BROOD_PASSIVE = 1.5;    // brood charge per second (slow passive regen)
+    var RAGE_MAX = 100;          // rage meter capacity
+    var RAGE_PER_CATCH = 6;      // rage charge per catch
+    var RAGE_PER_WRAP = 14;      // rage charge per wrap (wrapping feeds the fury)
+    var RAGE_DURATION = 5500;    // 5.5s of berserk
 
     // level ranks — fun names for the climb
     var RANKS = [
@@ -545,6 +563,8 @@
     var buffScoreUntil = 0;         // 2x points (mantis charm)
     var buffSpeedUntil = 0;         // 1.5x speed (moth dust)
     var shieldHits = 0;             // assassin's veil — blocks stings
+    var rageMeter = 0;              // charges from catches/wraps; full = ready to rage
+    var rageUntil = 0;              // timestamp: rage mode active while now() < rageUntil
     // every boss releases something special when wrapped:
     var DROPS = {
       queen:    { name: 'ROYAL JELLY',   color: '#eab308',
@@ -620,7 +640,15 @@
           broodMeter = 70;
           for (var i = 0; i < 4; i++) { spawnBug('fly'); var b = bugs[bugs.length - 1]; b.x = W * 0.3 + rand(-80, 80); b.y = H * 0.5 + rand(-60, 60); }
         },
-        check: function(){ return eggs.length >= 1; } }
+        check: function(){ return eggs.length >= 1; } },
+      { msg: function(){
+          return '<b>RAGE</b> — the orange bar is full! ' + (isTouch ? 'Tap <b>RAGE</b>' : 'Press <b>G</b>') + ' to go berserk! You\'ll auto-catch everything you touch at insane speed.';
+        },
+        init: function(){
+          rageMeter = RAGE_MAX; rageUntil = 0;
+          for (var i = 0; i < 6; i++) { spawnBug('fly'); var b = bugs[bugs.length - 1]; b.x = W * 0.2 + rand(0, W * 0.6); b.y = H * 0.2 + rand(0, H * 0.6); }
+        },
+        check: function(){ return rageUntil > 0; } }
     ];
     // desktop gets extra keyboard-only lessons: hold-still aiming, bug bomb,
     // and reclaiming silk
@@ -656,6 +684,7 @@
       strands = []; hubs = []; crossings = []; ripples = []; drops = [];
       eggs = []; spiderlings = [];
       building = null; bombs = 0; buffScoreUntil = 0; buffSpeedUntil = 0; shieldHits = 0;
+      rageMeter = 0; rageUntil = 0;
       comboN = 0; comboUntil = 0; shownScore = 0; freezeUntil = 0;
       caught = 0; quota = 999;
       silk = silkMax(); webSilk = webSilkMax();
@@ -1077,6 +1106,12 @@
         broodMeter = Math.min(BROOD_MAX, broodMeter + (wrapped ? BROOD_PER_WRAP : BROOD_PER_CATCH));
         if (broodMeter >= BROOD_MAX) { eggReady = true; floatTxt(spider.x, spider.y - 44, 'EGG READY!', '#22c55e'); SFX.buy(); }
       }
+      // catches charge the rage meter — fury builds from hunting
+      if (now() >= rageUntil) {
+        var wasReady = rageMeter >= RAGE_MAX;
+        rageMeter = Math.min(RAGE_MAX, rageMeter + (wrapped ? RAGE_PER_WRAP : RAGE_PER_CATCH));
+        if (!wasReady && rageMeter >= RAGE_MAX) { floatTxt(spider.x, spider.y - 56, 'RAGE READY!', '#f97316'); SFX.buy(); }
+      }
       // bosses release something special when they die
       if (b.t.boss && DROPS[b.k]) {
         drops.push({ x: b.x, y: b.y, k: b.k, born: t });
@@ -1139,6 +1174,7 @@
       lastInputAt = now();
       autoWeb = false; autoCenter = null; autoEdges = null; bombs = 0;
       drops = []; buffScoreUntil = 0; buffSpeedUntil = 0; shieldHits = 0;
+      rageMeter = 0; rageUntil = 0;
       tutorial = false; tutMark = null; tutMsgSet('');
       eatHeld = false; syncEatBtn();
       foesSeen = { fly: true }; introQueue = []; // the fly is self-evident — no reveal
@@ -1254,6 +1290,7 @@
       hubs = []; crossings = []; ripples = []; drops = [];
       building = null;
       broodMeter = 0; eggReady = false;
+      rageMeter = 0; rageUntil = 0;
       tutorial = false; tutMark = null; tutDoneAt = 0; tutMsgSet('');
       eatHeld = false; syncEatBtn();
       if (autoWeb) stopAutoWeb();
@@ -1381,6 +1418,7 @@
       if (e.key === 'r' || e.key === 'R') startRepair();
       if (e.key === 'b' || e.key === 'B') useBomb();
       if (e.key === 'f' || e.key === 'F') doSpread();
+      if (e.key === 'g' || e.key === 'G') activateRage();
       if (e.key === 'n' || e.key === 'N') layEgg();
     });
     window.addEventListener('keyup', function(e){
@@ -1421,6 +1459,7 @@
     document.getElementById('btnAuto').addEventListener('click', function(e){ e.stopPropagation(); audio(); toggleAutoWeb(); });
     document.getElementById('btnFix').addEventListener('click', function(e){ e.stopPropagation(); audio(); startRepair(); });
     document.getElementById('btnEgg').addEventListener('click', function(e){ e.stopPropagation(); audio(); layEgg(); });
+    document.getElementById('btnRage').addEventListener('click', function(e){ e.stopPropagation(); audio(); activateRage(); });
     // EAT is hold-to-graze: down = start eating, up/leave = stop
     (function(){
       var be = document.getElementById('btnEat');
@@ -1449,6 +1488,7 @@
       ['&#127860;', '<b>EAT</b> (hold) — graze strands, reclaim silk'],
       ['&#128295;', '<b>FIX</b> — repair your last web\'s gaps (tap again to cancel)'],
       ['&#129370;', '<b>EGG</b> — lay when brood meter is full; hatches a helper'],
+      ['&#128293;', '<b>RAGE</b> — when orange bar is full, go berserk!'],
       ['&#128062;', 'walk over stuck bugs to <b>wrap</b> them']
     ] : [
       ['&#128433;', '<b>MOVE</b> — the spider follows your mouse'],
@@ -1462,6 +1502,7 @@
       ['&#127860;', '<b>E</b> (hold) — graze strands, reclaim silk'],
       ['&#129370;', '<b>N</b> — lay egg when brood meter is full; defend till hatch'],
       ['&#128163;', '<b>B</b> — bug bomb (buy in the shop)'],
+      ['&#128293;', '<b>G</b> — rage mode (orange bar full = berserk!)'],
       ['&#128062;', 'walk over stuck bugs to <b>wrap</b> them'],
       ['&#9208;',   '<b>P</b> — pause &middot; <b>M</b> — mute']
     ];
@@ -1488,6 +1529,7 @@
       document.getElementById('btnWeb').style.display = 'none';
       document.getElementById('btnCut').style.display = 'none';
       document.getElementById('btnEgg').style.display = 'none'; // N lays eggs
+      document.getElementById('btnRage').style.display = 'none'; // G activates rage
     }
     document.getElementById('mHigh').textContent = hi;
     document.getElementById('mTotal').textContent = totalBugs;
@@ -1545,7 +1587,8 @@
       { h: 'Combos', t: 'Wrap bugs within 4s of each other to build a <b>combo multiplier</b> (x1.5 per step, max x3). Combos stack with the Venom Fangs wrap bonus.' },
       { h: 'Brood / Nest', t: 'Catching bugs charges the <b>yellow brood meter</b>. When full, press N to lay an egg. Protect it until it hatches into a <b>spiderling</b> that hunts bugs for you. Raiders (beetles, slugs) target eggs and spiderlings.' },
       { h: 'Difficulty Scaling', t: 'Each bug type gets <b>faster</b> (+4.5%/level past unlock) and <b>chews out quicker</b> (-3%/level). By the teens, old bugs are noticeably tougher.' },
-      { h: 'Boss Drops', t: 'Every boss drops a unique power-up when wrapped. Don\'t miss it — uncollected drops <b>auto-apply</b> at level clear.' }
+      { h: 'Boss Drops', t: 'Every boss drops a unique power-up when wrapped. Don\'t miss it — uncollected drops <b>auto-apply</b> at level clear.' },
+      { h: 'Rage Mode', t: 'The <b>orange rage bar</b> charges from catches and wraps. When full, press <b>G</b> (or RAGE button) to go berserk for 5.5s: 2.5x speed, invulnerable, auto-catches every bug you touch. The spider turns red and angry — devastate everything on screen.' }
     ];
     function renderGlossary(){
       var bp = document.getElementById('pane_bestiary');
@@ -1695,6 +1738,23 @@
         if (nb) { target.x = nb.x; target.y = nb.y; }
       }
 
+      // rage mode: spider targets bugs aggressively
+      if (state === 'play' && rageActive()) {
+        var rNear = null, rDist = Infinity;
+        for (var ri = 0; ri < bugs.length; ri++) {
+          var rb = bugs[ri];
+          if (rb.dead) continue;
+          var rd = dist2(spider.x, spider.y, rb.x, rb.y);
+          if (rd < rDist) { rDist = rd; rNear = rb; }
+        }
+        if (rNear) { target.x = rNear.x; target.y = rNear.y; lastInputAt = t; }
+        // rage spark particles
+        if (Math.random() < 0.5) {
+          var ra = Math.random() * TAU, rr = rand(16, 40) * spiderScale();
+          pop(spider.x + Math.cos(ra) * rr, spider.y + Math.sin(ra) * rr, Math.random() < 0.5 ? '#f97316' : '#dc2626', 1, rand(1, 2.5));
+        }
+      }
+
       moveSpider(dt);
       updateBugs(dt, t);
       updateShots(dt);
@@ -1707,6 +1767,8 @@
       updateFx(dt);
 
       if (state === 'play') {
+        // rage mode: auto-catch everything the spider touches
+        if (rageActive()) rageCollide(t);
         collide(t);
         if (!tutorial && caught >= quota) levelClear();
       } else if (state === 'menu') {
@@ -1740,14 +1802,16 @@
       var mx = dx * k, my = dy * k;
       // hard cap: this is what makes webs worth building
       var cap = topSpeed() * dt;
-      if (t < buffSpeedUntil) cap *= 1.5;    // moth dust
-      if (t < spider.slowUntil) cap *= 0.45; // stinkbug spit
-      else if (inSlime()) cap *= 0.55;       // slug slime
+      if (rageActive()) cap *= 2.5;           // rage berserk
+      else if (t < buffSpeedUntil) cap *= 1.5; // moth dust
+      if (t < spider.slowUntil && !rageActive()) cap *= 0.45; // stinkbug spit
+      else if (!rageActive() && inSlime()) cap *= 0.55;       // slug slime
       var mlen = Math.hypot(mx, my);
       if (mlen > cap) { mx *= cap / mlen; my *= cap / mlen; }
       // hold SPACE: plant the feet and stay put so you can aim. the auto-weaver
       // still drives itself (don't freeze it), and idle-wander is kept at bay.
-      if (holdStill && !autoWeb && state === 'play') { mx = 0; my = 0; lastInputAt = t; }
+      // rage overrides holdStill — the spider must chase
+      if (holdStill && !autoWeb && !rageActive() && state === 'play') { mx = 0; my = 0; lastInputAt = t; }
       spider.x += mx;
       spider.y += my;
       spider.vx = dt > 0 ? mx / dt : 0;
@@ -1923,6 +1987,22 @@
       }
       updateHud(true);
     }
+    function activateRage(){
+      if (state !== 'play') return;
+      if (rageMeter < RAGE_MAX) { floatTxt(spider.x, spider.y - 30, 'rage not ready…', '#71717a'); SFX.deny(); return; }
+      if (now() < rageUntil) return;
+      rageMeter = 0;
+      rageUntil = now() + RAGE_DURATION;
+      invulnUntil = Math.max(invulnUntil, rageUntil);
+      shake = 20; flash = 0.3;
+      SFX.rage();
+      floatTxt(spider.x, spider.y - 40, 'RAGE MODE!', '#f97316');
+      pop(spider.x, spider.y, '#f97316', 28, 5);
+      pop(spider.x, spider.y, '#dc2626', 20, 4);
+      ripples.push({ x: spider.x, y: spider.y, r: 10, life: 1.4 });
+      updateHud(true);
+    }
+    function rageActive(){ return now() < rageUntil; }
     // SPREAD: double-click the spider to fling silk in a ring around you,
     // trapping everything close — including bugs you've walked on top of and
     // can't shoot. Free to use but recharges slowly.
@@ -3153,6 +3233,21 @@
       }
     }
 
+    function rageCollide(t){
+      var sc = spiderScale();
+      var rR = 50 * sc;
+      for (var i = bugs.length - 1; i >= 0; i--) {
+        var b = bugs[i];
+        if (b.dead) continue;
+        if (dist2(spider.x, spider.y, b.x, b.y) > rR * rR) continue;
+        if (!b.webbed) {
+          b.webbed = true; b.hp = 0; b.vx = 0; b.vy = 0;
+          b.webT = t + 999999; b.strand = null;
+          pop(b.x, b.y, '#f97316', 8, 2);
+        }
+        if (b.webbed && b.hp <= 0) catchBug(b, true);
+      }
+    }
     function collide(t){
       // boss drops: walk over to collect
       for (var di2 = drops.length - 1; di2 >= 0; di2--) {
@@ -3283,6 +3378,19 @@
         document.getElementById('broodFill').style.width = (eggReady ? 100 : bpct) + '%';
         document.getElementById('broodBar').classList.toggle('ready', eggReady);
       }
+      // rage meter
+      var rIsActive = rageActive();
+      var rpct = rIsActive ? Math.round(Math.max(0, (rageUntil - now()) / RAGE_DURATION) * 100) : Math.round(rageMeter / RAGE_MAX * 100);
+      var rReady = !rIsActive && rageMeter >= RAGE_MAX;
+      if (hudCache.rage !== rpct || hudCache.raging !== rIsActive) {
+        hudCache.rage = rpct; hudCache.raging = rIsActive;
+        document.getElementById('rageFill').style.width = rpct + '%';
+        var rb = document.getElementById('rageBar');
+        rb.classList.toggle('ready', rReady);
+        rb.classList.toggle('active', rIsActive);
+        var br = document.getElementById('btnRage');
+        if (br) br.classList.toggle('ready', rReady);
+      }
       var wl = autoWeb ? 'SILK · AUTO WEB…' : building ? 'SILK · WEAVING…' : 'SILK · STRANDS ' + strands.length;
       if (eggReady) wl += ' · EGG READY';
       else if (broodMeter > 0) wl += ' · EGG ' + bpct + '%';
@@ -3293,6 +3401,9 @@
       wl += tb < spreadAt ? ' · SPREAD ' + Math.ceil((spreadAt - tb) / 1000) + 's' : ' · SPREAD ✓';
       if (tb < buffScoreUntil) wl += ' · 2x PTS ' + Math.ceil((buffScoreUntil - tb) / 1000) + 's';
       if (tb < buffSpeedUntil) wl += ' · FAST ' + Math.ceil((buffSpeedUntil - tb) / 1000) + 's';
+      if (rIsActive) wl += ' · RAGE ' + Math.ceil(Math.max(0, (rageUntil - tb)) / 1000) + 's';
+      else if (rReady) wl += ' · RAGE ✓';
+      else if (rageMeter > 0) wl += ' · RAGE ' + rpct + '%';
       if (hudCache.webs !== wl) {
         hudCache.webs = wl;
         document.getElementById('silkLbl').textContent = wl;
@@ -3630,6 +3741,17 @@
       ctx.globalAlpha = 1;
       ctx.restore();
 
+      // rage vignette
+      if (rageActive()) {
+        var rLeft = Math.max(0, (rageUntil - now()) / RAGE_DURATION);
+        var rPulse = 0.5 + Math.sin(now() * 0.008) * 0.3;
+        var rAlpha = (0.06 + rPulse * 0.06) * Math.min(1, rLeft * 4);
+        var rg = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(W, H) * 0.55);
+        rg.addColorStop(0, 'rgba(220,38,38,0)');
+        rg.addColorStop(0.6, 'rgba(220,38,38,0)');
+        rg.addColorStop(1, 'rgba(220,38,38,' + rAlpha + ')');
+        ctx.fillStyle = rg; ctx.fillRect(0, 0, W, H);
+      }
       // damage flash
       if (flash > 0) {
         ctx.fillStyle = 'rgba(220,38,38,' + (flash * 0.25) + ')';
@@ -3642,9 +3764,10 @@
     // double-bend joint formula (perpendicular offsets at 35% and 70%).
     function drawSpider(x, y, rot, scale, t){
       var c = Math.cos(rot), s = Math.sin(rot);
+      var isRaging = rageActive();
       // stroke weight and joint dots scale with the body, so a small spider
       // has proportionally small legs (legs draw in world space)
-      ctx.strokeStyle = '#fff'; ctx.lineWidth = 2 * scale;
+      ctx.strokeStyle = isRaging ? '#dc2626' : '#fff'; ctx.lineWidth = 2 * scale;
       ctx.lineCap = 'round'; ctx.lineJoin = 'round';
       for (var i = 0; i < 8; i++) {
         var hip = HIPS[i], L = legs[i];
@@ -3658,25 +3781,36 @@
         var b1y = hy + qy * 0.35 + perpY * 20 * sign * scale;
         var b2x = hx + qx * 0.7 + perpX * 15 * sign * scale;
         var b2y = hy + qy * 0.7 + perpY * 15 * sign * scale;
-        ctx.strokeStyle = '#fff';
+        ctx.strokeStyle = isRaging ? '#dc2626' : '#fff';
         ctx.beginPath();
         ctx.moveTo(hx, hy); ctx.lineTo(b1x, b1y); ctx.lineTo(b2x, b2y); ctx.lineTo(L.fx, L.fy);
         ctx.stroke();
-        ctx.fillStyle = '#ff4444';
+        ctx.fillStyle = isRaging ? '#f97316' : '#ff4444';
         dot(hx, hy, 2 * scale); dot(b1x, b1y, 1.5 * scale); dot(b2x, b2y, 1.5 * scale);
       }
 
       ctx.save();
       ctx.translate(x, y); ctx.rotate(rot); ctx.scale(scale, scale);
 
+      // rage aura: pulsing red glow
+      var isRaging = rageActive();
+      if (isRaging) {
+        var rPulse = 0.5 + Math.sin(t * 0.012) * 0.3;
+        ctx.fillStyle = 'rgba(220,38,38,' + (0.12 + rPulse * 0.14) + ')';
+        ctx.beginPath(); ctx.arc(0, 0, 46 + rPulse * 8, 0, TAU); ctx.fill();
+        ctx.fillStyle = 'rgba(249,115,22,' + (0.08 + rPulse * 0.1) + ')';
+        ctx.beginPath(); ctx.arc(0, 0, 32 + rPulse * 4, 0, TAU); ctx.fill();
+      }
+
       // slime tint while slowed
-      if (t < spider.slowUntil) {
+      if (t < spider.slowUntil && !isRaging) {
         ctx.fillStyle = 'rgba(101,163,13,0.18)';
         ctx.beginPath(); ctx.arc(0, 0, 34, 0, TAU); ctx.fill();
       }
 
       // body
-      ctx.fillStyle = '#1a1a1a'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+      ctx.fillStyle = isRaging ? '#2a0a0a' : '#1a1a1a';
+      ctx.strokeStyle = isRaging ? '#dc2626' : '#fff'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.ellipse(-5, 0, 20, 16, 0, 0, TAU); ctx.fill(); ctx.stroke();
 
       // egg sac forming on the spider's back (abdomen) — grows with broodMeter
@@ -3693,12 +3827,16 @@
       }
 
       // fangs
-      ctx.fillStyle = '#ff4444';
+      ctx.fillStyle = isRaging ? '#ff2222' : '#ff4444';
       ctx.beginPath(); ctx.moveTo(-10, -5); ctx.lineTo(-2, 0); ctx.lineTo(-10, 5); ctx.fill();
       ctx.beginPath(); ctx.moveTo(4, -5); ctx.lineTo(-4, 0); ctx.lineTo(4, 5); ctx.fill();
+      if (isRaging) {
+        ctx.fillStyle = '#ff4444';
+        ctx.beginPath(); ctx.moveTo(-12, -6); ctx.lineTo(-3, 0); ctx.lineTo(-12, 6); ctx.fill();
+      }
 
       // head
-      ctx.fillStyle = '#1a1a1a';
+      ctx.fillStyle = isRaging ? '#2a0a0a' : '#1a1a1a';
       ctx.beginPath(); ctx.arc(15, 0, 12, 0, TAU); ctx.fill(); ctx.stroke();
 
       // eyes track nearest bug
@@ -3708,9 +3846,15 @@
         var ea = Math.atan2(nb.y - y, nb.x - x) - rot;
         px = Math.cos(ea) * 2.5; py = Math.sin(ea) * 2.5;
       }
-      ctx.fillStyle = '#fff'; dot(19, -5, 4.5); dot(19, 5, 4.5);
-      ctx.fillStyle = '#1a1a1a'; dot(19 + px, -5 + py, 2); dot(19 + px, 5 + py, 2);
-      ctx.fillStyle = '#fff'; dot(20, -6, 1); dot(20, 4, 1);
+      if (isRaging) {
+        ctx.fillStyle = '#dc2626'; dot(19, -5, 5); dot(19, 5, 5);
+        ctx.fillStyle = '#fbbf24'; dot(19 + px, -5 + py, 2.5); dot(19 + px, 5 + py, 2.5);
+        ctx.fillStyle = '#fff'; dot(20, -6, 0.8); dot(20, 4, 0.8);
+      } else {
+        ctx.fillStyle = '#fff'; dot(19, -5, 4.5); dot(19, 5, 4.5);
+        ctx.fillStyle = '#1a1a1a'; dot(19 + px, -5 + py, 2); dot(19 + px, 5 + py, 2);
+        ctx.fillStyle = '#fff'; dot(20, -6, 1); dot(20, 4, 1);
+      }
 
       // mouth
       ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5;
