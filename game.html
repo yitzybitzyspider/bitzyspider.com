@@ -150,6 +150,13 @@
     .scoreRow.fresh { background: rgba(251,191,36,0.08); border-radius: 8px; }
     .scoreRow.fresh .rk { color: #fbbf24; }
     .scoreEmpty { color: #52525b; font-size: 12px; padding: 20px 0; }
+    .nameInput {
+      font-family: inherit; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase;
+      background: #0c0c0e; color: #fff; border: 1px solid #27272a; border-radius: 8px;
+      padding: 8px 12px; width: 150px; text-align: center; outline: none; margin-right: 6px;
+    }
+    .nameInput:focus { border-color: #dc2626; }
+    .nameInput::placeholder { color: #52525b; letter-spacing: 0.08em; }
 
     /* ---------- Controls reference (menu + pause) ---------- */
     .secHead { font-size: 9px; letter-spacing: 0.28em; color: #52525b; margin: 16px 0 8px; }
@@ -303,7 +310,12 @@
   <div class="overlay" id="ovScores">
     <div class="card">
       <h2>HIGH <span class="red">SCORES</span></h2>
+      <div class="glossTabs" id="scoreTabs" style="display:none;margin-top:12px">
+        <button class="glossTab on" data-stab="local">THIS DEVICE</button>
+        <button class="glossTab" data-stab="global">GLOBAL</button>
+      </div>
       <div id="scoreRows" style="margin-top:14px"></div>
+      <div id="globalRows" style="margin-top:14px;display:none"></div>
       <div class="statline" style="margin-top:14px">LIFETIME BUGS DEBUGGED <span class="red" id="sTotal">0</span></div>
       <div style="margin-top:8px"><button class="btn ghost" id="btnScoresBack">BACK</button></div>
     </div>
@@ -355,6 +367,11 @@
         SCORE <span class="red" id="oScore">0</span> &nbsp;&middot;&nbsp; BEST <span class="red" id="oHigh">0</span><br>
         <span id="oLvl"></span>
       </div>
+      <div id="oSubmit" style="display:none;margin:12px 0">
+        <input id="oName" class="nameInput" maxlength="12" placeholder="YOUR NAME" autocomplete="off" spellcheck="false" />
+        <button class="btn ghost" id="btnSubmitScore">SUBMIT TO GLOBAL</button>
+        <div id="oSubmitMsg" style="color:#71717a;font-size:11px;margin-top:8px;min-height:1em"></div>
+      </div>
       <button class="btn" id="btnRetry">TRY AGAIN</button>
       <button class="btn ghost" id="btnScoresOver">HIGH SCORES</button>
       <button class="btn ghost" id="btnMenu">MENU</button>
@@ -394,6 +411,49 @@
     var hi = +load('hi') || 0;
     var totalBugs = +load('total') || 0;
     var muted = load('mute') === '1';
+
+    // ---------- cloud leaderboard (optional) ----------
+    // A shared, cross-device GLOBAL high-score board, powered by a free Supabase
+    // project. It's entirely optional: leave the two strings below blank and the
+    // game keeps every score locally on the device (no network, works offline).
+    // To turn the global board ON: create a free Supabase project, run the SQL in
+    // SUPABASE_SETUP.md, then paste your project URL + anon (public) key here.
+    // The anon key is meant to be public — access is constrained by the database's
+    // row-level-security policies, not by hiding the key.
+    var CLOUD = {
+      url: '',   // e.g. 'https://abcdefgh.supabase.co'  (no trailing slash)
+      key: ''    // your project's anon / public API key
+    };
+    function cloudOn(){ return !!(CLOUD.url && CLOUD.key && typeof fetch === 'function'); }
+    function cloudName(){ try { return load('name') || ''; } catch(e){ return ''; } }
+    function htmlEsc(s){ return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+    // names: letters/digits/space/._- only, collapse whitespace, cap at 12 chars
+    function sanitizeName(n){
+      return String(n || '').replace(/[^A-Za-z0-9 _.\-]/g, '').replace(/\s+/g, ' ').trim().slice(0, 12);
+    }
+    function cloudHeaders(extra){
+      var h = { 'apikey': CLOUD.key, 'Authorization': 'Bearer ' + CLOUD.key };
+      if (extra) for (var k in extra) h[k] = extra[k];
+      return h;
+    }
+    // POST one finished run to the global board; resolves true on success
+    function submitScore(name, sc, lv){
+      if (!cloudOn()) return Promise.resolve(false);
+      name = sanitizeName(name) || 'ANON';
+      return fetch(CLOUD.url + '/rest/v1/scores', {
+        method: 'POST',
+        headers: cloudHeaders({ 'Content-Type': 'application/json', 'Prefer': 'return=minimal' }),
+        body: JSON.stringify({ name: name, score: sc | 0, level: lv | 0 })
+      }).then(function(r){ return !!(r && r.ok); }).catch(function(){ return false; });
+    }
+    // GET the top runs; resolves to an array, or null if the board can't be reached
+    function fetchGlobal(){
+      if (!cloudOn()) return Promise.resolve(null);
+      var u = CLOUD.url + '/rest/v1/scores?select=name,score,level,created_at&order=score.desc&limit=20';
+      return fetch(u, { headers: cloudHeaders() })
+        .then(function(r){ return r && r.ok ? r.json() : null; })
+        .catch(function(){ return null; });
+    }
 
     // ---------- high score board ----------
     // top runs, persisted as JSON: [{ s: score, lv: level, d: epoch-ms }]
@@ -467,7 +527,7 @@
     };
 
     // ---------- stats / upgrades ----------
-    var GAME_VERSION = 'v22';
+    var GAME_VERSION = 'v23';
     var S; // current run stats
     function freshStats(){ return { speed: 0, range: 0, silk: 0, grip: 0, tough: 0, venom: 0, spread: 0, brood: 0, heartT: 0, dblShot: 0, fortify: 0, bomb: 0, extraLife: 0 }; }
     function wrapMult(){ return 1.5 + (S ? S.venom * 0.25 : 0); } // wrapped catch bonus
@@ -1382,6 +1442,16 @@
       else if (place > 0) { rk.textContent = '#' + place + ' ON THE BOARD!'; rk.style.display = 'block'; }
       else { rk.style.display = 'none'; }
       lastPlace = place;
+      // global submit row — only when a cloud board is configured and there's a score
+      var sub = document.getElementById('oSubmit');
+      if (cloudOn() && score > 0) {
+        sub.style.display = 'block';
+        document.getElementById('oName').value = cloudName();
+        var sbtn = document.getElementById('btnSubmitScore');
+        sbtn.disabled = false; sbtn.textContent = 'SUBMIT TO GLOBAL';
+        document.getElementById('oSubmitMsg').textContent = '';
+        submittedRun = false;
+      } else { sub.style.display = 'none'; }
       setState('over');
     }
     var lastPlace = 0;
@@ -1799,10 +1869,66 @@
       }
       el.innerHTML = html;
     }
-    function openScores(from, freshIdx){ scoresReturn = from || 'menu'; renderScores(typeof freshIdx === 'number' ? freshIdx : -1); setState('scores'); }
+    // global (cloud) board — fetched fresh each time the tab is opened
+    function renderGlobal(rows){
+      var el = document.getElementById('globalRows');
+      if (!el) return;
+      if (!rows) { el.innerHTML = '<div class="scoreEmpty">couldn\'t reach the global board — check your connection and try again.</div>'; return; }
+      if (!rows.length) { el.innerHTML = '<div class="scoreEmpty">no global scores yet — be the first!</div>'; return; }
+      var html = '';
+      for (var i = 0; i < rows.length; i++) {
+        var e = rows[i];
+        var cls = 'scoreRow' + (i === 0 ? ' top' : '');
+        var nm = sanitizeName(e.name) || 'ANON';
+        html += '<div class="' + cls + '"><span class="rk">#' + (i + 1) + '</span>'
+          + '<span class="sc">' + (+e.score || 0).toLocaleString() + '</span>'
+          + '<span class="meta">' + htmlEsc(nm) + '<br>LV ' + (+e.level || 1) + '</span></div>';
+      }
+      el.innerHTML = html;
+    }
+    function loadGlobal(){
+      var el = document.getElementById('globalRows');
+      if (el) el.innerHTML = '<div class="scoreEmpty">loading the global board…</div>';
+      fetchGlobal().then(renderGlobal);
+    }
+    var scoresTab = 'local';
+    function showScoreTab(tab){
+      scoresTab = tab;
+      document.getElementById('scoreRows').style.display = tab === 'local' ? '' : 'none';
+      document.getElementById('globalRows').style.display = tab === 'global' ? '' : 'none';
+      var tabs = document.getElementById('scoreTabs').children;
+      for (var i = 0; i < tabs.length; i++) tabs[i].classList.toggle('on', tabs[i].getAttribute('data-stab') === tab);
+      if (tab === 'global') loadGlobal();
+    }
+    function openScores(from, freshIdx){
+      scoresReturn = from || 'menu';
+      document.getElementById('scoreTabs').style.display = cloudOn() ? 'flex' : 'none';
+      renderScores(typeof freshIdx === 'number' ? freshIdx : -1);
+      showScoreTab('local'); // always land on the local board
+      setState('scores');
+    }
     document.getElementById('btnScoresMenu').addEventListener('click', function(){ openScores('menu'); });
     document.getElementById('btnScoresOver').addEventListener('click', function(){ openScores('over', lastPlace > 0 ? lastPlace - 1 : -1); });
     document.getElementById('btnScoresBack').addEventListener('click', function(){ setState(scoresReturn); });
+    document.getElementById('scoreTabs').addEventListener('click', function(e){
+      var b = e.target; if (!b || !b.getAttribute) return;
+      var tab = b.getAttribute('data-stab'); if (tab) showScoreTab(tab);
+    });
+
+    // submit the just-finished run to the global board
+    var submittedRun = false;
+    document.getElementById('btnSubmitScore').addEventListener('click', function(){
+      if (submittedRun || !cloudOn()) return;
+      var inp = document.getElementById('oName');
+      var nm = sanitizeName(inp.value) || 'ANON';
+      inp.value = nm; save('name', nm);
+      var btn = document.getElementById('btnSubmitScore'), msg = document.getElementById('oSubmitMsg');
+      btn.disabled = true; btn.textContent = 'SUBMITTING…'; msg.textContent = '';
+      submitScore(nm, score, level).then(function(ok){
+        if (ok) { submittedRun = true; btn.textContent = 'SUBMITTED ✓'; msg.textContent = 'you\'re on the global board!'; }
+        else { btn.disabled = false; btn.textContent = 'SUBMIT TO GLOBAL'; msg.textContent = 'submit failed — try again.'; }
+      });
+    });
 
     // ---------- update ----------
     function update(dt){
