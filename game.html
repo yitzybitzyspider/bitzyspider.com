@@ -421,8 +421,8 @@
     // The anon key is meant to be public — access is constrained by the database's
     // row-level-security policies, not by hiding the key.
     var CLOUD = {
-      url: '',   // e.g. 'https://abcdefgh.supabase.co'  (no trailing slash)
-      key: ''    // your project's anon / public API key
+      url: 'https://qnrzvpyjuhutggteepma.supabase.co',   // Supabase project URL (no trailing slash)
+      key: 'sb_publishable_WlgVI378oACI0yDyVf8Pyw_am5GjuCj' // publishable (client-safe) API key
     };
     function cloudOn(){ return !!(CLOUD.url && CLOUD.key && typeof fetch === 'function'); }
     function cloudName(){ try { return load('name') || ''; } catch(e){ return ''; } }
