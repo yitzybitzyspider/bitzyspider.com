@@ -1266,14 +1266,20 @@
       var poll = setInterval(function(){
         if (!document.body) return;
         clearInterval(poll);
+        var isTouch = ('ontouchstart' in window || navigator.maxTouchPoints);
         var a = document.createElement('a');
         a.href = '/game.html';
         a.id = 'bughunt-link';
-        a.innerHTML = 'WANT MORE BUGS? <span style="color:#dc2626;font-weight:700">PLAY BUG HUNT &rarr;</span>';
+        // on mobile the bottom-left "BUGS DEBUGGED" counter and this pill share the
+        // bottom edge — use a shorter label + tighter sizing so they never collide
+        a.innerHTML = (isTouch ? '' : 'WANT MORE BUGS? ') +
+          '<span style="color:#dc2626;font-weight:700">PLAY BUG HUNT &rarr;</span>';
         a.style.cssText = 'position:fixed;bottom:1rem;right:1rem;z-index:55;' +
-          'font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;letter-spacing:0.06em;' +
+          'font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:0.06em;' +
+          'font-size:' + (isTouch ? '10px' : '11px') + ';' +
           'color:rgba(255,255,255,0.55);text-decoration:none;background:rgba(0,0,0,0.6);' +
-          'border:1px solid #27272a;border-radius:9999px;padding:8px 14px;cursor:none;' +
+          'border:1px solid #27272a;border-radius:9999px;cursor:none;' +
+          'padding:' + (isTouch ? '6px 11px' : '8px 14px') + ';' +
           'transition:border-color 0.2s,color 0.2s';
         a.addEventListener('mouseenter', function(){ a.style.borderColor = 'rgba(220,38,38,0.5)'; a.style.color = '#fff'; });
         a.addEventListener('mouseleave', function(){ a.style.borderColor = '#27272a'; a.style.color = 'rgba(255,255,255,0.55)'; });
