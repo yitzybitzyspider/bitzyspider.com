@@ -285,6 +285,14 @@
         <button class="sizeBtn" id="sz_medium">MEDIUM</button>
         <button class="sizeBtn" id="sz_full">FULL</button>
       </div>
+      <div class="sizeRow">
+        <span class="lbl">WORLD</span>
+        <button class="sizeBtn" id="th_cosmic">COSMIC</button>
+        <button class="sizeBtn" id="th_neon">NEON</button>
+        <button class="sizeBtn" id="th_garden">GARDEN</button>
+        <button class="sizeBtn" id="th_ember">EMBER</button>
+        <button class="sizeBtn" id="th_void">VOID</button>
+      </div>
       <button class="btn" id="btnStart">START HUNTING</button>
       <div style="margin-top:8px">
         <button class="btn ghost" id="btnTut">TUTORIAL</button>
@@ -533,7 +541,7 @@
     };
 
     // ---------- stats / upgrades ----------
-    var GAME_VERSION = 'v27';
+    var GAME_VERSION = 'v28';
     var S; // current run stats
     function freshStats(){ return { speed: 0, range: 0, silk: 0, grip: 0, tough: 0, venom: 0, spread: 0, brood: 0, heartT: 0, dblShot: 0, fortify: 0, bomb: 0, extraLife: 0 }; }
     function wrapMult(){ return 1.5 + (S ? S.venom * 0.25 : 0); } // wrapped catch bonus
@@ -693,13 +701,15 @@
     var SHOT_MODE_DUR = 12000;
     var SHOT_MODES = {
       shotgun: { name: 'SHOTGUN', color: '#fbbf24', blurb: 'five-pellet fan, devastating up close' },
-      laser:   { name: 'LASER',   color: '#06b6d4', blurb: 'instant beam that fries everything in line' },
+      laser:   { name: 'LASER',   color: '#06b6d4', blurb: 'hold and sweep — a continuous beam' },
       gatling: { name: 'GATLING', color: '#22c55e', blurb: 'hold the button to spray silk' },
-      bazooka: { name: 'BAZOOKA', color: '#ef4444', blurb: 'rockets that web everything in the blast' }
+      bazooka: { name: 'BAZOOKA', color: '#ef4444', blurb: 'rockets detonate right where you click' }
     };
     var shotMode = null, shotModeUntil = 0;
-    var beams = [];      // laser beam fx (instant hitscan lines, fast fade)
+    var beams = [];      // laser beam fx (hitscan lines, fast fade)
     var gatlingAt = 0;   // next allowed gatling auto-shot
+    var laserSfxAt = 0;  // throttle the beam zap sound while held
+    var laserHeldAt = 0; // last frame the held beam fired (gates the tap pulse)
     var BOOM_R = 90;     // bazooka blast radius
     function shotModeActive(){ return (shotMode && now() < shotModeUntil) ? shotMode : null; }
     function grantShotMode(k){
@@ -926,6 +936,35 @@
       o.x = Math.min(Math.max(o.x, 18), W - 18);
       o.y = Math.min(Math.max(o.y, 18), H - 18);
     }
+    // backdrop themes: each reskins the baked sky. hue(lv) drives the
+    // per-level color rotation inside the theme's family; the flags add each
+    // theme's signature layer (neon grid, garden fireflies, ember glow).
+    var THEMES = {
+      cosmic: { hue: function(lv){ return (200 + (lv - 1) * 33) % 360; }, sat: 38,
+                neb: 4, nebSpread: 60, stars: 1 },
+      neon:   { hue: function(lv){ return (280 + (lv - 1) * 10) % 360; }, sat: 60,
+                neb: 3, nebSpread: 40, stars: 0.7, grid: true },
+      garden: { hue: function(lv){ return 100 + ((lv - 1) * 12) % 55; }, sat: 30,
+                neb: 6, nebSpread: 30, stars: 0.5, fireflies: true },
+      ember:  { hue: function(lv){ return 6 + ((lv - 1) * 9) % 42; }, sat: 46,
+                neb: 4, nebSpread: 24, stars: 0.6, emberGlow: true },
+      void:   { hue: function(){ return 220; }, sat: 6,
+                neb: 0, nebSpread: 0, stars: 0.35 }
+    };
+    var bgTheme = load('theme') || 'cosmic';
+    if (!THEMES.hasOwnProperty(bgTheme)) bgTheme = 'cosmic';
+    function theme(){ return THEMES[bgTheme] || THEMES.cosmic; }
+    function setTheme(m){
+      if (!THEMES.hasOwnProperty(m)) return;
+      bgTheme = m;
+      save('theme', m);
+      for (var k in THEMES) {
+        var b = document.getElementById('th_' + k);
+        if (b) b.classList.toggle('on', k === m);
+      }
+      renderBg(); // new sky immediately, even behind the menu
+    }
+
     // arena sizes: pick on the menu, persisted. windowed arenas center the
     // canvas; ofsX/ofsY convert pointer coords and shift the HUD via CSS vars
     var SIZES = { small: { w: 560, h: 420 }, medium: { w: 880, h: 620 }, full: null };
@@ -980,10 +1019,10 @@
     }
     function bgHue(){
       var lv = (state === 'play' || state === 'shop' || state === 'pause') ? level : 1;
-      return (200 + (lv - 1) * 33) % 360;
+      return theme().hue(lv) % 360;
     }
     function bgTint(){
-      return 'hsl(' + bgHue() + ',38%,7%)';
+      return 'hsl(' + bgHue() + ',' + theme().sat + '%,7%)';
     }
     function renderBg(){
       bgCvs = document.createElement('canvas');
@@ -995,17 +1034,27 @@
       var seed = 1337 + lv * 7919;
       function rnd(){ seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; }
 
+      var th = theme();
       var g = b.createRadialGradient(W / 2, H * 0.42, 0, W / 2, H * 0.42, Math.max(W, H) * 0.85);
       g.addColorStop(0, bgTint());
       g.addColorStop(0.55, '#070708');
       g.addColorStop(1, '#000');
       b.fillStyle = g; b.fillRect(0, 0, W, H);
 
-      var nClouds = 4 + Math.floor(rnd() * 3), ci;
+      // ember: a warm glow rising from the bottom edge, like coals underfoot
+      if (th.emberGlow) {
+        var eg = b.createRadialGradient(W / 2, H * 1.15, 0, W / 2, H * 1.15, H * 0.9);
+        eg.addColorStop(0, 'hsla(' + hue + ',70%,30%,0.16)');
+        eg.addColorStop(0.6, 'hsla(' + hue + ',60%,18%,0.07)');
+        eg.addColorStop(1, 'hsla(' + hue + ',50%,10%,0)');
+        b.fillStyle = eg; b.fillRect(0, 0, W, H);
+      }
+
+      var nClouds = th.neb ? th.neb + Math.floor(rnd() * 3) : 0, ci;
       for (ci = 0; ci < nClouds; ci++) {
         var ccx = rnd() * W, ccy = rnd() * H;
         var cR = Math.max(W, H) * (0.18 + rnd() * 0.28);
-        var cH = (hue + rnd() * 60 - 30 + 360) % 360;
+        var cH = (hue + rnd() * th.nebSpread * 2 - th.nebSpread + 360) % 360;
         var cA = 0.025 + rnd() * 0.025;
         var ng = b.createRadialGradient(ccx, ccy, 0, ccx, ccy, cR);
         ng.addColorStop(0, 'hsla(' + cH + ',50%,20%,' + cA + ')');
@@ -1014,23 +1063,54 @@
         b.fillStyle = ng; b.fillRect(0, 0, W, H);
       }
 
+      // neon: a synthwave floor — horizon line + converging grid, in the
+      // theme hue and its complement
+      if (th.grid) {
+        var gy = H * 0.74, gi;
+        b.strokeStyle = 'hsla(' + hue + ',80%,55%,0.10)';
+        b.lineWidth = 1;
+        b.beginPath(); b.moveTo(0, gy); b.lineTo(W, gy); b.stroke();
+        for (gi = 1; gi <= 8; gi++) { // horizontals, packing toward the horizon
+          var gyy = gy + Math.pow(gi / 8, 1.7) * (H - gy);
+          b.strokeStyle = 'hsla(' + hue + ',80%,55%,' + (0.03 + gi * 0.008) + ')';
+          b.beginPath(); b.moveTo(0, gyy); b.lineTo(W, gyy); b.stroke();
+        }
+        b.strokeStyle = 'hsla(' + ((hue + 160) % 360) + ',80%,60%,0.05)';
+        for (gi = -8; gi <= 8; gi++) { // verticals converging on the center
+          b.beginPath(); b.moveTo(W / 2 + gi * W * 0.09, gy); b.lineTo(W / 2 + gi * W * 0.30, H); b.stroke();
+        }
+      }
+
       var si, sx, sy, sr, sa, sH;
-      var dimN = Math.round((W * H) / 9000);
+      var dimN = Math.round((W * H) / 9000 * th.stars);
       for (si = 0; si < dimN; si++) {
         sx = rnd() * W; sy = rnd() * H; sr = 0.4 + rnd() * 1.0; sa = 0.03 + rnd() * 0.06;
         b.fillStyle = 'rgba(255,255,255,' + sa + ')';
         b.beginPath(); b.arc(sx, sy, sr, 0, TAU); b.fill();
       }
-      var medN = Math.round((W * H) / 40000);
+      var medN = Math.round((W * H) / 40000 * th.stars);
       for (si = 0; si < medN; si++) {
         sx = rnd() * W; sy = rnd() * H; sr = 1.0 + rnd() * 0.8;
-        sH = rnd() < 0.5 ? (200 + rnd() * 40) : (30 + rnd() * 20);
+        sH = rnd() < 0.5 ? ((hue + rnd() * 30) % 360) : (rnd() < 0.5 ? (200 + rnd() * 40) : (30 + rnd() * 20));
         sa = 0.07 + rnd() * 0.06;
         b.fillStyle = 'hsla(' + sH + ',40%,80%,' + sa + ')';
         b.beginPath(); b.arc(sx, sy, sr, 0, TAU); b.fill();
       }
+      // garden: baked fireflies — little warm glows hanging in the dark
+      if (th.fireflies) {
+        var ffN = 8 + Math.floor(rnd() * 6);
+        for (si = 0; si < ffN; si++) {
+          sx = rnd() * W; sy = rnd() * H;
+          var ffg = b.createRadialGradient(sx, sy, 0, sx, sy, 7);
+          ffg.addColorStop(0, 'hsla(55,90%,65%,' + (0.10 + rnd() * 0.10) + ')');
+          ffg.addColorStop(1, 'hsla(55,90%,65%,0)');
+          b.fillStyle = ffg; b.fillRect(sx - 7, sy - 7, 14, 14);
+          b.fillStyle = 'hsla(55,95%,75%,' + (0.25 + rnd() * 0.2) + ')';
+          b.beginPath(); b.arc(sx, sy, 1.1, 0, TAU); b.fill();
+        }
+      }
       bgStars = [];
-      var brightN = 6 + Math.floor(rnd() * 5);
+      var brightN = Math.max(3, Math.round((6 + Math.floor(rnd() * 5)) * th.stars));
       for (si = 0; si < brightN; si++) {
         sx = rnd() * W; sy = rnd() * H; sr = 1.2 + rnd() * 0.6;
         sH = rnd() < 0.3 ? ((hue + rnd() * 30) % 360) : (rnd() < 0.5 ? (220 + rnd() * 40) : (40 + rnd() * 20));
@@ -1229,6 +1309,10 @@
     function shootWeb(ax, ay){
       if (state !== 'play') return;
       var mode = shotModeActive();
+      // laser is a HELD weapon — the continuous beam in update() does the
+      // work. A quick tap still gets a single pulse, but not if the held
+      // beam just fired (no double-charging on release).
+      if (mode === 'laser' && now() - laserHeldAt < 200) return;
       var cost = mode === 'gatling' ? 6 : WEB_COST; // gatling sprays cheap
       if (silk < cost) { SFX.deny(); return; }
       var dx = ax - spider.x, dy = ay - spider.y;
@@ -1237,21 +1321,9 @@
       silk -= cost;
       var shotAng = Math.atan2(dy, dx);
 
-      // LASER: no projectile at all — an instant beam that webs every bug
-      // along the line, drawn as a flash that fades
-      if (mode === 'laser') {
+      if (mode === 'laser') { // tap pulse: one instant beam
         SFX.laser();
-        var bLen = webRange() * 1.6;
-        var lx2 = spider.x + Math.cos(shotAng) * bLen;
-        var ly2 = spider.y + Math.sin(shotAng) * bLen;
-        var seg = { x1: spider.x, y1: spider.y, x2: lx2, y2: ly2 };
-        for (var li = 0; li < bugs.length; li++) {
-          var lb = bugs[li];
-          if (lb.dead || lb.webbed) continue;
-          var lcp = closestOnSeg(lb.x, lb.y, seg);
-          if (dist2(lb.x, lb.y, lcp.x, lcp.y) < (lb.t.r + 7) * (lb.t.r + 7)) webBug(lb);
-        }
-        beams.push({ x1: spider.x, y1: spider.y, x2: lx2, y2: ly2, life: 1 });
+        laserFire(shotAng, now());
         return;
       }
 
@@ -1280,14 +1352,38 @@
         var FAN = [-0.45, -0.22, 0, 0.22, 0.45];
         for (var fi = 0; fi < FAN.length; fi++) fireOne(shotAng + FAN[fi], 900, 0.7);
       } else if (mode === 'bazooka') {
-        fireOne(shotAng, 480, 1); // slow rocket; explodes on impact (updateShots)
+        // artillery: the rocket flies to the CLICK POINT and detonates there —
+        // you aim the blast, not the projectile (no homing, no range cap)
+        shots.push({
+          x: spider.x, y: spider.y,
+          vx: (dx / L) * 480, vy: (dy / L) * 480,
+          traveled: 0, max: L, tx: ax, ty: ay, tgt: null, mode: mode
+        });
       } else {
         fireOne(shotAng);
       }
-      if (S && S.dblShot > 0) {
+      if (S && S.dblShot > 0 && mode !== 'bazooka') {
         fireOne(shotAng + 0.18);
         fireOne(shotAng - 0.18);
       }
+    }
+    // the beam itself: webs everything along the line. Multi-HP bugs tick
+    // once per 350ms (b.lzAt) so a sustained sweep melts bosses steadily
+    // instead of 60 hits a second.
+    function laserFire(ang, t){
+      var bLen = webRange() * 1.6;
+      var lx2 = spider.x + Math.cos(ang) * bLen;
+      var ly2 = spider.y + Math.sin(ang) * bLen;
+      var seg = { x1: spider.x, y1: spider.y, x2: lx2, y2: ly2 };
+      for (var li = 0; li < bugs.length; li++) {
+        var lb = bugs[li];
+        if (lb.dead || lb.webbed) continue;
+        var lcp = closestOnSeg(lb.x, lb.y, seg);
+        if (dist2(lb.x, lb.y, lcp.x, lcp.y) < (lb.t.r + 7) * (lb.t.r + 7)) {
+          if (!lb.lzAt || t > lb.lzAt) { lb.lzAt = t + 350; webBug(lb); }
+        }
+      }
+      beams.push({ x1: spider.x, y1: spider.y, x2: lx2, y2: ly2, life: 0.55 });
     }
     // bazooka blast: web everything in the radius (bosses take their 1 hit
     // from the direct webBug like any other shot damage)
@@ -1845,6 +1941,11 @@
       document.getElementById('sz_' + k).addEventListener('click', function(e){ e.stopPropagation(); setSize(k); });
     });
     setSize(sizeMode); // apply persisted arena size + highlight the button
+    for (var thk in THEMES) (function(k){
+      var tb = document.getElementById('th_' + k);
+      if (tb) tb.addEventListener('click', function(e){ e.stopPropagation(); setTheme(k); });
+    })(thk);
+    setTheme(bgTheme); // apply persisted backdrop + highlight the button
 
     // menu + pause controls reference: one icon per action, built once,
     // rendered into both screens — same art, no wall of text
@@ -1962,7 +2063,7 @@
       { h: 'Difficulty Scaling', t: 'Each bug type gets <b>faster</b> (+4.5%/level past unlock) and <b>chews out quicker</b> (-3%/level). By the teens, old bugs are noticeably tougher.' },
       { h: 'Boss Drops', t: 'Every boss drops a unique power-up when wrapped. Don\'t miss it — uncollected drops <b>auto-apply</b> at level clear.' },
       { h: 'Rage Mode', t: 'The <b>orange rage bar</b> charges from catches and wraps. When full, press <b>G</b> (or RAGE button) to go berserk for 5.5s: 2.5x speed, invulnerable, auto-catches every bug you touch. The spider turns red and angry — devastate everything on screen.' },
-      { h: 'Weapons', t: 'Spinning <b>orange stars</b> sometimes drop from wrapped bugs (rogue bosses always drop one). Grab one to equip a weapon for 12s: <b>SHOTGUN</b> (5-pellet fan, brutal up close), <b>LASER</b> (instant beam that fries everything in line), <b>GATLING</b> (hold the button to spray cheap silk), or <b>BAZOOKA</b> (rockets that web everything in the blast radius).' },
+      { h: 'Weapons', t: 'Spinning <b>orange stars</b> sometimes drop from wrapped bugs (rogue bosses always drop one). Grab one to equip a weapon for 12s: <b>SHOTGUN</b> (5-pellet fan, brutal up close), <b>LASER</b> (hold and sweep — a continuous beam that webs everything it crosses), <b>GATLING</b> (hold the button to spray cheap silk), or <b>BAZOOKA</b> (rockets that fly to your click and detonate there, webbing the whole blast radius).' },
       { h: 'Enraged Bosses', t: 'Push a boss to around <b>half HP</b> and it ENRAGES: faster, harder-summoning, and <b>dangerous to touch</b> — every enraged boss stings on contact. Web it from range and only move in for the wrap once it\'s down.' }
     ];
     function renderGlossary(){
@@ -2153,6 +2254,21 @@
         if (shotModeActive() === 'gatling' && pDown && t > gatlingAt) {
           gatlingAt = t + 110;
           shootWeb(target.x, target.y);
+        }
+
+        // LASER: hold the pointer down and SWEEP — a continuous beam streams
+        // toward the cursor; spin in circles and everything it crosses gets
+        // webbed. Drains silk steadily while firing.
+        if (shotModeActive() === 'laser' && pDown) {
+          var lCost = 30 * dt;
+          if (silk >= lCost) {
+            silk -= lCost;
+            laserHeldAt = t;
+            var ldx = target.x - spider.x, ldy = target.y - spider.y;
+            var lAng = Math.hypot(ldx, ldy) < 4 ? spider.rot : Math.atan2(ldy, ldx);
+            laserFire(lAng, t);
+            if (t > laserSfxAt) { laserSfxAt = t + 170; SFX.laser(); }
+          }
         }
 
         // spawning (the tutorial controls its own spawns)
@@ -3720,8 +3836,8 @@
           }
         }
         if (hit || s.traveled > s.max) {
-          // a rocket that flies its full range airbursts at the end
-          if (!hit && s.mode === 'bazooka') boomAt(s.x, s.y);
+          // a rocket that reaches its target detonates AT THE CLICK POINT
+          if (!hit && s.mode === 'bazooka') boomAt(s.tx !== undefined ? s.tx : s.x, s.ty !== undefined ? s.ty : s.y);
           shots.splice(i, 1);
         }
       }
