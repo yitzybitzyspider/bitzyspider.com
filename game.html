@@ -527,7 +527,7 @@
     };
 
     // ---------- stats / upgrades ----------
-    var GAME_VERSION = 'v23';
+    var GAME_VERSION = 'v24';
     var S; // current run stats
     function freshStats(){ return { speed: 0, range: 0, silk: 0, grip: 0, tough: 0, venom: 0, spread: 0, brood: 0, heartT: 0, dblShot: 0, fortify: 0, bomb: 0, extraLife: 0 }; }
     function wrapMult(){ return 1.5 + (S ? S.venom * 0.25 : 0); } // wrapped catch bonus
@@ -678,6 +678,9 @@
     var shieldHits = 0;             // assassin's veil — blocks stings
     var rageMeter = 0;              // charges from catches/wraps; full = ready to rage
     var rageUntil = 0;              // timestamp: rage mode active while now() < rageUntil
+    var gems = [];                  // small pickups dropped by wrapped bugs
+    var swarmAt = 0;                // next swarm-burst time
+    var quotaCued = false;          // "3 TO GO!" shown this level
     // every boss releases something special when wrapped:
     var DROPS = {
       queen:    { name: 'ROYAL JELLY',   color: '#eab308',
@@ -1146,7 +1149,7 @@
       spawnBug(kind);
       var b = bugs[bugs.length - 1];
       b.x = W / 2; b.y = -40;
-      floatTxt(W / 2, 80, BOSS_NAMES[kind] + '!', BOSS_COLORS[kind]);
+      floatTxt(W / 2, 80, BOSS_NAMES[kind] + '!', BOSS_COLORS[kind], true);
     }
     // a defeated boss can return later as a ROGUE — same look & personality,
     // but no longer a true boss: it can be webbed/trapped/slowed like a regular
@@ -1246,9 +1249,14 @@
         comboUntil = t + 4000;
         var mult = Math.min(3, 1 + 0.5 * (comboN - 1));
         pts = Math.round(b.t.score * wrapMult() * mult);
-        if (comboN > 1) floatTxt(b.x, b.y - 32, 'COMBO x' + comboN, '#fbbf24');
+        if (comboN > 1) floatTxt(b.x, b.y - 32, 'COMBO x' + comboN, '#fbbf24', comboN >= 3);
         freezeUntil = t + (b.t.boss ? 120 : 60); // hit-stop
         ripples.push({ x: b.x, y: b.y, r: 6, life: 1 });
+        // wrapped bugs sometimes drop a little pickup (bosses have real drops)
+        if (!b.t.boss && !tutorial && Math.random() < 0.12) spawnGem(b.x, b.y);
+      } else {
+        // plain snags get a small ripple too — every catch should feel good
+        ripples.push({ x: b.x, y: b.y, r: 3, life: 0.6 });
       }
       if (t < buffScoreUntil) pts *= 2; // praying charm
       score += pts; cash += pts;
@@ -1265,7 +1273,7 @@
       if (now() >= rageUntil) {
         var wasReady = rageMeter >= RAGE_MAX;
         rageMeter = Math.min(RAGE_MAX, rageMeter + (wrapped ? RAGE_PER_WRAP : RAGE_PER_CATCH));
-        if (!wasReady && rageMeter >= RAGE_MAX) { floatTxt(spider.x, spider.y - 56, 'RAGE READY!', '#f97316'); SFX.buy(); }
+        if (!wasReady && rageMeter >= RAGE_MAX) { floatTxt(spider.x, spider.y - 56, 'RAGE READY!', '#f97316', true); SFX.buy(); }
       }
       // bosses release something special when they die
       if (b.t.boss && DROPS[b.k]) {
@@ -1277,6 +1285,11 @@
       floatTxt(b.x, b.y - 14, '+' + pts, wrapped ? '#dc2626' : '#fff');
       pop(b.x, b.y, wrapped ? '#dc2626' : '#9ca3af', 12, 3);
       if (wrapped) SFX.wrap(); else SFX.snag();
+      // almost there — one clear cue as the quota comes into reach
+      if (!tutorial && !quotaCued && quota - caught > 0 && quota - caught <= 3) {
+        quotaCued = true;
+        floatTxt(W / 2, H * 0.24, (quota - caught) + ' TO GO!', '#22c55e', true);
+      }
       updateHud(true);
     }
     function sting(b){
@@ -1309,8 +1322,43 @@
         parts.push({ x: x, y: y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 1, color: color, r: rand(1, sz) });
       }
     }
-    function floatTxt(x, y, txt, color){
-      floats.push({ x: x, y: y, txt: txt, life: 1, color: color || '#fff' });
+    function floatTxt(x, y, txt, color, big){
+      floats.push({ x: x, y: y, txt: txt, life: 1, color: color || '#fff', big: !!big });
+    }
+    // small pickups from wrapped bugs: walk over to collect. silk restores
+    // both meters; gem is bonus points; heart only drops when you're hurt.
+    var GEM_LIFE = 8000;
+    function spawnGem(x, y){
+      var r = Math.random(), kind;
+      if (r < 0.05 && hearts < maxHearts()) kind = 'heart';
+      else if (r < 0.3) kind = 'gem';
+      else kind = 'silk';
+      gems.push({ x: x, y: y, k: kind, born: now() });
+    }
+    function updateGems(t){
+      for (var i = gems.length - 1; i >= 0; i--) {
+        var g = gems[i];
+        if (t - g.born > GEM_LIFE) { gems.splice(i, 1); continue; }
+        if (dist2(spider.x, spider.y, g.x, g.y) < 30 * 30) {
+          if (g.k === 'silk') {
+            silk = Math.min(silkMax(), silk + 25);
+            webSilk = Math.min(webSilkMax(), webSilk + 25);
+            floatTxt(g.x, g.y - 14, '+SILK', '#e4e4e7');
+          } else if (g.k === 'gem') {
+            var gp = 15 * level;
+            score += gp; cash += gp;
+            if (score > hi) hi = score;
+            floatTxt(g.x, g.y - 14, '+' + gp, '#fbbf24');
+          } else {
+            hearts = Math.min(maxHearts(), hearts + 1);
+            floatTxt(g.x, g.y - 14, '+1 ♥', '#dc2626');
+          }
+          pop(g.x, g.y, g.k === 'heart' ? '#dc2626' : g.k === 'gem' ? '#fbbf24' : '#e4e4e7', 8, 2);
+          SFX.buy();
+          gems.splice(i, 1);
+          updateHud(true);
+        }
+      }
     }
 
     // ---------- level flow ----------
@@ -1326,6 +1374,7 @@
       eggs = []; spiderlings = [];
       comboN = 0; comboUntil = 0; shownScore = 0; freezeUntil = 0;
       spreadAt = 0; broodMeter = 0; eggReady = false;
+      gems = []; quotaCued = false;
       lastInputAt = now();
       autoWeb = false; autoCenter = null; autoEdges = null; bombs = 0;
       drops = []; buffScoreUntil = 0; buffSpeedUntil = 0; shieldHits = 0;
@@ -1397,7 +1446,11 @@
       building = null;
       syncWebBtns();
       caught = 0; spawnTimer = 0;
-      quota = 8 + level * 4;
+      // quota matches the old curve early, then softens so late levels are
+      // intense rather than long (old linear curve made lv15+ a 70-bug slog)
+      quota = Math.min(8 + level * 4, 24 + level * 2);
+      gems = []; quotaCued = false;
+      swarmAt = now() + rand(12000, 20000);
       silk = silkMax();
       webSilk = webSilkMax();
       renderBg(); // refresh the per-level background tint
@@ -1410,7 +1463,7 @@
         db.x = W / 2; db.y = -40;
         floatTxt(W / 2, 80, DBG.boss.toUpperCase() + ' (TEST)', BOSS_COLORS[DBG.boss] || '#fff');
       }
-      floatTxt(W / 2, H * 0.3, 'LV ' + level + ' — ' + rankName(level), '#fff');
+      floatTxt(W / 2, H * 0.3, 'LV ' + level + ' — ' + rankName(level), '#fff', true);
       updateHud(true);
     }
     function levelClear(){
@@ -1459,7 +1512,7 @@
       save('hi', hi); save('total', totalBugs);
       bugs = []; shots = []; strands = []; globs = []; slimes = []; fires = []; spreads = [];
       eggs = []; spiderlings = [];
-      hubs = []; crossings = []; ripples = []; drops = [];
+      hubs = []; crossings = []; ripples = []; drops = []; gems = [];
       building = null;
       broodMeter = 0; eggReady = false;
       rageMeter = 0; rageUntil = 0;
@@ -1949,7 +2002,9 @@
         // spawning (the tutorial controls its own spawns)
         if (!tutorial) {
           spawnTimer -= dt;
-          var maxAlive = 3 + Math.min(level, 7);
+          // population scales with level AND arena — a full-screen arena can
+          // hold a couple more bugs than the small window without feeling packed
+          var maxAlive = 3 + Math.min(level, 7) + (W * H > 620000 ? 2 : 0);
           if (spawnTimer <= 0 && bugs.length < maxAlive) {
             // a defeated boss occasionally returns as a rogue (not on boss
             // levels — the real boss is already out there)
@@ -1958,7 +2013,19 @@
               rogued = spawnRogueBoss();
             }
             if (!rogued) spawnBug(pickType());
-            spawnTimer = Math.max(0.45, 2.2 - level * 0.13);
+            // catch-up pacing: when the field is nearly empty, respawn fast so
+            // there's never dead air between targets
+            var base = Math.max(0.45, 2.2 - level * 0.13);
+            spawnTimer = bugs.length < maxAlive * 0.4 ? base * 0.55 : base;
+          }
+          // swarm bursts: every so often a wave of light bugs floods in at
+          // once (allowed to exceed maxAlive) — a spike of chaos and points
+          if (level >= 3 && t > swarmAt) {
+            swarmAt = t + rand(16000, 26000);
+            var sn = 3 + Math.min(3, Math.floor(level / 6));
+            for (var swi = 0; swi < sn; swi++) spawnBug(Math.random() < 0.7 ? 'fly' : 'moth');
+            floatTxt(W / 2, H * 0.24, 'SWARM!', '#fbbf24', true);
+            SFX.snag();
           }
         } else {
           tutUpdate();
@@ -2026,6 +2093,7 @@
         // rage mode: auto-catch everything the spider touches
         if (rageActive()) rageCollide(t);
         collide(t);
+        updateGems(t);
         if (!tutorial && caught >= quota) levelClear();
       } else if (state === 'menu') {
         // menu: catch flies silently (at the mouth, like the original)
@@ -3771,11 +3839,20 @@
         if (st.warn && Math.floor(t / 140) % 2 === 0) { color = '248,113,113'; alpha = 0.8; }
         var sLen = Math.hypot(st.x2 - st.x1, st.y2 - st.y1);
         var sag = Math.min(10, sLen * 0.045);
-        ctx.strokeStyle = 'rgba(' + color + ',' + alpha + ')';
-        ctx.lineWidth = 1.5;
+        var mx2 = (st.x1 + st.x2) / 2, my2 = (st.y1 + st.y2) / 2 + sag;
+        // two-pass silk: a wide faint halo under a thin bright core reads as
+        // a real gossamer thread instead of a flat line
+        ctx.strokeStyle = 'rgba(' + color + ',' + (alpha * 0.25) + ')';
+        ctx.lineWidth = 3.5;
         ctx.beginPath();
         ctx.moveTo(st.x1, st.y1);
-        ctx.quadraticCurveTo((st.x1 + st.x2) / 2, (st.y1 + st.y2) / 2 + sag, st.x2, st.y2);
+        ctx.quadraticCurveTo(mx2, my2, st.x2, st.y2);
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(' + color + ',' + alpha + ')';
+        ctx.lineWidth = 1.3;
+        ctx.beginPath();
+        ctx.moveTo(st.x1, st.y1);
+        ctx.quadraticCurveTo(mx2, my2, st.x2, st.y2);
         ctx.stroke();
         ctx.fillStyle = 'rgba(' + color + ',' + alpha + ')';
         dot(st.x1, st.y1, 2); dot(st.x2, st.y2, 2);
@@ -3980,6 +4057,42 @@
         ctx.beginPath(); ctx.arc(tutMark.x, tutMark.y, 26, 0, TAU); ctx.fill();
       }
 
+      // gem pickups: small bobbing tokens, blink in their final 2 seconds
+      for (i = 0; i < gems.length; i++) {
+        var gm = gems[i];
+        var gLeft = GEM_LIFE - (t - gm.born);
+        if (gLeft < 2000 && Math.floor(t / 150) % 2 === 0) continue; // expiring blink
+        var bob = Math.sin(t * 0.005 + i * 1.7) * 3;
+        var gy = gm.y + bob;
+        var gc = gm.k === 'heart' ? '#dc2626' : gm.k === 'gem' ? '#fbbf24' : '#e4e4e7';
+        ctx.fillStyle = gc;
+        ctx.globalAlpha = 0.18;
+        ctx.beginPath(); ctx.arc(gm.x, gy, 12, 0, TAU); ctx.fill();
+        ctx.globalAlpha = 1;
+        if (gm.k === 'heart') {
+          ctx.beginPath();
+          ctx.arc(gm.x - 2.4, gy - 1.5, 3, 0, TAU); ctx.arc(gm.x + 2.4, gy - 1.5, 3, 0, TAU);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.moveTo(gm.x - 5.2, gy - 0.4); ctx.lineTo(gm.x, gy + 6); ctx.lineTo(gm.x + 5.2, gy - 0.4);
+          ctx.closePath(); ctx.fill();
+        } else if (gm.k === 'gem') {
+          ctx.beginPath();
+          ctx.moveTo(gm.x, gy - 5.5); ctx.lineTo(gm.x + 4.5, gy); ctx.lineTo(gm.x, gy + 5.5); ctx.lineTo(gm.x - 4.5, gy);
+          ctx.closePath(); ctx.fill();
+          ctx.fillStyle = 'rgba(255,255,255,0.7)';
+          ctx.beginPath(); ctx.arc(gm.x - 1, gy - 1.5, 1.2, 0, TAU); ctx.fill();
+        } else {
+          // silk droplet
+          ctx.beginPath(); ctx.arc(gm.x, gy + 1, 4, 0, TAU); ctx.fill();
+          ctx.beginPath();
+          ctx.moveTo(gm.x - 3, gy); ctx.lineTo(gm.x, gy - 6); ctx.lineTo(gm.x + 3, gy);
+          ctx.closePath(); ctx.fill();
+          ctx.fillStyle = 'rgba(255,255,255,0.9)';
+          ctx.beginPath(); ctx.arc(gm.x - 1.2, gy, 1.1, 0, TAU); ctx.fill();
+        }
+      }
+
       // boss drops: pulsing glowing pickups with a name tag
       for (i = 0; i < drops.length; i++) {
         var drp = drops[i];
@@ -4021,12 +4134,17 @@
       }
       ctx.globalAlpha = 1;
 
-      // floating text
+      // floating text — big announcements (combos, swarms, boss names) pop
       ctx.textAlign = 'center';
-      ctx.font = 'bold 13px ui-monospace, Menlo, monospace';
       for (i = 0; i < floats.length; i++) {
         var f = floats[i];
+        ctx.font = f.big ? 'bold 22px ui-monospace, Menlo, monospace'
+                         : 'bold 13px ui-monospace, Menlo, monospace';
         ctx.globalAlpha = Math.max(0, f.life);
+        if (f.big) {
+          ctx.fillStyle = 'rgba(0,0,0,0.55)';
+          ctx.fillText(f.txt, f.x + 1.5, f.y + 1.5);
+        }
         ctx.fillStyle = f.color;
         ctx.fillText(f.txt, f.x, f.y);
       }
@@ -4057,6 +4175,11 @@
     function drawSpider(x, y, rot, scale, t){
       var c = Math.cos(rot), s = Math.sin(rot);
       var isRaging = rageActive();
+      // soft ground shadow under the body (matches the bugs' depth cue)
+      ctx.fillStyle = 'rgba(0,0,0,0.32)';
+      ctx.beginPath();
+      ctx.ellipse(x + 2 * scale, y + 14 * scale, 22 * scale, 7 * scale, 0, 0, TAU);
+      ctx.fill();
       // stroke weight and joint dots scale with the body, so a small spider
       // has proportionally small legs (legs draw in world space)
       ctx.strokeStyle = isRaging ? '#dc2626' : '#fff'; ctx.lineWidth = 2 * scale;
@@ -4244,6 +4367,21 @@
     function drawBug(b, t){
       ctx.save();
       ctx.translate(b.x, b.y);
+      // soft ground shadow — cheap depth cue that lifts bugs off the sky
+      ctx.fillStyle = 'rgba(0,0,0,0.32)';
+      ctx.beginPath();
+      ctx.ellipse(1.5, b.t.r * 0.85 + 3, b.t.r * 0.95, b.t.r * 0.3, 0, 0, TAU);
+      ctx.fill();
+      // true bosses radiate a pulsing aura in their theme color (rogues get
+      // a faint one) — menace you can read at a glance
+      if (b.t.boss || b.rogue) {
+        var auraP = 0.6 + Math.sin(t * 0.005 + b.wing) * 0.4;
+        var auraC = BOSS_COLORS[b.k] || '#dc2626';
+        ctx.fillStyle = auraC;
+        ctx.globalAlpha = (b.rogue ? 0.05 : 0.1) + auraP * (b.rogue ? 0.03 : 0.07);
+        ctx.beginPath(); ctx.arc(0, 0, b.t.r * 1.8 + auraP * 6, 0, TAU); ctx.fill();
+        ctx.globalAlpha = 1;
+      }
       var ang = (b.vx || b.vy) ? Math.atan2(b.vy, b.vx) : 0;
       if (b.webbed) {
         // struggle jitter
