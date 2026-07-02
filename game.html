@@ -527,7 +527,7 @@
     };
 
     // ---------- stats / upgrades ----------
-    var GAME_VERSION = 'v24';
+    var GAME_VERSION = 'v25';
     var S; // current run stats
     function freshStats(){ return { speed: 0, range: 0, silk: 0, grip: 0, tough: 0, venom: 0, spread: 0, brood: 0, heartT: 0, dblShot: 0, fortify: 0, bomb: 0, extraLife: 0 }; }
     function wrapMult(){ return 1.5 + (S ? S.venom * 0.25 : 0); } // wrapped catch bonus
@@ -617,10 +617,10 @@
         desc: function(){ return 'Fire two web shots per click (spread)'; } },
       { key: 'fortify',  name: 'FORTIFIED SILK', max: 99, cost: function(t){ return 180 + t * 60; },
         desc: function(){ return 'Bugs stuck ' + Math.round(toughMult() * 100) + '% → ' + Math.round((toughMult() + 0.35) * 100) + '% as long'; } },
-      { key: 'extraLife', name: 'BUY A LIFE',   max: 99, cost: function(t){ return 250 + t * 100; },
-        desc: function(){ return '+1 max health (' + maxHearts() + ' → ' + (maxHearts() + 1) + ')'; } },
+      { key: 'extraLife', name: 'BUY A LIFE',   max: 3, cost: function(t){ return 250 + t * 100; },
+        desc: function(){ return '+1 max health (' + maxHearts() + ' → ' + (maxHearts() + 1) + '), max 3'; } },
       { key: 'bomb',     name: 'BUG BOMB',      max: 99, cost: function(t){ return BOMB_COST + t * 50; },
-        desc: function(){ return 'Homing bomb — splatters all bugs in radius ' + BOMB_RADIUS + 'px'; } }
+        desc: function(){ return 'Shockwave (B key) — wraps every bug on screen, bosses take 1 hit'; } }
     ];
 
     // ---------- bug types ----------
@@ -681,6 +681,24 @@
     var gems = [];                  // small pickups dropped by wrapped bugs
     var swarmAt = 0;                // next swarm-burst time
     var quotaCued = false;          // "3 TO GO!" shown this level
+    // temporary shot modes — picked up from power gems, active for a short
+    // burst. Shooting is the fun part: these remix it without new controls.
+    var SHOT_MODE_DUR = 12000;
+    var SHOT_MODES = {
+      tri:    { name: 'TRI-SHOT',   color: '#fbbf24', blurb: 'three webs per shot' },
+      pierce: { name: 'PIERCE',     color: '#06b6d4', blurb: 'shots punch through everything in line' },
+      rapid:  { name: 'RAPID FIRE', color: '#22c55e', blurb: 'shots cost almost nothing' },
+      bola:   { name: 'BOLA',       color: '#a855f7', blurb: 'heavy shots that wrap on impact' }
+    };
+    var shotMode = null, shotModeUntil = 0;
+    function shotModeActive(){ return (shotMode && now() < shotModeUntil) ? shotMode : null; }
+    function grantShotMode(k){
+      shotMode = k; shotModeUntil = now() + SHOT_MODE_DUR;
+      floatTxt(spider.x, spider.y - 40, SHOT_MODES[k].name + '!', SHOT_MODES[k].color, true);
+      pop(spider.x, spider.y, SHOT_MODES[k].color, 14, 3);
+      SFX.buy();
+      updateHud(true);
+    }
     // every boss releases something special when wrapped:
     var DROPS = {
       queen:    { name: 'ROYAL JELLY',   color: '#eab308',
@@ -801,6 +819,7 @@
       eggs = []; spiderlings = [];
       building = null; bombs = 0; buffScoreUntil = 0; buffSpeedUntil = 0; shieldHits = 0;
       rageMeter = 0; rageUntil = 0;
+      shotMode = null; shotModeUntil = 0; gems = [];
       comboN = 0; comboUntil = 0; shownScore = 0; freezeUntil = 0;
       caught = 0; quota = 999;
       silk = silkMax(); webSilk = webSilkMax();
@@ -1103,10 +1122,13 @@
       var spdK = t.boss ? 1 : Math.min(1.45, 1 + over * 0.045); // up to +45% speed
       var escMult = t.boss ? 1 : Math.max(0.62, 1 - over * 0.03); // chews out up to ~38% faster
       var sp = t.boss ? 0 : t.sp * spdK;
+      // bosses grow tougher as the run goes on (+1 HP per 12 levels), so a
+      // second lap of the rotation isn't a pushover
+      var bhp = (t.hp || 1) + (t.boss ? Math.floor(level / 12) : 0);
       bugs.push({
         k: kind, t: t, x: x, y: y,
         vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp,
-        hp: t.hp || 1, webbed: false, webT: 0,
+        hp: bhp, maxHp: bhp, webbed: false, webT: 0,
         wing: Math.random() * 6, ttl: t.ttl || 0,
         spdK: spdK, escMult: escMult,
         dashT: 0, pauseT: 0.4, qv: t.qv || (t.boss ? 5 : 1), dead: false
@@ -1183,7 +1205,7 @@
       var b = bugs[bugs.length - 1];
       b.t = rogueType(kind);
       b.rogue = true;
-      b.hp = b.t.hp; b.qv = b.t.qv;
+      b.hp = b.t.hp; b.maxHp = b.t.hp; b.qv = b.t.qv;
       b.spdK = 1; b.escMult = 1;
       // bosses spawn with zero velocity (sp 0) — give the rogue a real heading
       var ang = Math.atan2(H / 2 - b.y, W / 2 - b.x) + rand(-0.4, 0.4);
@@ -1196,11 +1218,13 @@
     // ---------- web shots (aimed at where you click) ----------
     function shootWeb(ax, ay){
       if (state !== 'play') return;
-      if (silk < WEB_COST) { SFX.deny(); return; }
+      var mode = shotModeActive();
+      var cost = mode === 'rapid' ? 8 : WEB_COST; // rapid fire is nearly free
+      if (silk < cost) { SFX.deny(); return; }
       var dx = ax - spider.x, dy = ay - spider.y;
       var L = Math.hypot(dx, dy);
       if (L < 4) { dx = Math.cos(spider.rot); dy = Math.sin(spider.rot); L = 1; }
-      silk -= WEB_COST;
+      silk -= cost;
       SFX.shoot();
       var shotAng = Math.atan2(dy, dx);
       var fireOne = function(ang){
@@ -1219,10 +1243,11 @@
         shots.push({
           x: spider.x, y: spider.y,
           vx: fdx * 850, vy: fdy * 850,
-          traveled: 0, max: webRange() * 1.15, tgt: best
+          traveled: 0, max: webRange() * 1.15, tgt: best, mode: mode
         });
       };
       fireOne(shotAng);
+      if (mode === 'tri') { fireOne(shotAng + 0.35); fireOne(shotAng - 0.35); }
       if (S && S.dblShot > 0) {
         fireOne(shotAng + 0.18);
         fireOne(shotAng - 0.18);
@@ -1236,6 +1261,17 @@
       b.webT = now() + (b.hp <= 0 ? webDur() : 900); // partial webs on boss break fast
       pop(b.x, b.y, '#fff', 6, 2);
       if (b.hp > 0) floatTxt(b.x, b.y - 18, (b.hp) + ' more!', '#9ca3af');
+      enrageCheck(b);
+    }
+    // a true boss pushed to <=40% HP goes berserk: faster, stings on contact,
+    // and summons harder. The fight should get scarier as it goes, not easier.
+    function enrageCheck(b){
+      if (!b.t.boss || b.enraged || b.hp <= 0) return;
+      if (b.hp > Math.ceil(b.maxHp * 0.4)) return;
+      b.enraged = true;
+      shake = Math.max(shake, 10);
+      floatTxt(b.x, b.y - 34, 'ENRAGED!', '#dc2626', true);
+      SFX.rage();
     }
 
     // ---------- catching ----------
@@ -1281,6 +1317,8 @@
         floatTxt(b.x, b.y - 34, DROPS[b.k].name + ' dropped!', DROPS[b.k].color);
         bossesBeaten[b.k] = true; // it can return later as a rogue enemy
       }
+      // rogue bosses always drop a shot power-up — worth hunting down
+      if (b.rogue && wrapped) spawnGem(b.x, b.y, 'power');
       if (score > hi) hi = score;
       floatTxt(b.x, b.y - 14, '+' + pts, wrapped ? '#dc2626' : '#fff');
       pop(b.x, b.y, wrapped ? '#dc2626' : '#9ca3af', 12, 3);
@@ -1328,11 +1366,15 @@
     // small pickups from wrapped bugs: walk over to collect. silk restores
     // both meters; gem is bonus points; heart only drops when you're hurt.
     var GEM_LIFE = 8000;
-    function spawnGem(x, y){
-      var r = Math.random(), kind;
-      if (r < 0.05 && hearts < maxHearts()) kind = 'heart';
-      else if (r < 0.3) kind = 'gem';
-      else kind = 'silk';
+    function spawnGem(x, y, force){
+      var kind = force;
+      if (!kind) {
+        var r = Math.random();
+        if (r < 0.05 && hearts < maxHearts()) kind = 'heart';
+        else if (r < 0.2) kind = 'power'; // temporary shot mode
+        else if (r < 0.45) kind = 'gem';
+        else kind = 'silk';
+      }
       gems.push({ x: x, y: y, k: kind, born: now() });
     }
     function updateGems(t){
@@ -1349,11 +1391,14 @@
             score += gp; cash += gp;
             if (score > hi) hi = score;
             floatTxt(g.x, g.y - 14, '+' + gp, '#fbbf24');
+          } else if (g.k === 'power') {
+            var mk = Object.keys(SHOT_MODES);
+            grantShotMode(mk[Math.floor(Math.random() * mk.length)]);
           } else {
             hearts = Math.min(maxHearts(), hearts + 1);
             floatTxt(g.x, g.y - 14, '+1 ♥', '#dc2626');
           }
-          pop(g.x, g.y, g.k === 'heart' ? '#dc2626' : g.k === 'gem' ? '#fbbf24' : '#e4e4e7', 8, 2);
+          pop(g.x, g.y, g.k === 'heart' ? '#dc2626' : g.k === 'gem' ? '#fbbf24' : g.k === 'power' ? '#f97316' : '#e4e4e7', 8, 2);
           SFX.buy();
           gems.splice(i, 1);
           updateHud(true);
@@ -1375,6 +1420,7 @@
       comboN = 0; comboUntil = 0; shownScore = 0; freezeUntil = 0;
       spreadAt = 0; broodMeter = 0; eggReady = false;
       gems = []; quotaCued = false;
+      shotMode = null; shotModeUntil = 0;
       lastInputAt = now();
       autoWeb = false; autoCenter = null; autoEdges = null; bombs = 0;
       drops = []; buffScoreUntil = 0; buffSpeedUntil = 0; shieldHits = 0;
@@ -1516,6 +1562,7 @@
       building = null;
       broodMeter = 0; eggReady = false;
       rageMeter = 0; rageUntil = 0;
+      shotMode = null; shotModeUntil = 0;
       tutorial = false; tutMark = null; tutDoneAt = 0; tutMsgSet('');
       eatHeld = false; syncEatBtn();
       if (autoWeb) stopAutoWeb();
@@ -1802,7 +1849,7 @@
       dblShot: 'Fire two web shots per click in a spread pattern.',
       fortify: 'Stacking +35% stuck time per tier. No cap.',
       extraLife: 'Stacking +1 max heart per purchase.',
-      bomb: 'Homing bug bomb (B key). Webs everything in a 140px radius.'
+      bomb: 'Shockwave (B key): wraps every bug on screen; bosses take 1 hit of damage.'
     };
     var MECHANICS = [
       { h: 'Silk Meters', t: '<b>Red bar (shots)</b> — regenerates fast, powers aimed web shots. <b>White bar (web silk)</b> — regenerates slowly, used for weaving strands. Every catch refills the web meter.' },
@@ -1813,7 +1860,9 @@
       { h: 'Brood / Nest', t: 'Catching bugs charges the <b>yellow brood meter</b>. When full, press N to lay an egg. Protect it until it hatches into a <b>spiderling</b> that hunts bugs for you. Raiders (beetles, slugs) target eggs and spiderlings.' },
       { h: 'Difficulty Scaling', t: 'Each bug type gets <b>faster</b> (+4.5%/level past unlock) and <b>chews out quicker</b> (-3%/level). By the teens, old bugs are noticeably tougher.' },
       { h: 'Boss Drops', t: 'Every boss drops a unique power-up when wrapped. Don\'t miss it — uncollected drops <b>auto-apply</b> at level clear.' },
-      { h: 'Rage Mode', t: 'The <b>orange rage bar</b> charges from catches and wraps. When full, press <b>G</b> (or RAGE button) to go berserk for 5.5s: 2.5x speed, invulnerable, auto-catches every bug you touch. The spider turns red and angry — devastate everything on screen.' }
+      { h: 'Rage Mode', t: 'The <b>orange rage bar</b> charges from catches and wraps. When full, press <b>G</b> (or RAGE button) to go berserk for 5.5s: 2.5x speed, invulnerable, auto-catches every bug you touch. The spider turns red and angry — devastate everything on screen.' },
+      { h: 'Shot Power-Ups', t: 'Spinning <b>orange stars</b> sometimes drop from wrapped bugs (rogue bosses always drop one). Grab one for a 12s shooting mode: <b>TRI-SHOT</b> (three webs per shot), <b>PIERCE</b> (shots punch through everything in line), <b>RAPID FIRE</b> (shots cost almost nothing), or <b>BOLA</b> (heavy shots that wrap on impact).' },
+      { h: 'Enraged Bosses', t: 'Push a boss to around <b>half HP</b> and it ENRAGES: faster, harder-summoning, and <b>dangerous to touch</b> — every enraged boss stings on contact. Web it from range and only move in for the wrap once it\'s down.' }
     ];
     function renderGlossary(){
       var bp = document.getElementById('pane_bestiary');
@@ -2295,18 +2344,25 @@
       if (state !== 'play' || bombs <= 0) { SFX.deny(); return; }
       bombs--;
       SFX.level();
-      var bx = spider.x + Math.cos(spider.rot) * 60;
-      var by = spider.y + Math.sin(spider.rot) * 60;
-      ripples.push({ x: bx, y: by, r: 10, life: 1.2 });
-      pop(bx, by, '#dc2626', 24, 5);
-      pop(bx, by, '#fbbf24', 16, 3);
-      shake = 18; flash = 0.4;
+      // a true panic button: shockwave wraps every non-boss bug ON SCREEN
+      // (a built web can't do that), while bosses take one hit — the bomb
+      // no longer trivializes boss fights
+      ripples.push({ x: spider.x, y: spider.y, r: 10, life: 1.4 });
+      ripples.push({ x: spider.x, y: spider.y, r: 50, life: 1.2 });
+      ripples.push({ x: spider.x, y: spider.y, r: 100, life: 1.0 });
+      pop(spider.x, spider.y, '#dc2626', 28, 5);
+      pop(spider.x, spider.y, '#fbbf24', 20, 3);
+      shake = 26; flash = 0.5;
+      floatTxt(spider.x, spider.y - 44, 'BUG BOMB!', '#dc2626', true);
       for (var i = 0; i < bugs.length; i++) {
         var b = bugs[i];
         if (b.dead) continue;
-        if (dist2(bx, by, b.x, b.y) < BOMB_RADIUS * BOMB_RADIUS) {
-          webBug(b);
-          if (b.t.boss) { b.hp = 0; b.webbed = true; b.webT = now() + webDur(); }
+        if (b.t.boss || b.k === 'boss') {
+          webBug(b); // one hit of damage + a brief stagger
+        } else {
+          b.webbed = true; b.hp = 0; b.vx = 0; b.vy = 0;
+          b.webT = now() + webDur(); b.strand = null;
+          pop(b.x, b.y, '#fff', 5, 2);
         }
       }
       updateHud(true);
@@ -3240,7 +3296,7 @@
             b.spawnT = rand(3, 5);
             var qWasps = 0;
             for (var qi = 0; qi < bugs.length; qi++) if (bugs[qi].k === 'wasp' && bugs[qi].queenSpawn && !bugs[qi].dead) qWasps++;
-            if (qWasps < 3) {
+            if (qWasps < (b.enraged ? 4 : 3)) {
               spawnBug('wasp');
               var qw = bugs[bugs.length - 1];
               qw.x = b.x + rand(-20, 20); qw.y = b.y + rand(-20, 20);
@@ -3297,7 +3353,7 @@
             b.spawnT = rand(3.5, 5.5);
             var kMoths = 0;
             for (var ki = 0; ki < bugs.length; ki++) if (bugs[ki].k === 'moth' && bugs[ki].kingSpawn && !bugs[ki].dead) kMoths++;
-            if (kMoths < 3) {
+            if (kMoths < (b.enraged ? 4 : 3)) {
               spawnBug('moth');
               var km = bugs[bugs.length - 1];
               km.x = b.x + rand(-24, 24); km.y = b.y + rand(-24, 24);
@@ -3509,8 +3565,9 @@
           }
         }
         // gradual difficulty: scale displacement by the bug's speed factor so
-        // the per-type AI (which caps velocity to base sp) still speeds up
-        var sk = b.spdK || 1;
+        // the per-type AI (which caps velocity to base sp) still speeds up.
+        // enraged bosses hit the gas.
+        var sk = (b.spdK || 1) * (b.enraged ? 1.3 : 1);
         b.x += b.vx * dt * mv * sk; b.y += b.vy * dt * mv * sk;
         // bounce off edges (once inside)
         var m = 18;
@@ -3550,7 +3607,17 @@
           var b = bugs[j];
           if (b.dead || b.webbed) continue;
           if (dist2(s.x, s.y, b.x, b.y) < (b.t.r + 6) * (b.t.r + 6)) {
-            webBug(b); hit = true; break;
+            webBug(b);
+            // bola: a heavy shot — one extra hit's worth of damage, so light
+            // bugs wrap instantly and bosses take double
+            if (s.mode === 'bola' && b.hp > 0) {
+              b.hp--;
+              if (b.hp <= 0) b.webT = now() + webDur();
+              else enrageCheck(b);
+              pop(b.x, b.y, '#a855f7', 6, 2);
+            }
+            // pierce: punch through and keep flying
+            if (s.mode !== 'pierce') { hit = true; break; }
           }
         }
         if (hit || s.traveled > s.max) shots.splice(i, 1);
@@ -3597,7 +3664,7 @@
         if (b.webbed && b.hp <= 0) {
           if (d < (cr + b.t.r) * (cr + b.t.r)) catchBug(b, true);
         } else if (!b.webbed) {
-          if (b.t.sting) {
+          if (b.t.sting || b.enraged) { // enraged bosses are dangerous to touch
             if (d < (cr * 0.6 + b.t.r) * (cr * 0.6 + b.t.r)) sting(b);
           } else if (!b.t.web) {
             if (d < (cr * 0.8 + b.t.r) * (cr * 0.8 + b.t.r)) catchBug(b, false);
@@ -3716,6 +3783,8 @@
         if (br) br.classList.toggle('ready', rReady);
       }
       var wl = autoWeb ? 'SILK · AUTO WEB…' : building ? 'SILK · WEAVING…' : 'SILK · STRANDS ' + strands.length;
+      var smNow = shotModeActive();
+      if (smNow) wl += ' · ' + SHOT_MODES[smNow].name + ' ' + Math.ceil((shotModeUntil - now()) / 1000) + 's';
       if (eggReady) wl += ' · EGG READY';
       else if (broodMeter > 0) wl += ' · EGG ' + bpct + '%';
       if (eggs.length) wl += ' · EGGS ' + eggs.length;
@@ -4037,14 +4106,14 @@
         ctx.beginPath(); ctx.arc(autoCenter.x, autoCenter.y, 4, 0, TAU); ctx.fill();
       }
 
-      // shots (web strands)
+      // shots (web strands) — powered shots carry their mode's color
       for (i = 0; i < shots.length; i++) {
         var s = shots[i];
         ctx.strokeStyle = 'rgba(255,255,255,0.5)';
         ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(spider.x, spider.y); ctx.lineTo(s.x, s.y); ctx.stroke();
-        ctx.fillStyle = '#fff';
-        ctx.beginPath(); ctx.arc(s.x, s.y, 3, 0, TAU); ctx.fill();
+        ctx.fillStyle = s.mode ? SHOT_MODES[s.mode].color : '#fff';
+        ctx.beginPath(); ctx.arc(s.x, s.y, s.mode === 'bola' ? 4.5 : 3, 0, TAU); ctx.fill();
       }
 
       // tutorial target ring
@@ -4064,12 +4133,28 @@
         if (gLeft < 2000 && Math.floor(t / 150) % 2 === 0) continue; // expiring blink
         var bob = Math.sin(t * 0.005 + i * 1.7) * 3;
         var gy = gm.y + bob;
-        var gc = gm.k === 'heart' ? '#dc2626' : gm.k === 'gem' ? '#fbbf24' : '#e4e4e7';
+        var gc = gm.k === 'heart' ? '#dc2626' : gm.k === 'gem' ? '#fbbf24' : gm.k === 'power' ? '#f97316' : '#e4e4e7';
         ctx.fillStyle = gc;
-        ctx.globalAlpha = 0.18;
-        ctx.beginPath(); ctx.arc(gm.x, gy, 12, 0, TAU); ctx.fill();
+        ctx.globalAlpha = gm.k === 'power' ? 0.28 : 0.18;
+        ctx.beginPath(); ctx.arc(gm.x, gy, gm.k === 'power' ? 14 : 12, 0, TAU); ctx.fill();
         ctx.globalAlpha = 1;
-        if (gm.k === 'heart') {
+        if (gm.k === 'power') {
+          // spinning 4-point star — a shot mode waiting to be picked up
+          var spn = t * 0.002 + i;
+          ctx.save(); ctx.translate(gm.x, gy); ctx.rotate(spn);
+          ctx.beginPath();
+          for (var pt = 0; pt < 8; pt++) {
+            var pr = pt % 2 === 0 ? 7 : 2.6;
+            var pa = (pt / 8) * TAU;
+            var ppx = Math.cos(pa) * pr, ppy = Math.sin(pa) * pr;
+            pt ? ctx.lineTo(ppx, ppy) : ctx.moveTo(ppx, ppy);
+          }
+          ctx.closePath(); ctx.fill();
+          ctx.fillStyle = '#fff';
+          ctx.beginPath(); ctx.arc(0, 0, 1.6, 0, TAU); ctx.fill();
+          ctx.restore();
+        }
+        else if (gm.k === 'heart') {
           ctx.beginPath();
           ctx.arc(gm.x - 2.4, gy - 1.5, 3, 0, TAU); ctx.arc(gm.x + 2.4, gy - 1.5, 3, 0, TAU);
           ctx.fill();
@@ -4375,11 +4460,14 @@
       // true bosses radiate a pulsing aura in their theme color (rogues get
       // a faint one) — menace you can read at a glance
       if (b.t.boss || b.rogue) {
-        var auraP = 0.6 + Math.sin(t * 0.005 + b.wing) * 0.4;
-        var auraC = BOSS_COLORS[b.k] || '#dc2626';
+        // enraged bosses pulse hard and red-shifted — you can feel the turn
+        var auraP = b.enraged ? (0.5 + Math.sin(t * 0.012 + b.wing) * 0.5)
+                              : (0.6 + Math.sin(t * 0.005 + b.wing) * 0.4);
+        var auraC = b.enraged ? '#dc2626' : (BOSS_COLORS[b.k] || '#dc2626');
         ctx.fillStyle = auraC;
-        ctx.globalAlpha = (b.rogue ? 0.05 : 0.1) + auraP * (b.rogue ? 0.03 : 0.07);
-        ctx.beginPath(); ctx.arc(0, 0, b.t.r * 1.8 + auraP * 6, 0, TAU); ctx.fill();
+        ctx.globalAlpha = b.enraged ? (0.14 + auraP * 0.12)
+                        : (b.rogue ? 0.05 : 0.1) + auraP * (b.rogue ? 0.03 : 0.07);
+        ctx.beginPath(); ctx.arc(0, 0, b.t.r * (b.enraged ? 2.1 : 1.8) + auraP * (b.enraged ? 9 : 6), 0, TAU); ctx.fill();
         ctx.globalAlpha = 1;
       }
       var ang = (b.vx || b.vy) ? Math.atan2(b.vy, b.vx) : 0;
@@ -4778,12 +4866,14 @@
 
       ctx.restore();
 
-      // hp pips for multi-hit bugs (bosses + dragonfly)
+      // hp pips for multi-hit bugs (bosses + dragonfly) — sized by the bug's
+      // actual max HP so level-scaled bosses show their full bar
       if (b.t.hp && b.hp > 0) {
-        var bossCol = BOSS_COLORS[b.k] || '#dc2626';
+        var bossCol = b.enraged ? '#dc2626' : (BOSS_COLORS[b.k] || '#dc2626');
         ctx.fillStyle = bossCol;
-        var pipW = (b.t.hp || 3) * 10;
-        for (var hpi = 0; hpi < (b.t.hp || 3); hpi++) {
+        var hpMax = b.maxHp || b.t.hp || 3;
+        var pipW = hpMax * 10;
+        for (var hpi = 0; hpi < hpMax; hpi++) {
           ctx.globalAlpha = hpi < b.hp ? 1 : 0.2;
           ctx.beginPath(); ctx.arc(b.x - pipW / 2 + hpi * 10 + 5, b.y - 34, 3.5, 0, TAU); ctx.fill();
         }
