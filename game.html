@@ -523,11 +523,13 @@
       deny:  function(){ beep(180, 0.1, 'square', 0.04); },
       rage:  function(){ beep(200, 0.25, 'sawtooth', 0.06, 800); setTimeout(function(){ beep(400, 0.3, 'sawtooth', 0.06, 1200); }, 100); },
       buy:   function(){ beep(1200, 0.06, 'square', 0.05); },
+      laser: function(){ beep(1400, 0.12, 'sine', 0.05, 300); },
+      boom:  function(){ beep(90, 0.28, 'square', 0.08, 40); setTimeout(function(){ beep(60, 0.2, 'sawtooth', 0.05); }, 60); },
       level: function(){ [523, 659, 784, 1047].forEach(function(f, i){ setTimeout(function(){ beep(f, 0.12, 'square', 0.05); }, i * 90); }); }
     };
 
     // ---------- stats / upgrades ----------
-    var GAME_VERSION = 'v25';
+    var GAME_VERSION = 'v26';
     var S; // current run stats
     function freshStats(){ return { speed: 0, range: 0, silk: 0, grip: 0, tough: 0, venom: 0, spread: 0, brood: 0, heartT: 0, dblShot: 0, fortify: 0, bomb: 0, extraLife: 0 }; }
     function wrapMult(){ return 1.5 + (S ? S.venom * 0.25 : 0); } // wrapped catch bonus
@@ -681,16 +683,20 @@
     var gems = [];                  // small pickups dropped by wrapped bugs
     var swarmAt = 0;                // next swarm-burst time
     var quotaCued = false;          // "3 TO GO!" shown this level
-    // temporary shot modes — picked up from power gems, active for a short
-    // burst. Shooting is the fun part: these remix it without new controls.
+    // temporary WEAPONS — picked up from power stars, active for a short
+    // burst. Think gun upgrades in a shooter: each one changes how firing
+    // actually feels, not just the numbers.
     var SHOT_MODE_DUR = 12000;
     var SHOT_MODES = {
-      tri:    { name: 'TRI-SHOT',   color: '#fbbf24', blurb: 'three webs per shot' },
-      pierce: { name: 'PIERCE',     color: '#06b6d4', blurb: 'shots punch through everything in line' },
-      rapid:  { name: 'RAPID FIRE', color: '#22c55e', blurb: 'shots cost almost nothing' },
-      bola:   { name: 'BOLA',       color: '#a855f7', blurb: 'heavy shots that wrap on impact' }
+      shotgun: { name: 'SHOTGUN', color: '#fbbf24', blurb: 'five-pellet fan, devastating up close' },
+      laser:   { name: 'LASER',   color: '#06b6d4', blurb: 'instant beam that fries everything in line' },
+      gatling: { name: 'GATLING', color: '#22c55e', blurb: 'hold the button to spray silk' },
+      bazooka: { name: 'BAZOOKA', color: '#ef4444', blurb: 'rockets that web everything in the blast' }
     };
     var shotMode = null, shotModeUntil = 0;
+    var beams = [];      // laser beam fx (instant hitscan lines, fast fade)
+    var gatlingAt = 0;   // next allowed gatling auto-shot
+    var BOOM_R = 90;     // bazooka blast radius
     function shotModeActive(){ return (shotMode && now() < shotModeUntil) ? shotMode : null; }
     function grantShotMode(k){
       shotMode = k; shotModeUntil = now() + SHOT_MODE_DUR;
@@ -819,7 +825,7 @@
       eggs = []; spiderlings = [];
       building = null; bombs = 0; buffScoreUntil = 0; buffSpeedUntil = 0; shieldHits = 0;
       rageMeter = 0; rageUntil = 0;
-      shotMode = null; shotModeUntil = 0; gems = [];
+      shotMode = null; shotModeUntil = 0; gems = []; beams = [];
       comboN = 0; comboUntil = 0; shownScore = 0; freezeUntil = 0;
       caught = 0; quota = 999;
       silk = silkMax(); webSilk = webSilkMax();
@@ -1219,15 +1225,34 @@
     function shootWeb(ax, ay){
       if (state !== 'play') return;
       var mode = shotModeActive();
-      var cost = mode === 'rapid' ? 8 : WEB_COST; // rapid fire is nearly free
+      var cost = mode === 'gatling' ? 6 : WEB_COST; // gatling sprays cheap
       if (silk < cost) { SFX.deny(); return; }
       var dx = ax - spider.x, dy = ay - spider.y;
       var L = Math.hypot(dx, dy);
       if (L < 4) { dx = Math.cos(spider.rot); dy = Math.sin(spider.rot); L = 1; }
       silk -= cost;
-      SFX.shoot();
       var shotAng = Math.atan2(dy, dx);
-      var fireOne = function(ang){
+
+      // LASER: no projectile at all — an instant beam that webs every bug
+      // along the line, drawn as a flash that fades
+      if (mode === 'laser') {
+        SFX.laser();
+        var bLen = webRange() * 1.6;
+        var lx2 = spider.x + Math.cos(shotAng) * bLen;
+        var ly2 = spider.y + Math.sin(shotAng) * bLen;
+        var seg = { x1: spider.x, y1: spider.y, x2: lx2, y2: ly2 };
+        for (var li = 0; li < bugs.length; li++) {
+          var lb = bugs[li];
+          if (lb.dead || lb.webbed) continue;
+          var lcp = closestOnSeg(lb.x, lb.y, seg);
+          if (dist2(lb.x, lb.y, lcp.x, lcp.y) < (lb.t.r + 7) * (lb.t.r + 7)) webBug(lb);
+        }
+        beams.push({ x1: spider.x, y1: spider.y, x2: lx2, y2: ly2, life: 1 });
+        return;
+      }
+
+      SFX.shoot();
+      var fireOne = function(ang, spd, maxK){
         var fdx = Math.cos(ang), fdy = Math.sin(ang);
         var best = null, bd = webRange() * webRange();
         for (var i = 0; i < bugs.length; i++) {
@@ -1242,15 +1267,37 @@
         }
         shots.push({
           x: spider.x, y: spider.y,
-          vx: fdx * 850, vy: fdy * 850,
-          traveled: 0, max: webRange() * 1.15, tgt: best, mode: mode
+          vx: fdx * (spd || 850), vy: fdy * (spd || 850),
+          traveled: 0, max: webRange() * 1.15 * (maxK || 1), tgt: best, mode: mode
         });
       };
-      fireOne(shotAng);
-      if (mode === 'tri') { fireOne(shotAng + 0.35); fireOne(shotAng - 0.35); }
+      if (mode === 'shotgun') {
+        // a 5-pellet fan — shorter reach, brutal up close
+        var FAN = [-0.45, -0.22, 0, 0.22, 0.45];
+        for (var fi = 0; fi < FAN.length; fi++) fireOne(shotAng + FAN[fi], 900, 0.7);
+      } else if (mode === 'bazooka') {
+        fireOne(shotAng, 480, 1); // slow rocket; explodes on impact (updateShots)
+      } else {
+        fireOne(shotAng);
+      }
       if (S && S.dblShot > 0) {
         fireOne(shotAng + 0.18);
         fireOne(shotAng - 0.18);
+      }
+    }
+    // bazooka blast: web everything in the radius (bosses take their 1 hit
+    // from the direct webBug like any other shot damage)
+    function boomAt(x, y){
+      SFX.boom();
+      shake = Math.max(shake, 12);
+      ripples.push({ x: x, y: y, r: 8, life: 1.1 });
+      ripples.push({ x: x, y: y, r: 40, life: 0.9 });
+      pop(x, y, '#ef4444', 18, 4);
+      pop(x, y, '#fbbf24', 12, 3);
+      for (var i = 0; i < bugs.length; i++) {
+        var b = bugs[i];
+        if (b.dead || b.webbed) continue;
+        if (dist2(x, y, b.x, b.y) < BOOM_R * BOOM_R) webBug(b);
       }
     }
     function webBug(b){
@@ -1288,8 +1335,9 @@
         if (comboN > 1) floatTxt(b.x, b.y - 32, 'COMBO x' + comboN, '#fbbf24', comboN >= 3);
         freezeUntil = t + (b.t.boss ? 120 : 60); // hit-stop
         ripples.push({ x: b.x, y: b.y, r: 6, life: 1 });
-        // wrapped bugs sometimes drop a little pickup (bosses have real drops)
-        if (!b.t.boss && !tutorial && Math.random() < 0.12) spawnGem(b.x, b.y);
+        // wrapped bugs sometimes drop a little pickup (bosses have real drops,
+        // rogues have their guaranteed power star — no double-dipping)
+        if (!b.t.boss && !b.rogue && !tutorial && Math.random() < 0.12) spawnGem(b.x, b.y);
       } else {
         // plain snags get a small ripple too — every catch should feel good
         ripples.push({ x: b.x, y: b.y, r: 3, life: 0.6 });
@@ -1415,7 +1463,7 @@
       if (+DBG.pts > 0) cash = +DBG.pts;
       spider.x = target.x = W / 2; spider.y = target.y = H / 2;
       spider.slowUntil = 0;
-      strands = []; hubs = []; crossings = []; ripples = []; fires = []; spreads = [];
+      strands = []; hubs = []; crossings = []; ripples = []; fires = []; spreads = []; beams = [];
       eggs = []; spiderlings = [];
       comboN = 0; comboUntil = 0; shownScore = 0; freezeUntil = 0;
       spreadAt = 0; broodMeter = 0; eggReady = false;
@@ -1558,7 +1606,7 @@
       save('hi', hi); save('total', totalBugs);
       bugs = []; shots = []; strands = []; globs = []; slimes = []; fires = []; spreads = [];
       eggs = []; spiderlings = [];
-      hubs = []; crossings = []; ripples = []; drops = []; gems = [];
+      hubs = []; crossings = []; ripples = []; drops = []; gems = []; beams = [];
       building = null;
       broodMeter = 0; eggReady = false;
       rageMeter = 0; rageUntil = 0;
@@ -1861,7 +1909,7 @@
       { h: 'Difficulty Scaling', t: 'Each bug type gets <b>faster</b> (+4.5%/level past unlock) and <b>chews out quicker</b> (-3%/level). By the teens, old bugs are noticeably tougher.' },
       { h: 'Boss Drops', t: 'Every boss drops a unique power-up when wrapped. Don\'t miss it — uncollected drops <b>auto-apply</b> at level clear.' },
       { h: 'Rage Mode', t: 'The <b>orange rage bar</b> charges from catches and wraps. When full, press <b>G</b> (or RAGE button) to go berserk for 5.5s: 2.5x speed, invulnerable, auto-catches every bug you touch. The spider turns red and angry — devastate everything on screen.' },
-      { h: 'Shot Power-Ups', t: 'Spinning <b>orange stars</b> sometimes drop from wrapped bugs (rogue bosses always drop one). Grab one for a 12s shooting mode: <b>TRI-SHOT</b> (three webs per shot), <b>PIERCE</b> (shots punch through everything in line), <b>RAPID FIRE</b> (shots cost almost nothing), or <b>BOLA</b> (heavy shots that wrap on impact).' },
+      { h: 'Weapons', t: 'Spinning <b>orange stars</b> sometimes drop from wrapped bugs (rogue bosses always drop one). Grab one to equip a weapon for 12s: <b>SHOTGUN</b> (5-pellet fan, brutal up close), <b>LASER</b> (instant beam that fries everything in line), <b>GATLING</b> (hold the button to spray cheap silk), or <b>BAZOOKA</b> (rockets that web everything in the blast radius).' },
       { h: 'Enraged Bosses', t: 'Push a boss to around <b>half HP</b> and it ENRAGES: faster, harder-summoning, and <b>dangerous to touch</b> — every enraged boss stings on contact. Web it from range and only move in for the wrap once it\'s down.' }
     ];
     function renderGlossary(){
@@ -2047,6 +2095,12 @@
 
         // hold EAT: graze strands as you walk over them
         if (eatHeld) eatNearbyStrand();
+
+        // GATLING: hold the pointer down and the spider sprays toward it
+        if (shotModeActive() === 'gatling' && pDown && t > gatlingAt) {
+          gatlingAt = t + 110;
+          shootWeb(target.x, target.y);
+        }
 
         // spawning (the tutorial controls its own spawns)
         if (!tutorial) {
@@ -3607,20 +3661,16 @@
           var b = bugs[j];
           if (b.dead || b.webbed) continue;
           if (dist2(s.x, s.y, b.x, b.y) < (b.t.r + 6) * (b.t.r + 6)) {
-            webBug(b);
-            // bola: a heavy shot — one extra hit's worth of damage, so light
-            // bugs wrap instantly and bosses take double
-            if (s.mode === 'bola' && b.hp > 0) {
-              b.hp--;
-              if (b.hp <= 0) b.webT = now() + webDur();
-              else enrageCheck(b);
-              pop(b.x, b.y, '#a855f7', 6, 2);
-            }
-            // pierce: punch through and keep flying
-            if (s.mode !== 'pierce') { hit = true; break; }
+            if (s.mode === 'bazooka') boomAt(s.x, s.y); // rocket: blast radius
+            else webBug(b);
+            hit = true; break;
           }
         }
-        if (hit || s.traveled > s.max) shots.splice(i, 1);
+        if (hit || s.traveled > s.max) {
+          // a rocket that flies its full range airbursts at the end
+          if (!hit && s.mode === 'bazooka') boomAt(s.x, s.y);
+          shots.splice(i, 1);
+        }
       }
     }
 
@@ -3704,6 +3754,11 @@
         var rp = ripples[i];
         rp.r += 90 * dt; rp.life -= dt * 2.6;
         if (rp.life <= 0) ripples.splice(i, 1);
+      }
+      // laser beams flash and fade fast
+      for (i = beams.length - 1; i >= 0; i--) {
+        beams[i].life -= dt * 4;
+        if (beams[i].life <= 0) beams.splice(i, 1);
       }
       // firefly flames flicker out
       for (i = fires.length - 1; i >= 0; i--) {
@@ -4106,14 +4161,38 @@
         ctx.beginPath(); ctx.arc(autoCenter.x, autoCenter.y, 4, 0, TAU); ctx.fill();
       }
 
-      // shots (web strands) — powered shots carry their mode's color
+      // shots (web strands) — powered shots carry their weapon's color
       for (i = 0; i < shots.length; i++) {
         var s = shots[i];
+        if (s.mode === 'bazooka') {
+          // rocket: fat glowing head + flame trail, no silk line
+          var rAng = Math.atan2(s.vy, s.vx);
+          ctx.fillStyle = 'rgba(251,191,36,0.35)';
+          ctx.beginPath(); ctx.arc(s.x - Math.cos(rAng) * 8, s.y - Math.sin(rAng) * 8, 6 + Math.random() * 3, 0, TAU); ctx.fill();
+          ctx.fillStyle = '#ef4444';
+          ctx.beginPath(); ctx.arc(s.x, s.y, 5.5, 0, TAU); ctx.fill();
+          ctx.fillStyle = '#fff';
+          ctx.beginPath(); ctx.arc(s.x + Math.cos(rAng) * 2, s.y + Math.sin(rAng) * 2, 1.8, 0, TAU); ctx.fill();
+          continue;
+        }
         ctx.strokeStyle = 'rgba(255,255,255,0.5)';
         ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(spider.x, spider.y); ctx.lineTo(s.x, s.y); ctx.stroke();
         ctx.fillStyle = s.mode ? SHOT_MODES[s.mode].color : '#fff';
-        ctx.beginPath(); ctx.arc(s.x, s.y, s.mode === 'bola' ? 4.5 : 3, 0, TAU); ctx.fill();
+        ctx.beginPath(); ctx.arc(s.x, s.y, 3, 0, TAU); ctx.fill();
+      }
+
+      // laser beams: wide colored glow under a hot white core, fading fast
+      for (i = 0; i < beams.length; i++) {
+        var bm = beams[i];
+        ctx.globalAlpha = Math.max(0, bm.life);
+        ctx.strokeStyle = 'rgba(6,182,212,0.35)';
+        ctx.lineWidth = 7;
+        ctx.beginPath(); ctx.moveTo(bm.x1, bm.y1); ctx.lineTo(bm.x2, bm.y2); ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(bm.x1, bm.y1); ctx.lineTo(bm.x2, bm.y2); ctx.stroke();
+        ctx.globalAlpha = 1;
       }
 
       // tutorial target ring
