@@ -494,6 +494,10 @@
         if (kv[0]) DBG[kv[0]] = decodeURIComponent(kv[1] || '1');
       }
     } catch(e){}
+    // ADMIN mode: instant access to every toy, for playtesting features the
+    // moment they're built. On via ?dev=1, or automatically in the dev-preview
+    // build (which injects window.__BUGHUNT_DEV__ before this script).
+    var ADMIN = !!(DBG.dev || (typeof window !== 'undefined' && window.__BUGHUNT_DEV__));
 
     // ---------- audio (tiny synth) ----------
     var AC = null;
@@ -529,7 +533,7 @@
     };
 
     // ---------- stats / upgrades ----------
-    var GAME_VERSION = 'v26';
+    var GAME_VERSION = 'v27';
     var S; // current run stats
     function freshStats(){ return { speed: 0, range: 0, silk: 0, grip: 0, tough: 0, venom: 0, spread: 0, brood: 0, heartT: 0, dblShot: 0, fortify: 0, bomb: 0, extraLife: 0 }; }
     function wrapMult(){ return 1.5 + (S ? S.venom * 0.25 : 0); } // wrapped catch bonus
@@ -1740,7 +1744,54 @@
       if (e.key === 'f' || e.key === 'F') doSpread();
       if (e.key === 'g' || e.key === 'G') activateRage();
       if (e.key === 'n' || e.key === 'N') layEgg();
+      // ADMIN hotkeys: number row = instant toys (1-4 weapons, 0 clear,
+      // 5 bomb, 6 rage, 7 egg, 8 heal, 9 skip level)
+      if (ADMIN && state === 'play') {
+        if (e.key === '1') adminWeapon('shotgun');
+        if (e.key === '2') adminWeapon('laser');
+        if (e.key === '3') adminWeapon('gatling');
+        if (e.key === '4') adminWeapon('bazooka');
+        if (e.key === '0') { shotMode = null; shotModeUntil = 0; floatTxt(spider.x, spider.y - 30, 'weapon cleared', '#71717a'); updateHud(true); }
+        if (e.key === '5') { bombs++; floatTxt(spider.x, spider.y - 30, '+1 BOMB', '#dc2626'); updateHud(true); }
+        if (e.key === '6') { rageMeter = RAGE_MAX; floatTxt(spider.x, spider.y - 30, 'RAGE FULL', '#f97316'); updateHud(true); }
+        if (e.key === '7') { broodMeter = BROOD_MAX; eggReady = true; floatTxt(spider.x, spider.y - 30, 'EGG READY', '#22c55e'); updateHud(true); }
+        if (e.key === '8') { hearts = maxHearts(); floatTxt(spider.x, spider.y - 30, 'HEALED', '#dc2626'); updateHud(true); }
+        if (e.key === '9') { caught = quota; }
+      }
     });
+    // admin weapons don't expire — you're testing, not earning
+    function adminWeapon(k){
+      grantShotMode(k);
+      shotModeUntil = now() + 36e5;
+    }
+    // on-screen admin bar so phone playtesting gets the same powers.
+    // real <button>s, so uiHit() keeps them from leaking into game input.
+    if (ADMIN) (function(){
+      var bar = document.createElement('div');
+      bar.id = 'adminBar';
+      bar.style.cssText = 'position:fixed;top:calc(var(--ay, 0px) + 6px);left:50%;transform:translateX(-50%);' +
+        'z-index:40;display:flex;gap:4px;font-family:ui-monospace,Menlo,monospace;';
+      var mk = function(label, title, fn){
+        var b = document.createElement('button');
+        b.textContent = label; b.title = title;
+        b.style.cssText = 'font:inherit;font-size:9px;letter-spacing:0.04em;color:rgba(255,255,255,0.75);' +
+          'background:rgba(0,0,0,0.55);border:1px solid #3f3f46;border-radius:9999px;padding:4px 8px;cursor:pointer';
+        b.addEventListener('click', function(ev){ ev.stopPropagation(); if (state === 'play') fn(); });
+        bar.appendChild(b);
+        return b;
+      };
+      mk('SG', 'Shotgun (1)', function(){ adminWeapon('shotgun'); });
+      mk('LZ', 'Laser (2)', function(){ adminWeapon('laser'); });
+      mk('GT', 'Gatling (3)', function(){ adminWeapon('gatling'); });
+      mk('BZ', 'Bazooka (4)', function(){ adminWeapon('bazooka'); });
+      mk('✕', 'Clear weapon (0)', function(){ shotMode = null; shotModeUntil = 0; updateHud(true); });
+      mk('💣', '+1 bomb (5)', function(){ bombs++; updateHud(true); });
+      mk('RAGE', 'Fill rage (6)', function(){ rageMeter = RAGE_MAX; updateHud(true); });
+      mk('EGG', 'Egg ready (7)', function(){ broodMeter = BROOD_MAX; eggReady = true; updateHud(true); });
+      mk('♥', 'Heal (8)', function(){ hearts = maxHearts(); updateHud(true); });
+      mk('SKIP', 'Skip level (9)', function(){ caught = quota; });
+      document.body.appendChild(bar);
+    })();
     window.addEventListener('keyup', function(e){
       if (e.code === 'Space') { holdStill = false; lastInputAt = now(); }
       if (e.key === 'e' || e.key === 'E') { eatHeld = false; syncEatBtn(); }
@@ -1855,7 +1906,9 @@
     document.getElementById('mTotal').textContent = totalBugs;
     document.getElementById('btnMute').innerHTML = muted ? '&#128263;' : '&#128266;';
     var dbgActive = DBG.lvl || DBG.pts || DBG.boss;
-    document.getElementById('verLabel').textContent = GAME_VERSION + (dbgActive ? ' · DEBUG (lvl=' + (DBG.lvl || 1) + (DBG.boss ? ' boss=' + DBG.boss : '') + ')' : '');
+    document.getElementById('verLabel').textContent = GAME_VERSION
+      + (dbgActive ? ' · DEBUG (lvl=' + (DBG.lvl || 1) + (DBG.boss ? ' boss=' + DBG.boss : '') + ')' : '')
+      + (ADMIN ? ' · ADMIN' : '');
 
     // ---------- glossary / field guide ----------
     var glossReturn = 'menu';
@@ -3839,7 +3892,10 @@
       }
       var wl = autoWeb ? 'SILK · AUTO WEB…' : building ? 'SILK · WEAVING…' : 'SILK · STRANDS ' + strands.length;
       var smNow = shotModeActive();
-      if (smNow) wl += ' · ' + SHOT_MODES[smNow].name + ' ' + Math.ceil((shotModeUntil - now()) / 1000) + 's';
+      if (smNow) {
+        var smLeft = Math.ceil((shotModeUntil - now()) / 1000);
+        wl += ' · ' + SHOT_MODES[smNow].name + ' ' + (smLeft > 999 ? '∞' : smLeft + 's');
+      }
       if (eggReady) wl += ' · EGG READY';
       else if (broodMeter > 0) wl += ' · EGG ' + bpct + '%';
       if (eggs.length) wl += ' · EGGS ' + eggs.length;
