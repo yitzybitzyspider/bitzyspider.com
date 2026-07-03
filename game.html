@@ -293,6 +293,11 @@
         <button class="sizeBtn" id="th_ember">EMBER</button>
         <button class="sizeBtn" id="th_void">VOID</button>
       </div>
+      <div class="sizeRow">
+        <span class="lbl">SOUND</span>
+        <button class="sizeBtn" id="snd_music">&#9835; MUSIC</button>
+        <button class="sizeBtn" id="snd_sfx">&#128266; SFX</button>
+      </div>
       <button class="btn" id="btnStart">START HUNTING</button>
       <div style="margin-top:8px">
         <button class="btn ghost" id="btnTut">TUTORIAL</button>
@@ -542,8 +547,134 @@
       level: function(){ [523, 659, 784, 1047].forEach(function(f, i){ setTimeout(function(){ beep(f, 0.12, 'square', 0.05); }, i * 90); }); }
     };
 
+    // ---------- 8-bit soundtrack (chiptune sequencer, zero assets) ----------
+    // Three looping tunes composed as 4-bar step patterns (16th notes, MIDI
+    // numbers) and scheduled ahead of time on the WebAudio clock. MUSIC and
+    // SFX have separate toggles on the menu; M still hard-mutes everything.
+    var musicOn = load('music') !== '0';
+    var MUS = { song: null, step: 0, nextT: 0, noiseBuf: null };
+    function midiHz(m){ return 440 * Math.pow(2, (m - 69) / 12); }
+    var SONGS = (function(){
+      var n = null;
+      function bars(){ var out = []; for (var i = 0; i < arguments.length; i++) out = out.concat(arguments[i]); return out; }
+      // hats tick the off-beats; the snare cracks on 4 and 12
+      var hat = bars([n,n,1,n, n,n,1,n, n,n,1,n, n,n,1,n]);
+      var snare = bars([n,n,n,n, 1,n,n,n, n,n,n,n, 1,n,n,n]);
+      return {
+        // "Silk Lullaby" — the menu. Am F C G, slow and hazy.
+        menu: { tempo: 84, tracks: [
+          { p: bars(
+              [45,n,n,n, n,n,n,n, 45,n,n,n, n,n,n,n],
+              [41,n,n,n, n,n,n,n, 41,n,n,n, n,n,n,n],
+              [48,n,n,n, n,n,n,n, 48,n,n,n, n,n,n,n],
+              [43,n,n,n, n,n,n,n, 43,n,n,n, n,n,n,n]), wave: 'triangle', vol: 0.05, len: 3.6 },
+          { p: bars(
+              [57,n,60,n, 64,n,69,n, 64,n,60,n, 57,n,60,n],
+              [53,n,57,n, 60,n,65,n, 60,n,57,n, 53,n,57,n],
+              [48,n,52,n, 55,n,60,n, 55,n,52,n, 48,n,52,n],
+              [43,n,47,n, 50,n,55,n, 50,n,47,n, 43,n,47,n]), wave: 'square', vol: 0.012, len: 1.6 },
+          { p: bars(
+              [n,n,n,n, n,n,n,n, 76,n,n,n, 74,n,n,n],
+              [72,n,n,n, n,n,n,n, n,n,n,n, n,n,n,n],
+              [n,n,n,n, n,n,n,n, 72,n,n,n, 74,n,n,n],
+              [71,n,n,n, n,n,n,n, n,n,n,n, n,n,n,n]), wave: 'square', vol: 0.014, len: 3.4 }
+        ] },
+        // "Eight Legs at Work" — the hunt. Em C G D, driving.
+        field: { tempo: 112, tracks: [
+          { p: bars(
+              [40,n,52,n, 40,n,52,n, 40,n,52,n, 40,n,52,52],
+              [36,n,48,n, 36,n,48,n, 36,n,48,n, 36,n,48,48],
+              [43,n,55,n, 43,n,55,n, 43,n,55,n, 43,n,55,55],
+              [38,n,50,n, 38,n,50,n, 38,n,50,n, 38,n,50,50]), wave: 'triangle', vol: 0.055, len: 0.9 },
+          { p: bars(
+              [76,n,n,74, 76,n,79,n, n,n,76,n, 74,n,71,n],
+              [72,n,n,71, 72,n,76,n, n,n,72,n, 71,n,67,n],
+              [67,n,71,n, 74,n,71,n, 67,n,n,n, 69,n,71,n],
+              [74,n,71,n, 69,n,66,n, 64,n,n,n, n,n,n,n]), wave: 'square', vol: 0.016, len: 1.7 },
+          { p: hat.concat(hat, hat, hat), noise: true, vol: 0.010, len: 0.25 },
+          { p: snare.concat(snare, snare, snare), noise: true, vol: 0.022, len: 0.8 }
+        ] },
+        // "The Molt King" — boss levels. Dm Bb Gm A, menacing.
+        boss: { tempo: 138, tracks: [
+          { p: bars(
+              [38,38,50,n, 38,n,50,n, 38,38,50,n, 38,n,50,50],
+              [46,46,58,n, 46,n,58,n, 46,46,58,n, 46,n,58,58],
+              [43,43,55,n, 43,n,55,n, 43,43,55,n, 43,n,55,55],
+              [45,45,57,n, 45,n,57,n, 45,45,52,n, 45,n,52,57]), wave: 'triangle', vol: 0.06, len: 0.9 },
+          { p: bars(
+              [62,n,61,62, n,65,n,62, n,58,n,57, n,53,n,n],
+              [58,n,57,58, n,62,n,58, n,53,n,50, n,46,n,n],
+              [62,n,61,62, n,65,n,62, n,58,n,57, n,53,n,n],
+              [61,n,n,61, 64,n,61,n, 69,n,68,n, 69,n,n,n]), wave: 'square', vol: 0.016, len: 1.4 },
+          { p: bars([1,n,1,n, 1,n,1,n, 1,n,1,n, 1,n,1,n]).concat(
+               bars([1,n,1,n, 1,n,1,n, 1,n,1,n, 1,n,1,n]),
+               bars([1,n,1,n, 1,n,1,n, 1,n,1,n, 1,n,1,n]),
+               bars([1,n,1,n, 1,n,1,n, 1,n,1,1, 1,1,1,1])), noise: true, vol: 0.009, len: 0.22 },
+          { p: snare.concat(snare, snare, snare), noise: true, vol: 0.024, len: 0.8 }
+        ] }
+      };
+    })();
+    function musTone(fq, at, dur, wave, vol){
+      try {
+        var o = AC.createOscillator(), g = AC.createGain();
+        o.type = wave; o.frequency.value = fq;
+        g.gain.setValueAtTime(0.0001, at);
+        g.gain.exponentialRampToValueAtTime(vol, at + 0.012);
+        g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+        o.connect(g); g.connect(AC.destination);
+        o.start(at); o.stop(at + dur + 0.03);
+      } catch(e){}
+    }
+    function musNoise(at, dur, vol){
+      try {
+        if (!MUS.noiseBuf) {
+          MUS.noiseBuf = AC.createBuffer(1, AC.sampleRate * 0.25 | 0, AC.sampleRate);
+          var nd = MUS.noiseBuf.getChannelData(0);
+          for (var ni = 0; ni < nd.length; ni++) nd[ni] = Math.random() * 2 - 1;
+        }
+        var s = AC.createBufferSource(), g = AC.createGain();
+        s.buffer = MUS.noiseBuf;
+        g.gain.setValueAtTime(vol, at);
+        g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+        s.connect(g); g.connect(AC.destination);
+        s.start(at); s.stop(at + dur + 0.02);
+      } catch(e){}
+    }
+    function musPlay(name){
+      if (MUS.song === name) return;
+      MUS.song = name;
+      MUS.step = 0;
+      if (AC) MUS.nextT = AC.currentTime + 0.1;
+    }
+    function musStop(){ MUS.song = null; }
+    // pick the tune for wherever the player is
+    function musForState(){
+      if (state === 'menu' || state === 'gloss' || state === 'controls' || state === 'scores') musPlay('menu');
+      else if (state === 'play' || state === 'shop' || state === 'intro') musPlay(!tutorial && level % 5 === 0 ? 'boss' : 'field');
+      else if (state === 'over') musStop();
+    }
+    setInterval(function(){ // lookahead scheduler: stays sample-accurate
+      if (!AC || muted || !musicOn || !MUS.song || (typeof document !== 'undefined' && document.hidden)) return;
+      var sg = SONGS[MUS.song];
+      if (!sg) return;
+      var stepDur = 60 / sg.tempo / 4;
+      if (MUS.nextT < AC.currentTime - 0.1) MUS.nextT = AC.currentTime + 0.05;
+      while (MUS.nextT < AC.currentTime + 0.28) {
+        for (var ti2 = 0; ti2 < sg.tracks.length; ti2++) {
+          var tr = sg.tracks[ti2];
+          var v = tr.p[MUS.step % tr.p.length];
+          if (v !== null && v !== undefined) {
+            if (tr.noise) musNoise(MUS.nextT, tr.len * stepDur, tr.vol);
+            else musTone(midiHz(v), MUS.nextT, tr.len * stepDur, tr.wave, tr.vol);
+          }
+        }
+        MUS.step++;
+        MUS.nextT += stepDur;
+      }
+    }, 90);
+
     // ---------- stats / upgrades ----------
-    var GAME_VERSION = 'v28';
+    var GAME_VERSION = 'v29';
     var S; // current run stats
     function freshStats(){ return { speed: 0, range: 0, silk: 0, grip: 0, tough: 0, venom: 0, spread: 0, brood: 0, heartT: 0, dblShot: 0, fortify: 0, bomb: 0, extraLife: 0 }; }
     function wrapMult(){ return 1.5 + (S ? S.venom * 0.25 : 0); } // wrapped catch bonus
@@ -788,6 +919,34 @@
           for (var i = 0; i < 3; i++) { spawnBug('fly'); var b = bugs[bugs.length - 1]; b.x = spider.x + rand(-60, 60); b.y = spider.y + rand(-60, 60); }
         },
         check: function(){ return bugs.length === 0; } },
+      { msg: function(){ return '<b>GEMS</b> — wrapped bugs sometimes drop gifts: silk droplets, point gems, hearts. Walk over both to collect!'; },
+        init: function(){
+          gems.push({ x: spider.x + 70, y: spider.y - 20, k: 'silk', born: now() + 9e8 });
+          gems.push({ x: spider.x - 70, y: spider.y + 30, k: 'gem', born: now() + 9e8 });
+        },
+        check: function(){ return gems.length === 0; } },
+      { msg: function(){
+          var m = shotModeActive();
+          if (m) return '<b>' + SHOT_MODES[m].name + ' ARMED!</b> — now ' + (isTouch ? 'tap' : 'click') + ' the beetles and mow them down!';
+          if (gems.length) return '<b>POWER-UP</b> — a weapon star! Walk over the spinning star to arm a weapon for a few seconds.';
+          return '<b>WEAPONS</b> — web the beetles the old way (the star got away — they expire!).';
+        },
+        init: function(){
+          gems.push({ x: spider.x + 80, y: spider.y, k: 'power', born: now() + 9e8 });
+          for (var i = 0; i < 3; i++) { spawnBug('beetle'); var b = bugs[bugs.length - 1]; b.x = W * 0.25 + i * W * 0.22; b.y = H * 0.3; }
+        },
+        check: function(){ return bugs.length === 0; } },
+      { msg: function(){ return '<b>COMBO</b> — wrap bugs within 4 seconds of each other for multiplied points. These three are stuck — wrap them fast!'; },
+        init: function(){
+          comboN = 0; comboUntil = 0;
+          for (var i = 0; i < 3; i++) {
+            spawnBug('fly'); var b = bugs[bugs.length - 1];
+            b.x = spider.x + 60 + i * 46; b.y = spider.y + (i % 2 ? 40 : -40);
+            clampInto(b);
+            b.webbed = true; b.hp = 0; b.vx = 0; b.vy = 0; b.webT = now() + 9e8;
+          }
+        },
+        check: function(){ return comboN >= 2; } },
       { msg: function(){
           if (eggReady) return '<b>LAY EGG</b> — your egg is ready! ' + (isTouch ? 'Tap EGG' : 'Press N') + ' to lay it. It will hatch into a baby spider that hunts for you!';
           return '<b>NEST</b> — catch bugs to charge the yellow brood meter. When it\'s full you can lay an egg. Keep catching!';
@@ -1367,6 +1526,8 @@
       }
       themeAnim.push({ k: 'grid', gy: gy, hue: hue });
       themeAnim.push({ k: 'sun', x: sunX, y: gy, r: sunR, hue: hot });
+      // EASTER EGG: every so often a little saucer crosses the skyline
+      themeAnim.push({ k: 'ufo', active: false, nextAt: now() + 25000 + Math.random() * 45000, x: 0, y: 0, dir: 1 });
       themeAnim.push({ k: 'beacon', x: W * (0.1 + Math.random() * 0.8), y: gy - H * 0.11, ph: Math.random() * TAU, red: true });
       return true;
     }
@@ -1508,6 +1669,10 @@
           ph: Math.random() * TAU, sp: 6 + Math.random() * 10 });
       }
       themeAnim.push({ k: 'leaf', active: false, nextAt: now() + 6000 + Math.random() * 10000, x: 0, y: 0, ph: Math.random() * TAU });
+      // EASTER EGG (some nights): a pair of eyes watches from the tall grass
+      if (rnd() < 0.35) {
+        themeAnim.push({ k: 'eyes', x: W * (0.15 + rnd() * 0.7), y: H * (0.9 + rnd() * 0.05), ph: rnd() * 20 });
+      }
       // a few tall seed stalks that sway in the night air
       for (var st3 = 0; st3 < 6; st3++) {
         themeAnim.push({ k: 'stalk', x: Math.random() * W, h: H * (0.09 + Math.random() * 0.06),
@@ -1635,6 +1800,9 @@
       }
       themeAnim.push({ k: 'crater', x: vX, y: vTopY, r: vW2 * 0.3, hue: hue });
       themeAnim.push({ k: 'floorGlow', y: H * 0.94, hue: hue });
+      // EASTER EGG: once in a while a single golden spark spirals all the
+      // way up — the old-timers call it the phoenix
+      themeAnim.push({ k: 'phoenix', active: false, nextAt: now() + 20000 + Math.random() * 40000, x: 0, y: 0, born: 0 });
       // a scorched snag (dead tree) on some levels
       if (rnd() < 0.5) {
         var snX = W * (0.16 + rnd() * 0.2), snY = H + 2, snH = H * (0.12 + rnd() * 0.05);
@@ -1684,6 +1852,38 @@
         b.ellipse(rcx, rcy, Math.max(W, H) * 0.12 * rg2, Math.max(W, H) * 0.105 * rg2, 0, 0, TAU);
         b.stroke();
       }
+      // tick etchings on the 2nd and 4th rings — someone MEASURED this abyss
+      for (var tk = 0; tk < 2; tk++) {
+        var tkR = Math.max(W, H) * 0.12 * (tk ? 4 : 2), tkRy = Math.max(W, H) * 0.105 * (tk ? 4 : 2);
+        b.strokeStyle = 'hsla(220,25%,70%,0.06)'; b.lineWidth = 1;
+        for (var tkI = 0; tkI < 16; tkI++) {
+          var tkA = tkI / 16 * TAU;
+          var tc = Math.cos(tkA), ts = Math.sin(tkA);
+          b.beginPath();
+          b.moveTo(rcx + tc * tkR * 0.985, rcy + ts * tkRy * 0.985);
+          b.lineTo(rcx + tc * tkR * 1.015, rcy + ts * tkRy * 1.015);
+          b.stroke();
+        }
+      }
+      // a low mist pools at the bottom of the abyss
+      var vmist = b.createLinearGradient(0, H * 0.8, 0, H);
+      vmist.addColorStop(0, 'hsla(220,15%,40%,0)');
+      vmist.addColorStop(1, 'hsla(220,15%,40%,0.05)');
+      b.fillStyle = vmist; b.fillRect(0, H * 0.8, W, H * 0.2);
+      // EASTER EGG (rare): something enormous is watching from the corner —
+      // a vast iris and pupil at the edge of perception
+      if (rnd() < 0.18) {
+        var eyeX = W * (rnd() < 0.5 ? 0.85 : 0.15), eyeY = H * 0.78;
+        var eyeS = Math.min(W, H);
+        b.strokeStyle = 'hsla(220,30%,60%,0.028)'; b.lineWidth = 2;
+        b.beginPath(); b.arc(eyeX, eyeY, eyeS * 0.30, 0, TAU); b.stroke();
+        b.strokeStyle = 'hsla(220,30%,60%,0.02)';
+        b.beginPath(); b.arc(eyeX, eyeY, eyeS * 0.21, 0, TAU); b.stroke();
+        b.fillStyle = 'rgba(0,0,0,0.16)';
+        b.beginPath(); b.ellipse(eyeX, eyeY, eyeS * 0.075, eyeS * 0.095, 0, 0, TAU); b.fill();
+        b.fillStyle = 'hsla(220,30%,70%,0.035)'; // a glint on the pupil
+        b.beginPath(); b.arc(eyeX - eyeS * 0.02, eyeY - eyeS * 0.03, eyeS * 0.012, 0, TAU); b.fill();
+      }
       // the watcher: a single pale light high above, with a soft falling beam
       var wx = W * (0.44 + rnd() * 0.12), wy = H * 0.09;
       glowDot(b, wx, wy, Math.min(W, H) * 0.11, 'hsla(210,30%,80%,$A)', 0.12);
@@ -1729,6 +1929,18 @@
         b.beginPath(); b.moveTo(rimX, -mh2); b.lineTo(rimX, 0); b.stroke();
         b.strokeStyle = 'hsla(215,30%,72%,0.10)';
         b.beginPath(); b.moveTo(-mw3 / 2, -mh2); b.lineTo(mw3 / 2, -mh2); b.stroke();
+        // EASTER EGG: the first monolith bears a carved web petroglyph
+        if (mo === 0) {
+          var pgy = -mh2 * 0.62;
+          b.strokeStyle = 'hsla(215,30%,75%,0.15)'; b.lineWidth = 0.7;
+          for (var pg = 0; pg < 3; pg++) {
+            var pga = -0.5 + pg * 0.5;
+            b.beginPath(); b.moveTo(0, pgy);
+            b.lineTo(Math.cos(pga) * mw3 * 0.42, pgy + Math.sin(pga) * mw3 * 0.42 + mw3 * 0.3);
+            b.stroke();
+          }
+          b.beginPath(); b.arc(0, pgy, mw3 * 0.24, -0.6, 1.2); b.stroke();
+        }
         b.restore();
       }
       // drifting shards
@@ -1741,6 +1953,8 @@
       }
       starTiers(b, rnd, hue, 0.3, H, true);
       themeAnim.push({ k: 'pulse', cx: rcx, cy: rcy, born: now() });
+      // EASTER EGG: the watcher blinks in morse — it is saying "BITZY"
+      themeAnim.push({ k: 'watcher', x: wx, y: wy, born: now() });
       // dust hangs in the beam — the light becomes an object
       for (var vd = 0; vd < 9; vd++) {
         themeAnim.push({ k: 'beamDust', bx: wx, topY: wy, botY: H * 0.88,
@@ -1884,6 +2098,80 @@
           fgg.addColorStop(1, 'hsla(' + a.hue + ',80%,40%,' + (0.03 + fgp * 0.04) + ')');
           ctx.fillStyle = fgg;
           ctx.fillRect(0, a.y, W, H - a.y);
+        }
+        else if (a.k === 'watcher') { // void: the light blinks B I T Z Y in morse
+          var msg = '-... .. - --.. -.--', unit = 160, tl = 0, mi5;
+          if (!a.tl) { // build the on/off timeline once
+            a.tl = [];
+            for (mi5 = 0; mi5 < msg.length; mi5++) {
+              var ch = msg.charAt(mi5);
+              if (ch === '.') { a.tl.push([unit, 1]); a.tl.push([unit, 0]); }
+              else if (ch === '-') { a.tl.push([unit * 3, 1]); a.tl.push([unit, 0]); }
+              else { a.tl.push([unit * 2, 0]); } // letter gap (space)
+            }
+            a.tl.push([unit * 14, 0]); // long silence before it repeats
+            a.total = 0;
+            for (mi5 = 0; mi5 < a.tl.length; mi5++) a.total += a.tl[mi5][0];
+          }
+          var ph2 = (t - a.born) % a.total, on = 0;
+          for (mi5 = 0; mi5 < a.tl.length; mi5++) {
+            if (ph2 < a.tl[mi5][0]) { on = a.tl[mi5][1]; break; }
+            ph2 -= a.tl[mi5][0];
+          }
+          if (on) {
+            ctx.fillStyle = 'rgba(220,230,245,0.5)';
+            ctx.beginPath(); ctx.arc(a.x, a.y, 3.4, 0, TAU); ctx.fill();
+            ctx.fillStyle = 'rgba(220,230,245,0.10)';
+            ctx.beginPath(); ctx.arc(a.x, a.y, 9, 0, TAU); ctx.fill();
+          }
+        }
+        else if (a.k === 'eyes') { // garden: they blink, they watch
+          var blink2 = Math.sin(t * 0.0004 + a.ph) > 0.985; // brief blink
+          if (!blink2) {
+            ctx.fillStyle = 'rgba(190,220,120,0.5)';
+            ctx.beginPath(); ctx.arc(a.x - 3, a.y, 1.1, 0, TAU); ctx.fill();
+            ctx.beginPath(); ctx.arc(a.x + 3, a.y, 1.1, 0, TAU); ctx.fill();
+          }
+        }
+        else if (a.k === 'ufo') { // neon: a saucer slips across the sky
+          if (!a.active) {
+            if (t > a.nextAt) { a.active = true; a.dir = Math.random() < 0.5 ? 1 : -1; a.x = a.dir > 0 ? -20 : W + 20; a.y = H * (0.08 + Math.random() * 0.1); }
+          } else {
+            a.x += a.dir * 55 * dt;
+            a.y += Math.sin(t * 0.004) * 8 * dt;
+            if (a.x < -24 || a.x > W + 24) { a.active = false; a.nextAt = t + 35000 + Math.random() * 50000; }
+            else {
+              ctx.fillStyle = 'rgba(10,8,16,0.9)';
+              ctx.beginPath(); ctx.ellipse(a.x, a.y, 9, 3, 0, 0, TAU); ctx.fill();
+              ctx.beginPath(); ctx.arc(a.x, a.y - 2.5, 3.2, Math.PI, 0); ctx.fill();
+              ctx.strokeStyle = 'rgba(140,240,255,0.35)'; ctx.lineWidth = 1;
+              ctx.beginPath(); ctx.ellipse(a.x, a.y, 9, 3, 0, 0, TAU); ctx.stroke();
+              if (Math.floor(t / 260) % 2 === 0) {
+                ctx.fillStyle = 'rgba(140,240,255,0.7)';
+                ctx.beginPath(); ctx.arc(a.x + (Math.floor(t / 520) % 2 ? 5 : -5), a.y + 1, 0.9, 0, TAU); ctx.fill();
+              }
+            }
+          }
+        }
+        else if (a.k === 'phoenix') { // ember: the golden one rises
+          if (!a.active) {
+            if (t > a.nextAt) { a.active = true; a.born = t; a.x = W * (0.2 + Math.random() * 0.6); a.y = H * 0.95; }
+          } else {
+            var pAge = (t - a.born) / 1000;
+            a.y -= 55 * dt;
+            var pxx = a.x + Math.sin(pAge * 3.2) * 26;
+            if (a.y < -10) { a.active = false; a.nextAt = t + 30000 + Math.random() * 45000; }
+            else {
+              ctx.fillStyle = 'rgba(253,224,71,0.20)';
+              ctx.beginPath(); ctx.arc(pxx, a.y, 5.5, 0, TAU); ctx.fill();
+              ctx.fillStyle = 'rgba(254,243,180,0.65)';
+              ctx.beginPath(); ctx.arc(pxx, a.y, 1.6, 0, TAU); ctx.fill();
+              ctx.strokeStyle = 'rgba(253,224,71,0.15)'; ctx.lineWidth = 1; // shimmering wake
+              ctx.beginPath(); ctx.moveTo(pxx, a.y + 2);
+              ctx.quadraticCurveTo(a.x + Math.sin((pAge - 0.12) * 3.2) * 26, a.y + 12, a.x + Math.sin((pAge - 0.25) * 3.2) * 26, a.y + 22);
+              ctx.stroke();
+            }
+          }
         }
         else if (a.k === 'beamDust') { // void: motes sink through the light
           a.p += (a.sp / (a.botY - a.topY)) * dt;
@@ -2555,6 +2843,7 @@
         document.getElementById(overlays[k]).classList.toggle('show', k === s);
       }
       document.body.classList.toggle('playing', s === 'play' || s === 'pause');
+      musForState();
     }
 
     // ---------- input ----------
@@ -2681,6 +2970,13 @@
       muted = !muted;
       save('mute', muted ? '1' : '0');
       document.getElementById('btnMute').innerHTML = muted ? '&#128263;' : '&#128266;';
+      syncSound();
+    }
+    function syncSound(){
+      var bm = document.getElementById('snd_music');
+      if (bm) bm.classList.toggle('on', musicOn && !muted);
+      var bs = document.getElementById('snd_sfx');
+      if (bs) bs.classList.toggle('on', !muted);
     }
 
     // buttons
@@ -2719,6 +3015,18 @@
       if (tb) tb.addEventListener('click', function(e){ e.stopPropagation(); setTheme(k); });
     })(thk);
     setTheme(bgTheme); // apply persisted backdrop + highlight the button
+    var sndM = document.getElementById('snd_music');
+    if (sndM) sndM.addEventListener('click', function(e){
+      e.stopPropagation(); audio();
+      if (muted) { toggleMute(); musicOn = true; } // unmute-all if hard-muted
+      else musicOn = !musicOn;
+      save('music', musicOn ? '1' : '0');
+      syncSound();
+    });
+    var sndS = document.getElementById('snd_sfx');
+    if (sndS) sndS.addEventListener('click', function(e){ e.stopPropagation(); audio(); toggleMute(); });
+    syncSound();
+    musForState(); // the menu tune is queued from the first user gesture
 
     // menu + pause controls reference: one icon per action, built once,
     // rendered into both screens — same art, no wall of text
