@@ -553,6 +553,7 @@
     // SFX have separate toggles on the menu; M still hard-mutes everything.
     var musicOn = load('music') !== '0';
     var MUS = { song: null, step: 0, nextT: 0, noiseBuf: null };
+    var lastSwarmAt = -1e9; // for the adaptive layer
     function midiHz(m){ return 440 * Math.pow(2, (m - 69) / 12); }
     var SONGS = (function(){
       var n = null;
@@ -567,17 +568,17 @@
               [45,n,n,n, n,n,n,n, 45,n,n,n, n,n,n,n],
               [41,n,n,n, n,n,n,n, 41,n,n,n, n,n,n,n],
               [48,n,n,n, n,n,n,n, 48,n,n,n, n,n,n,n],
-              [43,n,n,n, n,n,n,n, 43,n,n,n, n,n,n,n]), wave: 'triangle', vol: 0.05, len: 3.6 },
+              [43,n,n,n, n,n,n,n, 43,n,n,n, n,n,n,n]), role: 'bass', wave: 'triangle', vol: 0.05, len: 3.6 },
           { p: bars(
               [57,n,60,n, 64,n,69,n, 64,n,60,n, 57,n,60,n],
               [53,n,57,n, 60,n,65,n, 60,n,57,n, 53,n,57,n],
               [48,n,52,n, 55,n,60,n, 55,n,52,n, 48,n,52,n],
-              [43,n,47,n, 50,n,55,n, 50,n,47,n, 43,n,47,n]), wave: 'square', vol: 0.012, len: 1.6 },
+              [43,n,47,n, 50,n,55,n, 50,n,47,n, 43,n,47,n]), role: 'arp', wave: 'square', vol: 0.012, len: 1.6 },
           { p: bars(
               [n,n,n,n, n,n,n,n, 76,n,n,n, 74,n,n,n],
               [72,n,n,n, n,n,n,n, n,n,n,n, n,n,n,n],
               [n,n,n,n, n,n,n,n, 72,n,n,n, 74,n,n,n],
-              [71,n,n,n, n,n,n,n, n,n,n,n, n,n,n,n]), wave: 'square', vol: 0.014, len: 3.4 }
+              [71,n,n,n, n,n,n,n, n,n,n,n, n,n,n,n]), role: 'lead', wave: 'square', vol: 0.014, len: 3.4 }
         ] },
         // "Eight Legs at Work" — the hunt. Em C G D, driving.
         field: { tempo: 112, tracks: [
@@ -585,14 +586,14 @@
               [40,n,52,n, 40,n,52,n, 40,n,52,n, 40,n,52,52],
               [36,n,48,n, 36,n,48,n, 36,n,48,n, 36,n,48,48],
               [43,n,55,n, 43,n,55,n, 43,n,55,n, 43,n,55,55],
-              [38,n,50,n, 38,n,50,n, 38,n,50,n, 38,n,50,50]), wave: 'triangle', vol: 0.055, len: 0.9 },
+              [38,n,50,n, 38,n,50,n, 38,n,50,n, 38,n,50,50]), role: 'bass', wave: 'triangle', vol: 0.055, len: 0.9 },
           { p: bars(
               [76,n,n,74, 76,n,79,n, n,n,76,n, 74,n,71,n],
               [72,n,n,71, 72,n,76,n, n,n,72,n, 71,n,67,n],
               [67,n,71,n, 74,n,71,n, 67,n,n,n, 69,n,71,n],
-              [74,n,71,n, 69,n,66,n, 64,n,n,n, n,n,n,n]), wave: 'square', vol: 0.016, len: 1.7 },
-          { p: hat.concat(hat, hat, hat), noise: true, vol: 0.010, len: 0.25 },
-          { p: snare.concat(snare, snare, snare), noise: true, vol: 0.022, len: 0.8 }
+              [74,n,71,n, 69,n,66,n, 64,n,n,n, n,n,n,n]), role: 'lead', wave: 'square', vol: 0.016, len: 1.7 },
+          { p: hat.concat(hat, hat, hat), role: 'hat', noise: true, vol: 0.010, len: 0.25 },
+          { p: snare.concat(snare, snare, snare), role: 'snare', noise: true, vol: 0.022, len: 0.8 }
         ] },
         // "The Molt King" — boss levels. Dm Bb Gm A, menacing.
         boss: { tempo: 138, tracks: [
@@ -600,17 +601,17 @@
               [38,38,50,n, 38,n,50,n, 38,38,50,n, 38,n,50,50],
               [46,46,58,n, 46,n,58,n, 46,46,58,n, 46,n,58,58],
               [43,43,55,n, 43,n,55,n, 43,43,55,n, 43,n,55,55],
-              [45,45,57,n, 45,n,57,n, 45,45,52,n, 45,n,52,57]), wave: 'triangle', vol: 0.06, len: 0.9 },
+              [45,45,57,n, 45,n,57,n, 45,45,52,n, 45,n,52,57]), role: 'bass', wave: 'triangle', vol: 0.06, len: 0.9 },
           { p: bars(
               [62,n,61,62, n,65,n,62, n,58,n,57, n,53,n,n],
               [58,n,57,58, n,62,n,58, n,53,n,50, n,46,n,n],
               [62,n,61,62, n,65,n,62, n,58,n,57, n,53,n,n],
-              [61,n,n,61, 64,n,61,n, 69,n,68,n, 69,n,n,n]), wave: 'square', vol: 0.016, len: 1.4 },
+              [61,n,n,61, 64,n,61,n, 69,n,68,n, 69,n,n,n]), role: 'lead', wave: 'square', vol: 0.016, len: 1.4 },
           { p: bars([1,n,1,n, 1,n,1,n, 1,n,1,n, 1,n,1,n]).concat(
                bars([1,n,1,n, 1,n,1,n, 1,n,1,n, 1,n,1,n]),
                bars([1,n,1,n, 1,n,1,n, 1,n,1,n, 1,n,1,n]),
-               bars([1,n,1,n, 1,n,1,n, 1,n,1,1, 1,1,1,1])), noise: true, vol: 0.009, len: 0.22 },
-          { p: snare.concat(snare, snare, snare), noise: true, vol: 0.024, len: 0.8 }
+               bars([1,n,1,n, 1,n,1,n, 1,n,1,1, 1,1,1,1])), role: 'hat', noise: true, vol: 0.009, len: 0.22 },
+          { p: snare.concat(snare, snare, snare), role: 'snare', noise: true, vol: 0.024, len: 0.8 }
         ] }
       };
     })();
@@ -640,6 +641,21 @@
         s.start(at); s.stop(at + dur + 0.02);
       } catch(e){}
     }
+    // ADAPTIVE MUSIC: the same patterns, re-voiced live by what's happening.
+    // Rage transposes everything up and pushes the lead; your last heart
+    // strips the tune down to bass + snare (a heartbeat); an enraged boss
+    // drives the percussion; a swarm fills every hat step.
+    function musMod(){
+      var m = { trans: 0, leadVol: 1, noiseVol: 1, thin: false, hatFill: false };
+      if (state !== 'play' && state !== 'shop') return m;
+      if (rageActive()) { m.trans = 2; m.leadVol = 1.35; }
+      if (state === 'play' && hearts === 1 && !tutorial) m.thin = true;
+      for (var i = 0; i < bugs.length; i++) {
+        if (bugs[i].enraged && !bugs[i].dead) { m.noiseVol = 1.35; if (m.trans < 1) m.trans = 1; break; }
+      }
+      if (now() - lastSwarmAt < 5000) m.hatFill = true;
+      return m;
+    }
     function musPlay(name){
       if (MUS.song === name) return;
       MUS.song = name;
@@ -658,14 +674,20 @@
       var sg = SONGS[MUS.song];
       if (!sg) return;
       var stepDur = 60 / sg.tempo / 4;
+      var mod = musMod();
       if (MUS.nextT < AC.currentTime - 0.1) MUS.nextT = AC.currentTime + 0.05;
       while (MUS.nextT < AC.currentTime + 0.28) {
         for (var ti2 = 0; ti2 < sg.tracks.length; ti2++) {
           var tr = sg.tracks[ti2];
           var v = tr.p[MUS.step % tr.p.length];
+          if (mod.thin && (tr.role === 'lead' || tr.role === 'arp' || tr.role === 'hat')) continue;
+          if (mod.hatFill && tr.role === 'hat' && (v === null || v === undefined)) v = 1;
           if (v !== null && v !== undefined) {
-            if (tr.noise) musNoise(MUS.nextT, tr.len * stepDur, tr.vol);
-            else musTone(midiHz(v), MUS.nextT, tr.len * stepDur, tr.wave, tr.vol);
+            if (tr.noise) musNoise(MUS.nextT, tr.len * stepDur, tr.vol * mod.noiseVol);
+            else {
+              var vol2 = tr.vol * (tr.role === 'lead' ? mod.leadVol : 1);
+              musTone(midiHz(v + mod.trans), MUS.nextT, tr.len * stepDur, tr.wave, vol2);
+            }
           }
         }
         MUS.step++;
@@ -1836,70 +1858,99 @@
       return true;
     }
 
-    // VOID: designed emptiness — an abyss of enormous faint rings, one pale
-    // watcher-light above, rim-lit monoliths at the edges. Almost still.
+    // VOID: you are hunting inside the torn, abandoned web of something
+    // MUCH bigger. Giant silk curves sweep the arena, cocooned prey sways
+    // at the edges, and two colossal leg tips rest in the corner shadow.
     function bakeVoid(b, f, rnd, hue, lv){
       var g0 = b.createRadialGradient(W / 2, H * 0.45, 0, W / 2, H * 0.45, Math.max(W, H) * 0.8);
       g0.addColorStop(0, 'hsl(220,7%,5%)');
       g0.addColorStop(1, '#000');
       b.fillStyle = g0; b.fillRect(0, 0, W, H);
-      // enormous concentric rings, slightly squashed — ripples in nothing
-      var rcx = W * 0.5, rcy = H * 0.42;
-      for (var rg2 = 1; rg2 <= 5; rg2++) {
-        b.strokeStyle = 'hsla(220,25%,65%,' + (0.055 - rg2 * 0.008) + ')';
-        b.lineWidth = 1;
-        b.beginPath();
-        b.ellipse(rcx, rcy, Math.max(W, H) * 0.12 * rg2, Math.max(W, H) * 0.105 * rg2, 0, 0, TAU);
-        b.stroke();
+      starTiers(b, rnd, hue, 0.3, H, true);
+
+      // THE GREAT WEB: an enormous orb-web anchored beyond the top-left
+      // corner, so its spokes and rings sweep across the arena as huge
+      // curves. It is old and torn — rings have gaps, ends curl.
+      var wcx = -W * 0.22, wcy = -H * 0.28;
+      var maxR = Math.max(W, H) * 1.7;
+      var cx0 = W / 2, cy0 = H / 2, safeR = Math.min(W, H) * 0.26;
+      function drawSilk(x1, y1, x2, y2, sag){
+        var mxs = (x1 + x2) / 2 + sag, mys = (y1 + y2) / 2 + sag;
+        b.lineWidth = 3; b.strokeStyle = 'hsla(215,25%,70%,0.018)';
+        b.beginPath(); b.moveTo(x1, y1); b.quadraticCurveTo(mxs, mys, x2, y2); b.stroke();
+        b.lineWidth = 1; b.strokeStyle = 'hsla(215,25%,75%,0.06)';
+        b.beginPath(); b.moveTo(x1, y1); b.quadraticCurveTo(mxs, mys, x2, y2); b.stroke();
       }
-      // tick etchings on the 2nd and 4th rings — someone MEASURED this abyss
-      for (var tk = 0; tk < 2; tk++) {
-        var tkR = Math.max(W, H) * 0.12 * (tk ? 4 : 2), tkRy = Math.max(W, H) * 0.105 * (tk ? 4 : 2);
-        b.strokeStyle = 'hsla(220,25%,70%,0.06)'; b.lineWidth = 1;
-        for (var tkI = 0; tkI < 16; tkI++) {
-          var tkA = tkI / 16 * TAU;
-          var tc = Math.cos(tkA), ts = Math.sin(tkA);
-          b.beginPath();
-          b.moveTo(rcx + tc * tkR * 0.985, rcy + ts * tkRy * 0.985);
-          b.lineTo(rcx + tc * tkR * 1.015, rcy + ts * tkRy * 1.015);
-          b.stroke();
+      var spokeN = 7, si2;
+      for (si2 = 0; si2 < spokeN; si2++) {
+        var sa3 = 0.12 + (si2 / (spokeN - 1)) * (Math.PI / 2 - 0.24) + (rnd() - 0.5) * 0.06;
+        var sx1 = wcx + Math.cos(sa3) * maxR * 0.22, sy1 = wcy + Math.sin(sa3) * maxR * 0.22;
+        var sx2 = wcx + Math.cos(sa3) * maxR, sy2 = wcy + Math.sin(sa3) * maxR;
+        drawSilk(sx1, sy1, sx2, sy2, 14 + rnd() * 18);
+      }
+      // rings: partial arcs with torn gaps; segments through the arena
+      // center are skipped so gameplay stays clean
+      for (var ring3 = 0; ring3 < 5; ring3++) {
+        var rr3 = maxR * (0.34 + ring3 * 0.16) + rnd() * 20;
+        var a0 = 0.10, a1 = Math.PI / 2 - 0.10;
+        var segN2 = 26;
+        var gapAt = Math.floor(rnd() * segN2), gapLen = 2 + Math.floor(rnd() * 3);
+        var px3 = null, py3 = null;
+        for (var sg4 = 0; sg4 <= segN2; sg4++) {
+          var aa2 = a0 + (sg4 / segN2) * (a1 - a0);
+          var wob2 = Math.sin(sg4 * 1.7 + ring3) * 6;
+          var qx = wcx + Math.cos(aa2) * (rr3 + wob2), qy = wcy + Math.sin(aa2) * (rr3 + wob2);
+          var inGap = sg4 >= gapAt && sg4 < gapAt + gapLen;
+          var nearCenter = dist2(qx, qy, cx0, cy0) < safeR * safeR;
+          var off = qx < -30 || qx > W + 30 || qy < -30 || qy > H + 30;
+          if (inGap || nearCenter || off || px3 === null) {
+            if (px3 !== null && sg4 === gapAt && !off) {
+              // a torn end curls back on itself
+              b.lineWidth = 1; b.strokeStyle = 'hsla(215,25%,75%,0.07)';
+              b.beginPath();
+              b.arc(px3, py3 + 5, 5, -Math.PI / 2, Math.PI * 0.8);
+              b.stroke();
+            }
+            px3 = inGap || off ? null : qx; py3 = qy;
+            continue;
+          }
+          b.lineWidth = 3; b.strokeStyle = 'hsla(215,25%,70%,0.016)';
+          b.beginPath(); b.moveTo(px3, py3); b.lineTo(qx, qy); b.stroke();
+          b.lineWidth = 1; b.strokeStyle = 'hsla(215,25%,75%,0.055)';
+          b.beginPath(); b.moveTo(px3, py3); b.lineTo(qx, qy); b.stroke();
+          px3 = qx; py3 = qy;
         }
       }
-      // a low mist pools at the bottom of the abyss
-      var vmist = b.createLinearGradient(0, H * 0.8, 0, H);
-      vmist.addColorStop(0, 'hsla(220,15%,40%,0)');
-      vmist.addColorStop(1, 'hsla(220,15%,40%,0.05)');
-      b.fillStyle = vmist; b.fillRect(0, H * 0.8, W, H * 0.2);
-      // EASTER EGG (rare): something enormous is watching from the corner —
-      // a vast iris and pupil at the edge of perception
-      if (rnd() < 0.18) {
-        var eyeX = W * (rnd() < 0.5 ? 0.85 : 0.15), eyeY = H * 0.78;
-        var eyeS = Math.min(W, H);
-        b.strokeStyle = 'hsla(220,30%,60%,0.028)'; b.lineWidth = 2;
-        b.beginPath(); b.arc(eyeX, eyeY, eyeS * 0.30, 0, TAU); b.stroke();
-        b.strokeStyle = 'hsla(220,30%,60%,0.02)';
-        b.beginPath(); b.arc(eyeX, eyeY, eyeS * 0.21, 0, TAU); b.stroke();
-        b.fillStyle = 'rgba(0,0,0,0.16)';
-        b.beginPath(); b.ellipse(eyeX, eyeY, eyeS * 0.075, eyeS * 0.095, 0, 0, TAU); b.fill();
-        b.fillStyle = 'hsla(220,30%,70%,0.035)'; // a glint on the pupil
-        b.beginPath(); b.arc(eyeX - eyeS * 0.02, eyeY - eyeS * 0.03, eyeS * 0.012, 0, TAU); b.fill();
+      // a few loose snapped threads drifting off the web (baked, curled)
+      for (var lt = 0; lt < 3; lt++) {
+        var ltx = W * (0.15 + rnd() * 0.7), lty = H * (0.1 + rnd() * 0.25);
+        if (dist2(ltx, lty, cx0, cy0) < safeR * safeR) continue;
+        b.lineWidth = 1; b.strokeStyle = 'hsla(215,25%,75%,0.06)';
+        b.beginPath(); b.moveTo(ltx, lty);
+        b.quadraticCurveTo(ltx + 12 + rnd() * 10, lty + 18, ltx + 4, lty + 34 + rnd() * 12);
+        b.stroke();
+        b.beginPath(); b.arc(ltx + 5, lty + 38 + rnd() * 8, 4, -Math.PI / 2, Math.PI); b.stroke();
       }
+
       // the watcher: a single pale light high above, with a soft falling beam
       var wx = W * (0.44 + rnd() * 0.12), wy = H * 0.09;
       glowDot(b, wx, wy, Math.min(W, H) * 0.11, 'hsla(210,30%,80%,$A)', 0.12);
       b.fillStyle = 'hsla(210,25%,88%,0.5)';
       b.beginPath(); b.arc(wx, wy, 2.4, 0, TAU); b.fill();
       var floorY = H * 0.9;
-      var beam = b.createLinearGradient(0, wy, 0, floorY);
-      beam.addColorStop(0, 'hsla(210,30%,75%,0.055)');
-      beam.addColorStop(0.75, 'hsla(210,30%,75%,0.03)');
-      beam.addColorStop(1, 'hsla(210,30%,75%,0.015)');
-      b.fillStyle = beam;
-      b.beginPath();
-      b.moveTo(wx - W * 0.015, wy); b.lineTo(wx + W * 0.015, wy);
-      b.lineTo(wx + W * 0.07, floorY); b.lineTo(wx - W * 0.07, floorY);
-      b.closePath(); b.fill();
-      // ...and it lands: a soft elliptical pool on the implied floor
+      // beam drawn in three nested passes so its edges are soft, not ruled
+      for (var bp2 = 0; bp2 < 3; bp2++) {
+        var spread2 = [1, 0.72, 0.45][bp2], bAl = [0.016, 0.02, 0.028][bp2];
+        var beam = b.createLinearGradient(0, wy, 0, floorY);
+        beam.addColorStop(0, 'hsla(210,30%,75%,' + bAl * 1.8 + ')');
+        beam.addColorStop(0.75, 'hsla(210,30%,75%,' + bAl + ')');
+        beam.addColorStop(1, 'hsla(210,30%,75%,' + bAl * 0.5 + ')');
+        b.fillStyle = beam;
+        b.beginPath();
+        b.moveTo(wx - W * 0.013 * spread2, wy); b.lineTo(wx + W * 0.013 * spread2, wy);
+        b.lineTo(wx + W * 0.07 * spread2, floorY); b.lineTo(wx - W * 0.07 * spread2, floorY);
+        b.closePath(); b.fill();
+      }
       b.save(); b.translate(wx, floorY); b.scale(1, 0.22);
       var pool = b.createRadialGradient(0, 0, 0, 0, 0, W * 0.09);
       pool.addColorStop(0, 'hsla(210,30%,75%,0.07)');
@@ -1907,52 +1958,64 @@
       b.fillStyle = pool;
       b.fillRect(-W * 0.09, -W * 0.09, W * 0.18, W * 0.18);
       b.restore();
-      b.strokeStyle = 'hsla(215,20%,60%,0.05)'; b.lineWidth = 1; // implied floor line
-      b.beginPath(); b.moveTo(wx - W * 0.14, floorY); b.lineTo(wx + W * 0.14, floorY); b.stroke();
-      // monoliths: dark slabs at the edges — visible against the abyss, each
-      // a different size and lean, rim-lit on the beam-facing edge
-      for (var mo = 0; mo < 3; mo++) {
-        var left = mo % 2 === 0;
-        var mx2 = left ? W * (0.05 + rnd() * 0.07) : W * (0.86 + rnd() * 0.07);
-        var mh2 = H * (0.18 + rnd() * 0.3), mw3 = W * (0.012 + rnd() * 0.022) + 6;
-        var mYb = H * (0.6 + rnd() * 0.38);
-        var lean = (rnd() - 0.5) * 0.12;
-        b.save(); b.translate(mx2, mYb); b.rotate(lean);
-        var mgrad = b.createLinearGradient(-mw3 / 2, 0, mw3 / 2, 0);
-        mgrad.addColorStop(0, 'rgba(14,15,20,0.95)');
-        mgrad.addColorStop(left ? 1 : 0, 'rgba(24,26,34,0.95)');
-        mgrad.addColorStop(left ? 0 : 1, 'rgba(10,11,15,0.95)');
-        b.fillStyle = mgrad;
-        b.fillRect(-mw3 / 2, -mh2, mw3, mh2);
-        b.strokeStyle = 'hsla(215,30%,72%,0.22)'; b.lineWidth = 1;
-        var rimX = left ? mw3 / 2 : -mw3 / 2; // lit edge faces the beam
-        b.beginPath(); b.moveTo(rimX, -mh2); b.lineTo(rimX, 0); b.stroke();
-        b.strokeStyle = 'hsla(215,30%,72%,0.10)';
-        b.beginPath(); b.moveTo(-mw3 / 2, -mh2); b.lineTo(mw3 / 2, -mh2); b.stroke();
-        // EASTER EGG: the first monolith bears a carved web petroglyph
-        if (mo === 0) {
-          var pgy = -mh2 * 0.62;
-          b.strokeStyle = 'hsla(215,30%,75%,0.15)'; b.lineWidth = 0.7;
-          for (var pg = 0; pg < 3; pg++) {
-            var pga = -0.5 + pg * 0.5;
-            b.beginPath(); b.moveTo(0, pgy);
-            b.lineTo(Math.cos(pga) * mw3 * 0.42, pgy + Math.sin(pga) * mw3 * 0.42 + mw3 * 0.3);
-            b.stroke();
-          }
-          b.beginPath(); b.arc(0, pgy, mw3 * 0.24, -0.6, 1.2); b.stroke();
+
+      // THE OWNER: two colossal leg tips rest in the bottom corner — the
+      // web is not as abandoned as it looks
+      var legSide = rnd() < 0.5 ? 1 : -1;
+      var lx0 = legSide > 0 ? W + 30 : -30;
+      for (var leg2 = 0; leg2 < 2; leg2++) {
+        var baseY = H * (0.8 - leg2 * 0.1);
+        var tipX = legSide > 0 ? W * (0.90 - leg2 * 0.11) : W * (0.10 + leg2 * 0.11);
+        var tipY = H * (0.955 - leg2 * 0.03);
+        var kneeX = legSide > 0 ? W * (0.985 - leg2 * 0.05) : W * (0.015 + leg2 * 0.05);
+        var kneeY = H * (0.72 - leg2 * 0.08);
+        for (var lw2 = 0; lw2 < 3; lw2++) { // tapered: thick at edge, fine at tip
+          b.strokeStyle = 'rgba(7,8,12,0.94)';
+          b.lineWidth = 12 - lw2 * 4;
+          var tt = 0.35 + lw2 * 0.32;
+          b.beginPath();
+          b.moveTo(lx0, baseY);
+          b.quadraticCurveTo(kneeX, kneeY, lx0 + (tipX - lx0) * tt, baseY + (tipY - baseY) * tt);
+          b.stroke();
         }
-        b.restore();
-      }
-      // drifting shards
-      for (var sh = 0; sh < 6; sh++) {
-        var shx = W * rnd(), shy = H * rnd(), sha = rnd() * TAU;
-        b.strokeStyle = 'hsla(220,15%,60%,0.09)'; b.lineWidth = 1;
-        b.beginPath(); b.moveTo(shx, shy);
-        b.lineTo(shx + Math.cos(sha) * (3 + rnd() * 5), shy + Math.sin(sha) * (3 + rnd() * 5));
+        b.strokeStyle = 'rgba(7,8,12,0.94)'; b.lineWidth = 3;
+        b.beginPath();
+        b.moveTo(lx0 + (tipX - lx0) * 0.85, baseY + (tipY - baseY) * 0.85);
+        b.quadraticCurveTo(kneeX * 0.5 + tipX * 0.5, kneeY * 0.3 + tipY * 0.7, tipX, tipY);
+        b.stroke();
+        // moonlit rim along the upper edge of each leg
+        b.strokeStyle = 'hsla(215,30%,70%,0.13)'; b.lineWidth = 1;
+        b.beginPath();
+        b.moveTo(lx0, baseY - 5);
+        b.quadraticCurveTo(kneeX, kneeY - 6, tipX, tipY - 2);
         b.stroke();
       }
-      starTiers(b, rnd, hue, 0.3, H, true);
-      themeAnim.push({ k: 'pulse', cx: rcx, cy: rcy, born: now() });
+      // EASTER EGG (rare): the owner opens an eye in the corner shadow
+      if (rnd() < 0.18) {
+        var eyeX = legSide > 0 ? W * 0.93 : W * 0.07, eyeY = H * 0.84;
+        b.fillStyle = 'hsla(210,40%,75%,0.10)';
+        b.beginPath(); b.ellipse(eyeX, eyeY, 7, 4.5, legSide * 0.3, 0, TAU); b.fill();
+        b.fillStyle = 'rgba(0,0,0,0.5)';
+        b.beginPath(); b.arc(eyeX, eyeY, 2.2, 0, TAU); b.fill();
+        b.fillStyle = 'hsla(210,50%,85%,0.35)';
+        b.beginPath(); b.arc(eyeX - 1, eyeY - 1.2, 0.8, 0, TAU); b.fill();
+      }
+
+      // low mist pooling at the bottom of the dark
+      var vmist = b.createLinearGradient(0, H * 0.8, 0, H);
+      vmist.addColorStop(0, 'hsla(220,15%,40%,0)');
+      vmist.addColorStop(1, 'hsla(220,15%,40%,0.05)');
+      b.fillStyle = vmist; b.fillRect(0, H * 0.8, W, H * 0.2);
+
+      // swaying cocoons — wrapped prey hanging at the edges (animated)
+      for (var co2 = 0; co2 < 3; co2++) {
+        var cocoX = [W * 0.09, W * 0.86, W * 0.68][co2] + rnd() * W * 0.05;
+        if (Math.abs(cocoX - wx) < W * 0.12) cocoX += W * 0.16; // keep off the beam
+        themeAnim.push({ k: 'cocoon', ax: Math.min(cocoX, W - 20), len: H * (0.12 + rnd() * 0.14),
+          r: 7 + rnd() * 6, ph: rnd() * TAU });
+      }
+      // the abyss ring pulse blooms from the beam's floor pool
+      themeAnim.push({ k: 'pulse', cx: wx, cy: floorY, born: now() });
       // EASTER EGG: the watcher blinks in morse — it is saying "BITZY"
       themeAnim.push({ k: 'watcher', x: wx, y: wy, born: now() });
       // dust hangs in the beam — the light becomes an object
@@ -1982,8 +2045,8 @@
       themeAnim = [];
       var usedFg = (BAKERS[bgTheme] || bakeCosmic)(b, f, rnd, hue, lv);
       fgCvs = usedFg ? fg : null;
-      // the brand motif lives in every world
-      bigWeb(b, W / 2, H * 0.4, Math.max(W, H) * 0.62);
+      // the brand motif lives in every world (void's whole scene IS the web)
+      if (bgTheme !== 'void') bigWeb(b, W / 2, H * 0.4, Math.max(W, H) * 0.62);
       cornerWeb(b, 0, 0, 0, Math.PI / 2);
       cornerWeb(b, W, H, Math.PI, Math.PI * 1.5);
       var vg = b.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.3, W / 2, H / 2, Math.max(W, H) * 0.72);
@@ -2098,6 +2161,28 @@
           fgg.addColorStop(1, 'hsla(' + a.hue + ',80%,40%,' + (0.03 + fgp * 0.04) + ')');
           ctx.fillStyle = fgg;
           ctx.fillRect(0, a.y, W, H - a.y);
+        }
+        else if (a.k === 'cocoon') { // void: wrapped prey sways on its thread
+          var swA = Math.sin(t * 0.00045 + a.ph) * 0.06;
+          var cocoX2 = a.ax + Math.sin(swA) * a.len, cocoY2 = Math.cos(swA) * a.len;
+          ctx.strokeStyle = 'hsla(215,25%,75%,0.10)'; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.moveTo(a.ax, -2);
+          ctx.quadraticCurveTo(a.ax + Math.sin(swA) * a.len * 0.4, a.len * 0.5, cocoX2, cocoY2);
+          ctx.stroke();
+          ctx.save(); ctx.translate(cocoX2, cocoY2 + a.r * 0.9); ctx.rotate(swA * 1.4);
+          ctx.fillStyle = 'rgba(150,160,180,0.10)';
+          ctx.beginPath(); ctx.ellipse(0, 0, a.r * 0.62, a.r, 0, 0, TAU); ctx.fill();
+          ctx.strokeStyle = 'rgba(190,200,220,0.12)'; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.ellipse(0, 0, a.r * 0.62, a.r, 0, 0, TAU); ctx.stroke();
+          for (var cw = -1; cw <= 1; cw++) { // silk wrapping bands
+            ctx.beginPath();
+            ctx.ellipse(0, cw * a.r * 0.42, a.r * 0.58 * (1 - Math.abs(cw) * 0.18), a.r * 0.2, 0, 0, TAU);
+            ctx.stroke();
+          }
+          ctx.beginPath(); ctx.moveTo(0, a.r); // one loose fiber beneath
+          ctx.quadraticCurveTo(2, a.r + 7, -1, a.r + 12);
+          ctx.stroke();
+          ctx.restore();
         }
         else if (a.k === 'watcher') { // void: the light blinks B I T Z Y in morse
           var msg = '-... .. - --.. -.--', unit = 160, tl = 0, mi5;
@@ -3375,6 +3460,7 @@
           // once (allowed to exceed maxAlive) — a spike of chaos and points
           if (level >= 3 && t > swarmAt) {
             swarmAt = t + rand(16000, 26000);
+            lastSwarmAt = t; // the soundtrack leans in during a swarm
             var sn = 3 + Math.min(3, Math.floor(level / 6));
             for (var swi = 0; swi < sn; swi++) spawnBug(Math.random() < 0.7 ? 'fly' : 'moth');
             floatTxt(W / 2, H * 0.24, 'SWARM!', '#fbbf24', true);
