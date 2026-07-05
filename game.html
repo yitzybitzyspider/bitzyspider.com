@@ -77,6 +77,25 @@
     #btnEat.on { border-color: #22c55e; color: #fff; background: rgba(34,197,94,0.2); }
     #btnFix.on { border-color: #fbbf24; color: #fff; background: rgba(251,191,36,0.2); }
     #btnEat:active, #btnFix:active { transform: scale(0.95); }
+    /* touch layout: two thumb-friendly corner stacks; the center HUD slims
+       down so nothing overlaps on a phone */
+    body.touch #hudBR { display: flex; flex-direction: column-reverse; align-items: flex-end; gap: 10px; }
+    #hudBL { display: none; }
+    body.touch #hudBL {
+      display: flex; flex-direction: column-reverse; align-items: flex-start; gap: 10px;
+      position: fixed;
+      bottom: calc(var(--aby, 0px) + env(safe-area-inset-bottom, 0px) + 14px);
+      left: calc(var(--ax, 0px) + 14px);
+      pointer-events: auto;
+    }
+    body.touch #hudBR button, body.touch #hudBL button {
+      margin-right: 0; padding: 13px 16px; font-size: 13px; border-radius: 16px;
+      min-width: 96px; text-align: center;
+    }
+    body.touch #hudB { width: min(38vw, 150px); }
+    body.touch #hudB #silkLbl { font-size: 8px; white-space: normal; line-height: 1.5; }
+    body.touch #hearts { font-size: 13px; letter-spacing: 2px; }
+    body.touch .icoBtn { padding: 12px 15px; font-size: 16px; }
     #hearts { font-size: 15px; letter-spacing: 3px; margin-bottom: 4px; }
     #silkBar { height: 6px; background: #27272a; border-radius: 99px; overflow: hidden; border: 1px solid #18181b; }
     #silkFill { height: 100%; background: #dc2626; width: 100%; }
@@ -183,7 +202,12 @@
     #tutMsg b { color: #fbbf24; }
 
     /* ---------- Arena size picker ---------- */
-    .sizeRow { display: flex; gap: 8px; justify-content: center; align-items: center; margin: 4px 0 14px; }
+    .sizeRow { display: flex; flex-wrap: wrap; gap: 8px; row-gap: 6px; justify-content: center; align-items: center; margin: 4px 0 14px; }
+    @media (max-width: 480px) {
+      .sizeRow { margin-bottom: 10px; }
+      .sizeRow .lbl { flex-basis: 100%; text-align: center; margin: 0 0 2px; }
+      .sizeBtn { padding: 8px 12px; }
+    }
     .sizeRow .lbl { font-size: 9px; letter-spacing: 0.25em; color: #52525b; margin-right: 4px; }
     .sizeBtn {
       background: transparent; border: 1px solid #3f3f46; color: #a1a1aa;
@@ -2941,6 +2965,12 @@
       if (autoWeb && !autoRepair && now() > autoGraceUntil) stopAutoWeb();
       if (autoWeb) return;
       target.x = evX(e); target.y = evY(e);
+      // phones: lift the follow-target above the finger so your own thumb
+      // doesn't hide the spider. The lift eases off near the bottom edge so
+      // the whole arena stays reachable.
+      if (e.pointerType === 'touch') {
+        target.y -= 62 * Math.min(1, Math.max(0, (H - target.y) / 170));
+      }
       clampInto(target);
       lastInputAt = now();
       wanderVel.x = 0; wanderVel.y = 0;
@@ -3168,6 +3198,19 @@
       document.getElementById('btnCut').style.display = 'none';
       document.getElementById('btnEgg').style.display = 'none'; // N lays eggs
       document.getElementById('btnRage').style.display = 'none'; // G activates rage
+    } else {
+      // phones: split the actions into two thumb stacks — primary on the
+      // right (WEB/RAGE/EGG/DETACH), secondary on the left (AUTO/EAT/FIX)
+      document.body.classList.add('touch');
+      var hudBL = document.createElement('div');
+      hudBL.className = 'hud';
+      hudBL.id = 'hudBL';
+      ['btnAuto', 'btnEat', 'btnFix'].forEach(function(bid){
+        var bEl = document.getElementById(bid);
+        if (bEl) hudBL.appendChild(bEl);
+      });
+      var hudRoot = document.getElementById('hud');
+      if (hudRoot) hudRoot.appendChild(hudBL);
     }
     document.getElementById('mHigh').textContent = hi;
     document.getElementById('mTotal').textContent = totalBugs;
