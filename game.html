@@ -809,9 +809,9 @@
     }, 90);
 
     // ---------- stats / upgrades ----------
-    var GAME_VERSION = 'v30';
+    var GAME_VERSION = 'v31';
     var S; // current run stats
-    function freshStats(){ return { speed: 0, range: 0, silk: 0, grip: 0, tough: 0, venom: 0, spread: 0, brood: 0, hw: 0, dew: 0, heartT: 0, dblShot: 0, fortify: 0, bomb: 0, extraLife: 0 }; }
+    function freshStats(){ return { speed: 0, range: 0, silk: 0, grip: 0, tough: 0, venom: 0, spread: 0, brood: 0, hw: 0, dew: 0, heartT: 0, dblShot: 0, fortify: 0, bomb: 0, extraLife: 0, loom: 0 }; }
     function wrapMult(){ return 1.5 + (S ? S.venom * 0.25 : 0); } // wrapped catch bonus
     function followK(){ return 0.10; }                      // lerp/frame toward cursor (original spider feel)
     function topSpeed(){ return 150 + (S ? S.speed * 40 : 80); } // hard speed cap px/s — slow on purpose
@@ -915,7 +915,9 @@
       { key: 'extraLife', name: 'BUY A LIFE',   max: 3, cost: function(t){ return 250 + t * 100; },
         desc: function(){ return '+1 max health (' + maxHearts() + ' → ' + (maxHearts() + 1) + '), max 3'; } },
       { key: 'bomb',     name: 'BUG BOMB',      max: 99, cost: function(t){ return BOMB_COST + t * 50; },
-        desc: function(){ return 'Shockwave (B key) — wraps every bug on screen, bosses take 1 hit'; } }
+        desc: function(){ return 'Shockwave (B key) — wraps every bug on screen, bosses take 1 hit'; } },
+      { key: 'loom',     name: 'ROYAL LOOM',    max: 3, cost: [120, 180, 240],
+        desc: function(){ return 'Dye your fresh silk: ' + ['moonlight', 'amethyst', 'blood-red'][Math.min(2, S.loom)] + ' (cosmetic — gilded stays gold)'; } }
     ];
 
     // ---------- bug types ----------
@@ -974,6 +976,8 @@
     var rageMeter = 0;              // charges from catches/wraps; full = ready to rage
     var rageUntil = 0;              // timestamp: rage mode active while now() < rageUntil
     var gems = [];                  // small pickups dropped by wrapped bugs
+    var fallenLog = [];             // last strands that fell (for R to re-weave)
+    var surgeUntil = 0;             // silk-droplet SURGE: weaving is free
     var swarmAt = 0;                // next swarm-burst time
     var quotaCued = false;          // "3 TO GO!" shown this level
     // temporary WEAPONS — picked up from power stars, active for a short
@@ -1048,13 +1052,18 @@
       { msg: function(){ return '<b>CROSS</b> — lay a second strand ACROSS the first. Crossings lock the web together so it doesn\'t fray away.'; },
         init: function(){},
         check: function(){ return crossings.length >= 1; } },
-      { msg: function(){ return '<b>AUTO-WEB</b> — ' + (isTouch ? 'tap AUTO' : 'press Q') + ' and the spider weaves a full hub-and-spoke web by itself. Let it work!'; },
-        init: function(){ if (autoWeb) stopAutoWeb(); webSilk = webSilkMax(); tutStrandN = strands.length; },
-        check: function(){ return strands.length >= tutStrandN + 5; } },
-      { msg: function(){ return '<b>REPAIR</b> — some strands tore loose! ' + (isTouch ? 'Tap FIX' : 'Press R') + ' and the spider re-weaves only the missing gaps (' + (isTouch ? 'tap FIX' : 'press R') + ' again to cancel).'; },
+      { msg: function(){ return '<b>HUB</b> — join THREE strands at one point. Hubs slow bugs to half speed, and wraps there pay a golden <b>WEB BONUS</b>!'; },
+        init: function(){ webSilk = webSilkMax(); },
+        check: function(){ return hubs.length >= 1; } },
+      { msg: function(){ return '<b>ANCHOR</b> — the walls never let go. Pin a strand END at the arena edge — anchored silk can\'t fray.'; },
+        init: function(){ webSilk = webSilkMax(); },
+        check: function(){ for (var i = 0; i < strands.length; i++) if (strands[i].a1 || strands[i].a2) return true; return false; } },
+      { msg: function(){ return '<b>REPAIR</b> — strands FELL! ' + (isTouch ? 'Tap FIX' : 'Press R') + ' and the spider re-weaves exactly what fell (' + (isTouch ? 'tap FIX' : 'press R') + ' again to cancel).'; },
         init: function(){ if (autoWeb) stopAutoWeb(); webSilk = webSilkMax();
-          for (var i = 0; i < 4 && strands.length > 1; i++) strands.splice(0, 1);
-          recalcSupport(); tutStrandN = strands.length; },
+          while (strands.length < 2) strands.push({ x1: spider.x - 60 - strands.length * 30, y1: spider.y - 50, x2: spider.x + 60, y2: spider.y + 50, decayAt: 0, born: now() });
+          breakStrand(strands[0]);
+          breakStrand(strands[0]);
+          tutStrandN = strands.length; },
         check: function(){ return strands.length > tutStrandN; } },
       { msg: function(){ return '<b>TRAP</b> — a moth! Let your web snag it (or web-shoot it), then walk over and wrap it.'; },
         init: function(){ if (autoWeb) stopAutoWeb(); spawnBug('moth'); var b = bugs[bugs.length - 1]; b.x = W * 0.2; b.y = H * 0.3; },
@@ -1149,6 +1158,7 @@
       building = null; bombs = 0; buffScoreUntil = 0; buffSpeedUntil = 0; shieldHits = 0;
       rageMeter = 0; rageUntil = 0;
       shotMode = null; shotModeUntil = 0; gems = []; beams = [];
+      fallenLog = []; surgeUntil = 0;
       comboN = 0; comboUntil = 0; shownScore = 0; freezeUntil = 0;
       caught = 0; quota = 999;
       silk = silkMax(); webSilk = webSilkMax();
@@ -2811,9 +2821,12 @@
         if (t - g.born > GEM_LIFE) { gems.splice(i, 1); continue; }
         if (dist2(spider.x, spider.y, g.x, g.y) < 30 * 30) {
           if (g.k === 'silk') {
-            silk = Math.min(silkMax(), silk + 25);
-            webSilk = Math.min(webSilkMax(), webSilk + 25);
-            floatTxt(g.x, g.y - 14, '+SILK', '#e4e4e7');
+            // a real prize now: refill 35% of BOTH meters and surge — weaving
+            // is free for the next four seconds. Grab it mid-build.
+            silk = Math.min(silkMax(), silk + silkMax() * 0.35);
+            webSilk = Math.min(webSilkMax(), webSilk + webSilkMax() * 0.35);
+            surgeUntil = now() + 4000;
+            floatTxt(g.x, g.y - 14, 'SILK SURGE!', '#e4e4e7', true);
           } else if (g.k === 'gem') {
             var gp = 15 * level;
             score += gp; cash += gp;
@@ -2849,6 +2862,7 @@
       spreadAt = 0; broodMeter = 0; eggReady = false;
       gems = []; quotaCued = false;
       shotMode = null; shotModeUntil = 0;
+      fallenLog = []; surgeUntil = 0;
       lastInputAt = now();
       autoWeb = false; autoCenter = null; autoEdges = null; bombs = 0;
       drops = []; buffScoreUntil = 0; buffSpeedUntil = 0; shieldHits = 0;
@@ -2991,6 +3005,7 @@
       broodMeter = 0; eggReady = false;
       rageMeter = 0; rageUntil = 0;
       shotMode = null; shotModeUntil = 0;
+      fallenLog = []; surgeUntil = 0;
       tutorial = false; tutMark = null; tutDoneAt = 0; tutMsgSet('');
       eatHeld = false; syncEatBtn();
       if (autoWeb) stopAutoWeb();
@@ -3234,6 +3249,7 @@
     ['small', 'medium', 'full'].forEach(function(k){
       document.getElementById('sz_' + k).addEventListener('click', function(e){ e.stopPropagation(); setSize(k); });
     });
+    if (!ADMIN) { var baGate = document.getElementById('btnAuto'); if (baGate) baGate.style.display = 'none'; }
     setSize(sizeMode); // apply persisted arena size + highlight the button
     for (var thk in THEMES) (function(k){
       var tb = document.getElementById('th_' + k);
@@ -3262,9 +3278,8 @@
       ['&#128305;', '<b>DOUBLE-TAP</b> — spread-trap everything near you'],
       ['&#128376;', '<b>WEB</b> — anchor &middot; walk &middot; <b>PIN</b> a strand'],
       ['&#10005;',  '<b>DETACH</b> — stop weaving'],
-      ['&#127760;', '<b>AUTO</b> — weave a hub-and-spoke web (drag = take over)'],
       ['&#127860;', '<b>EAT</b> (hold) — graze strands, reclaim silk'],
-      ['&#128295;', '<b>FIX</b> — repair your last web\'s gaps (tap again to cancel)'],
+      ['&#128295;', '<b>FIX</b> — re-weave your last fallen strands (tap again to cancel)'],
       ['&#129370;', '<b>EGG</b> — lay when brood meter is full; hatches a helper'],
       ['&#128293;', '<b>RAGE</b> — when orange bar is full, go berserk!'],
       ['&#128062;', 'walk over stuck bugs to <b>wrap</b> them']
@@ -3275,8 +3290,7 @@
       ['&#128305;', '<b>DOUBLE-CLICK</b> / <b>F</b> — spread-trap near you'],
       ['&#128376;', '<b>W</b> — anchor &middot; walk &middot; pin a strand'],
       ['&#10005;',  '<b>X</b> — stop weaving'],
-      ['&#127760;', '<b>Q</b> — auto-weave a hub-and-spoke web (move = take over)'],
-      ['&#128295;', '<b>R</b> — repair your last web\'s gaps (R again to cancel)'],
+      ['&#128295;', '<b>R</b> — re-weave your last fallen strands (press again to cancel)'],
       ['&#127860;', '<b>E</b> (hold) — graze strands, reclaim silk'],
       ['&#129370;', '<b>N</b> — lay egg when brood meter is full; defend till hatch'],
       ['&#128163;', '<b>B</b> — bug bomb (buy in the shop)'],
@@ -3354,7 +3368,7 @@
       assassin:{ threat: 'Cloaks and ambushes', escape: '—', unlock: 'Lv 40 boss', weight: 'Boss (6 HP)', note: 'Drop: blocks 3 stings' }
     };
     var UPG_ICONS = { speed: '&#128062;', range: '&#127919;', silk: '&#129528;', grip: '&#129306;', tough: '&#128167;', venom: '&#129440;', spread: '&#128305;', brood: '&#129370;', hw: '&#9889;', dew: '&#128166;', heartT: '&#10084;' };
-    var SINK_ICONS = { dblShot: '&#128171;', fortify: '&#128737;', extraLife: '&#128154;', bomb: '&#128163;' };
+    var SINK_ICONS = { dblShot: '&#128171;', fortify: '&#128737;', extraLife: '&#128154;', bomb: '&#128163;', loom: '&#127912;' };
     var UPG_DESC = {
       speed: 'Increases top movement speed (+40/tier).',
       range: 'Extends web shot reach (+48/tier).',
@@ -3372,7 +3386,8 @@
       dblShot: 'Fire two web shots per click in a spread pattern.',
       fortify: 'Stacking +35% stuck time per tier. No cap.',
       extraLife: 'Stacking +1 max heart per purchase.',
-      bomb: 'Shockwave (B key): wraps every bug on screen; bosses take 1 hit of damage.'
+      bomb: 'Shockwave (B key): wraps every bug on screen; bosses take 1 hit of damage.',
+      loom: 'Dye your fresh silk — moonlight, amethyst, or blood-red. Pure spider fashion.'
     };
     var MECHANICS = [
       { h: 'Silk Meters', t: '<b>Red bar (shots)</b> — regenerates fast, powers aimed web shots. <b>White bar (web silk)</b> — regenerates slowly, used for weaving strands. Every catch refills the web meter.' },
@@ -3863,7 +3878,10 @@
       }
       return bestP || { x: x, y: y };
     }
-    function strandCost(len){ return Math.max(5, Math.ceil(len * STRAND_COST_PER_PX)); }
+    function strandCost(len){
+      if (now() < surgeUntil) return 0; // SILK SURGE: weaving is free
+      return Math.max(5, Math.ceil(len * STRAND_COST_PER_PX));
+    }
     function syncWebBtns(){
       var bw = document.getElementById('btnWeb');
       var bc = document.getElementById('btnCut');
@@ -4325,22 +4343,26 @@
     function startRepair(){
       if (state !== 'play') return;
       if (autoWeb) { stopAutoWeb(); return; }
-      if (!lastWebCenter) { floatTxt(spider.x, spider.y - 30, 'no web to repair — weave one first (Q)', '#71717a'); SFX.deny(); return; }
-      if (webSilk < 10) { floatTxt(spider.x, spider.y - 30, 'not enough web silk', '#dc2626'); SFX.deny(); return; }
-      var all = autoWebEdges(lastWebCenter.x, lastWebCenter.y), missing = [];
-      for (var i = 0; i < all.length; i++){
-        if (!strandCovered(all[i].x1, all[i].y1, all[i].x2, all[i].y2)) missing.push(all[i]);
+      // the spider remembers what FELL — torn, burned, eaten by time — and
+      // re-weaves exactly those strands, newest first
+      var missing = [];
+      for (var i = fallenLog.length - 1; i >= 0 && missing.length < 8; i--) {
+        var fl2 = fallenLog[i];
+        if (!strandCovered(fl2.x1, fl2.y1, fl2.x2, fl2.y2)) {
+          missing.push({ x1: fl2.x1, y1: fl2.y1, x2: fl2.x2, y2: fl2.y2 });
+        }
       }
-      if (!missing.length) { floatTxt(spider.x, spider.y - 30, 'web intact — nothing to repair', '#71717a'); SFX.deny(); return; }
+      if (!missing.length) { floatTxt(spider.x, spider.y - 30, 'nothing has fallen — the web stands', '#71717a'); SFX.deny(); return; }
+      if (webSilk < 10) { floatTxt(spider.x, spider.y - 30, 'not enough web silk', '#dc2626'); SFX.deny(); return; }
       autoWeb = true;
       autoRepair = true;
       autoArmed = false;
-      autoCenter = { x: lastWebCenter.x, y: lastWebCenter.y };
+      autoCenter = { x: missing[0].x1, y: missing[0].y1 };
       autoEdges = missing;
       reorderAutoEdges();
       autoGraceUntil = now() + 600;
       building = null;
-      floatTxt(spider.x, spider.y - 30, 'repairing ' + missing.length + ' gap' + (missing.length > 1 ? 's' : '') + '…', '#fbbf24');
+      floatTxt(spider.x, spider.y - 30, 're-weaving ' + missing.length + ' fallen strand' + (missing.length > 1 ? 's' : '') + '…', '#fbbf24');
       syncWebBtns();
       var bf = document.getElementById('btnFix');
       if (bf) bf.classList.add('on');
@@ -4361,7 +4383,10 @@
     }
     function toggleAutoWeb(){
       if (state !== 'play') return;
-      if (autoWeb) { stopAutoWeb(); return; }
+      // the auto-weaver is a TESTING tool now (ADMIN only) — weaving by hand
+      // is the game
+      if (!ADMIN) { floatTxt(spider.x, spider.y - 30, 'weave it yourself, spider (W)', '#71717a'); return; }
+      if (autoWeb && !autoRepair) { stopAutoWeb(); return; }
       startAutoWeb();
     }
     // is this segment already covered by an existing strand?
@@ -4514,9 +4539,14 @@
         ));
       }
     }
+    function recordFall(s){
+      fallenLog.push({ x1: s.x1, y1: s.y1, x2: s.x2, y2: s.y2 });
+      if (fallenLog.length > 12) fallenLog.shift();
+    }
     function breakStrand(s){
       var idx = strands.indexOf(s);
       if (idx === -1) return;
+      recordFall(s);
       strands.splice(idx, 1);
       var mx = (s.x1 + s.x2) / 2, my = (s.y1 + s.y2) / 2;
       pop(mx, my, '#9ca3af', 8, 2);
@@ -4538,16 +4568,27 @@
       }
       ranked.sort(function(a, b){ return a[0] - b[0]; });
       for (i = 0; i < ranked.length && victims.length < 3; i++) victims.push(ranked[i][1]);
+      var burned = 0, scorched = 0;
       for (i = 0; i < victims.length; i++) {
         var v = victims[i];
         var idx = strands.indexOf(v);
         if (idx === -1) continue;
         var bx = (v.x1 + v.x2) / 2, by = (v.y1 + v.y2) / 2;
+        if (silkTier(v, now()) === 2) {
+          // gilded silk doesn't burn — it scorches back to fresh and holds
+          v.born = now();
+          scorched++;
+          fires.push({ x: bx, y: by, r: 5, life: 0.7 });
+          pop(bx, by, '#fde047', 5, 1.5);
+          continue;
+        }
         // free any bug that was stuck on this strand
         for (var bi = 0; bi < bugs.length; bi++) {
           if (bugs[bi].strand === v) { bugs[bi].webbed = false; bugs[bi].strand = null; bugs[bi].strandImmune = now() + 1500; }
         }
+        recordFall(v);
         strands.splice(idx, 1);
+        burned++;
         fires.push({ x: bx, y: by, r: 8, life: 1 });
         pop(bx, by, '#f97316', 10, 2.5);
         pop(bx, by, '#fbbf24', 6, 2);
@@ -4555,7 +4596,8 @@
       fires.push({ x: x, y: y, r: 14, life: 1.2 });
       shake = Math.max(shake, 7);
       SFX.sting();
-      if (victims.length) floatTxt(x, y - 20, 'WEB BURNED!', '#f97316');
+      if (burned) floatTxt(x, y - 20, 'WEB BURNED!', '#f97316');
+      else if (scorched) floatTxt(x, y - 20, 'gilded silk held!', '#fde047');
       recalcSupport();
       updateHud(true);
     }
@@ -4587,7 +4629,7 @@
         var cnt = strandBugCount[sei] || 1;
         if (cnt > 1) {
           // each extra bug shaves time off: 30% faster per additional bug
-          var speedup = (cnt - 1) * 0.3;
+          var speedup = (cnt - 1) * 0.4; // each extra bug on a strand erodes it faster
           eb.webT -= speedup * 16.67; // ~1 frame worth of speedup per extra bug per frame
         }
       }
@@ -4599,6 +4641,7 @@
       for (i = strands.length - 1; i >= 0; i--) {
         if (strands[i].decayAt && t > strands[i].decayAt) {
           var ds = strands[i];
+          recordFall(ds);
           strands.splice(i, 1);
           pop((ds.x1 + ds.x2) / 2, (ds.y1 + ds.y2) / 2, '#52525b', 5, 1.5);
           recalcSupport();
@@ -4617,7 +4660,14 @@
           var cp = closestOnSeg(b.x, b.y, s);
           var cd2 = dist2(b.x, b.y, cp.x, cp.y);
           if (cd2 < (b.t.r + 3) * (b.t.r + 3)) {
-            if (b.t.boss || b.t.tears) { breakStrand(s); shake = 6; continue; }
+            if (b.t.boss || b.t.tears) {
+              if (silkTier(s, t) === 2) { // gilded survives the tear — and tangles it
+                s.born = t - 12001;
+                b.dragUntil = t + 700; b.dragSlow = 0.35;
+                pop(cp.x, cp.y, '#fde047', 6, 2);
+              } else { breakStrand(s); shake = 6; }
+              continue;
+            }
             touching.push(s);
             if (cd2 < nd2) { nd2 = cd2; nearest = { s: s, cp: cp }; }
           }
@@ -4832,18 +4882,23 @@
         }
         else if (b.k === 'worm') {
           // webworm: hunts your strands and eats them
-          var wTgt = null, wd2 = Infinity;
+          var wTgt = null, wd2 = Infinity, wBestTier = -1;
           for (var wi = 0; wi < strands.length; wi++) {
             var wcp = closestOnSeg(b.x, b.y, strands[wi]);
             var wdd = dist2(b.x, b.y, wcp.x, wcp.y);
-            if (wdd < wd2) { wd2 = wdd; wTgt = { s: strands[wi], p: wcp }; }
+            var wtr = silkTier(strands[wi], t);
+            // it craves seasoned silk: highest tier first, then nearest
+            if (wtr > wBestTier || (wtr === wBestTier && wdd < wd2)) {
+              wBestTier = wtr; wd2 = wdd; wTgt = { s: strands[wi], p: wcp };
+            }
           }
           if (wTgt && wd2 < (b.t.r + 4) * (b.t.r + 4)) {
             // latched on: chew for 1.2s then the strand is gone
             b.vx = 0; b.vy = 0;
             b.eatP = (b.eatP || 0) + dt;
             if (Math.random() < dt * 8) pop(b.x, b.y, '#a3e635', 1, 1.2);
-            if (b.eatP > 1.2) {
+            var chewNeed = silkTier(wTgt.s, t) === 2 ? 2.4 : 1.2; // gilded resists
+            if (b.eatP > chewNeed) {
               breakStrand(wTgt.s);
               floatTxt(b.x, b.y - 14, 'strand eaten!', '#a3e635');
               b.eatP = 0;
@@ -5376,6 +5431,7 @@
         if (br) br.classList.toggle('ready', rReady);
       }
       var wl = autoWeb ? 'SILK · AUTO WEB…' : building ? 'SILK · WEAVING…' : 'SILK · STRANDS ' + strands.length;
+      if (now() < surgeUntil) wl += ' · SURGE ' + Math.ceil((surgeUntil - now()) / 1000) + 's';
       var smNow = shotModeActive();
       if (smNow) {
         var smLeft = Math.ceil((shotModeUntil - now()) / 1000);
@@ -5498,6 +5554,7 @@
         var st = strands[i];
         var alpha = 0.55, color = '255,255,255';
         var tier = silkTier(st, t);
+        if (tier === 0 && S && S.loom > 0) color = ['191,219,254', '216,180,254', '252,165,165'][S.loom - 1]; // royal loom dye
         if (tier === 1) alpha = 0.72; // seasoned silk reads brighter
         else if (tier === 2) { color = '250,204,21'; alpha = 0.72 + Math.sin(t * 0.004 + i) * 0.1; } // gilded
         var bc = st.bugCount || 0;
@@ -5551,9 +5608,9 @@
         // keep them inside the connected silk (hb.rMax), never poking outside
         var hRoom = (hb.rMax || 0) - 3;
         if (hb.n >= 4 && hRoom > 12) {
-          ctx.strokeStyle = 'rgba(255,255,255,0.16)';
+          ctx.strokeStyle = 'rgba(255,255,255,0.09)';
           ctx.lineWidth = 1;
-          for (var ring2 = 1; ring2 <= 3; ring2++) {
+          for (var ring2 = 1; ring2 <= 2; ring2++) {
             var hr = ring2 * 13;
             if (hr + 2 > hRoom) break; // stop before the rings reach the silk
             ctx.beginPath();
@@ -5567,9 +5624,13 @@
             ctx.stroke();
           }
         }
-        // faint slow-field
+        // faint slow-field + a small pearl at the heart of the hub
         ctx.fillStyle = 'rgba(255,255,255,0.025)';
         ctx.beginPath(); ctx.arc(hb.x, hb.y, HUB_R, 0, TAU); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+        ctx.beginPath(); ctx.arc(hb.x, hb.y, 2.6, 0, TAU); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.12)';
+        ctx.beginPath(); ctx.arc(hb.x, hb.y, 5, 0, TAU); ctx.fill();
       }
 
       // twang ripples
@@ -5634,10 +5695,11 @@
         // bound the knit to the closest strand endpoint so it never spills
         // past the strands that actually cross here
         var crRoom = (cr.rMax || 21) - 2;
-        ctx.strokeStyle = 'rgba(255,255,255,0.28)';
-        for (var ring = 1; ring <= 3; ring++) {
-          var rr = ring * 7;
-          if (rr > crRoom) break;
+        // a single clean woven diamond + four stitch pips — a tidy knot, not
+        // a tangle
+        var rr = Math.min(7, crRoom);
+        if (rr > 3) {
+          ctx.strokeStyle = 'rgba(255,255,255,0.20)';
           ctx.beginPath();
           ctx.moveTo(cr.x + c1 * rr, cr.y + s1 * rr);
           ctx.lineTo(cr.x + c2 * rr, cr.y + s2 * rr);
@@ -5645,6 +5707,11 @@
           ctx.lineTo(cr.x - c2 * rr, cr.y - s2 * rr);
           ctx.closePath();
           ctx.stroke();
+          ctx.fillStyle = 'rgba(255,255,255,0.30)';
+          dot(cr.x + c1 * rr, cr.y + s1 * rr, 1);
+          dot(cr.x - c1 * rr, cr.y - s1 * rr, 1);
+          dot(cr.x + c2 * rr, cr.y + s2 * rr, 1);
+          dot(cr.x - c2 * rr, cr.y - s2 * rr, 1);
         }
         ctx.fillStyle = 'rgba(255,255,255,0.5)';
         dot(cr.x, cr.y, 2);
