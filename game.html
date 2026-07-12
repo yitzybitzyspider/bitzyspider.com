@@ -809,9 +809,9 @@
     }, 90);
 
     // ---------- stats / upgrades ----------
-    var GAME_VERSION = 'v29';
+    var GAME_VERSION = 'v30';
     var S; // current run stats
-    function freshStats(){ return { speed: 0, range: 0, silk: 0, grip: 0, tough: 0, venom: 0, spread: 0, brood: 0, heartT: 0, dblShot: 0, fortify: 0, bomb: 0, extraLife: 0 }; }
+    function freshStats(){ return { speed: 0, range: 0, silk: 0, grip: 0, tough: 0, venom: 0, spread: 0, brood: 0, hw: 0, dew: 0, heartT: 0, dblShot: 0, fortify: 0, bomb: 0, extraLife: 0 }; }
     function wrapMult(){ return 1.5 + (S ? S.venom * 0.25 : 0); } // wrapped catch bonus
     function followK(){ return 0.10; }                      // lerp/frame toward cursor (original spider feel)
     function topSpeed(){ return 150 + (S ? S.speed * 40 : 80); } // hard speed cap px/s — slow on purpose
@@ -826,6 +826,15 @@
     function catchR(){ return 30 + S.grip * 6; }
     function webDur(){ return 4000 + S.grip * 700; }
     function toughMult(){ return 1 + S.tough * 0.4 + (S ? S.fortify * 0.35 : 0); }
+    // LIVING SILK: strands that survive grow stronger. Fresh -> seasoned
+    // (12s, +40% stuck time) -> gilded (30s, double stuck time, and escaping
+    // bugs no longer snap them). Fraying strands never mature.
+    var SILK_MAT = [1, 1.4, 2];
+    function silkTier(st, t){
+      if (!st || st.decayAt) return 0;
+      var a = t - (st.born || t);
+      return a > 30000 ? 2 : a > 12000 ? 1 : 0;
+    }
     function maxHearts(){ return 3 + S.heartT + (S ? S.extraLife : 0); }
     // spread-trap: wider reach and faster recharge as you upgrade it
     function spreadR(){ return SPREAD_R + (S ? S.spread * 28 : 0); }
@@ -890,6 +899,10 @@
         desc: function(){ var nextCd = Math.max(2500, SPREAD_CD - (S.spread + 1) * 1300); return 'Spread-trap reach ' + Math.round(spreadR()) + ' → ' + Math.round(spreadR() + 28) + ', recharge ' + (spreadCD() / 1000).toFixed(1) + 's → ' + (nextCd / 1000).toFixed(1) + 's'; } },
       { key: 'brood',  name: 'NEST INSTINCT', max: 3, cost: [90, 190, 330],
         desc: function(){ return 'Tougher eggs (' + eggHpMax() + ' → ' + (eggHpMax() + 60) + ' hp), faster hatch, nest holds ' + maxBrood() + ' → ' + (maxBrood() + 1); } },
+      { key: 'hw',     name: 'SILK HIGHWAYS', max: 2, cost: [90, 200],
+        desc: function(){ return 'Glide along your strands x' + (1.2 + S.hw * 0.15).toFixed(2) + ' → x' + (1.35 + S.hw * 0.15).toFixed(2); } },
+      { key: 'dew',    name: 'DEW HARVEST',  max: 2, cost: [110, 240],
+        desc: function(){ return 'Hubs condense web silk: +' + (S.dew * 1.2).toFixed(1) + ' → +' + ((S.dew + 1) * 1.2).toFixed(1) + '/s each (max 3 hubs)'; } },
       { key: 'heartT', name: 'EXTRA HEART',  max: 2, cost: [150, 300],
         desc: function(){ return '+1 max health (' + maxHearts() + ' → ' + (maxHearts() + 1) + ')'; } }
     ];
@@ -1119,7 +1132,7 @@
         // make sure there's at least one strand to reclaim, even if the web
         // decayed away on the way here — otherwise the step can't be cleared
         init: function(){
-          if (strands.length === 0) strands.push({ x1: spider.x - 35, y1: spider.y - 10, x2: spider.x + 35, y2: spider.y + 10, decayAt: 0 });
+          if (strands.length === 0) strands.push({ x1: spider.x - 35, y1: spider.y - 10, x2: spider.x + 35, y2: spider.y + 10, decayAt: 0, born: now() });
           tutStrandN = strands.length;
         },
         check: function(){ return strands.length < tutStrandN; }
@@ -2691,6 +2704,14 @@
         comboUntil = t + 4000;
         var mult = Math.min(3, 1 + 0.5 * (comboN - 1));
         pts = Math.round(b.t.score * wrapMult() * mult);
+        // home-field bonus: wraps at one of your hubs pay half again more
+        for (var hbi = 0; hbi < hubs.length; hbi++) {
+          if (dist2(b.x, b.y, hubs[hbi].x, hubs[hbi].y) < (HUB_R * 1.2) * (HUB_R * 1.2)) {
+            pts = Math.round(pts * 1.5);
+            floatTxt(b.x, b.y - 46, 'WEB BONUS!', '#fde047');
+            break;
+          }
+        }
         if (comboN > 1) floatTxt(b.x, b.y - 32, 'COMBO x' + comboN, '#fbbf24', comboN >= 3);
         freezeUntil = t + (b.t.boss ? 120 : 60); // hit-stop
         ripples.push({ x: b.x, y: b.y, r: 6, life: 1 });
@@ -3332,7 +3353,7 @@
       bombardier:{ threat: 'Burns strands at range', escape: '—', unlock: 'Lv 35 boss', weight: 'Boss (5 HP)', note: 'Drop: 2 free bombs' },
       assassin:{ threat: 'Cloaks and ambushes', escape: '—', unlock: 'Lv 40 boss', weight: 'Boss (6 HP)', note: 'Drop: blocks 3 stings' }
     };
-    var UPG_ICONS = { speed: '&#128062;', range: '&#127919;', silk: '&#129528;', grip: '&#129306;', tough: '&#128167;', venom: '&#129440;', spread: '&#128305;', brood: '&#129370;', heartT: '&#10084;' };
+    var UPG_ICONS = { speed: '&#128062;', range: '&#127919;', silk: '&#129528;', grip: '&#129306;', tough: '&#128167;', venom: '&#129440;', spread: '&#128305;', brood: '&#129370;', hw: '&#9889;', dew: '&#128166;', heartT: '&#10084;' };
     var SINK_ICONS = { dblShot: '&#128171;', fortify: '&#128737;', extraLife: '&#128154;', bomb: '&#128163;' };
     var UPG_DESC = {
       speed: 'Increases top movement speed (+40/tier).',
@@ -3343,6 +3364,8 @@
       venom: 'Wrapped bugs worth more points (+0.25x/tier).',
       spread: 'Wider spread-trap radius (+28/tier) and faster recharge (-1.3s/tier).',
       brood: 'Tougher eggs (+60 hp/tier), faster hatching (-2.5s/tier), bigger nest (+1 cap/tier).',
+      hw: 'Glide faster along your own strands (+0.15x/tier).',
+      dew: 'Each hub trickles web silk back to you (+1.2/s per tier, max 3 hubs).',
       heartT: 'Adds one max heart (+1/tier).'
     };
     var SINK_DESC = {
@@ -3353,7 +3376,8 @@
     };
     var MECHANICS = [
       { h: 'Silk Meters', t: '<b>Red bar (shots)</b> — regenerates fast, powers aimed web shots. <b>White bar (web silk)</b> — regenerates slowly, used for weaving strands. Every catch refills the web meter.' },
-      { h: 'Strand Support', t: 'A strand needs <b>2+ attachment points</b> to hold (shared endpoints, T-junctions, or crossings). Unsupported strands fray in 12s. <b>Crossings count as 2</b> and are the most stable.' },
+      { h: 'Strand Support', t: 'A strand needs <b>2+ attachment points</b> to hold (shared endpoints, T-junctions, or crossings). Unsupported strands fray in 12s. <b>Crossings count as 2</b>, and an endpoint pinned at the <b>arena wall anchors permanently</b> — it never frays.' },
+      { h: 'Living Silk', t: 'Surviving strands <b>mature</b>: at 12s they season (brighter, +40% stuck time); at 30s they turn <b>gilded gold</b> — double stuck time, and escaping bugs can no longer snap them. You also <b>glide faster along your own strands</b>, and wraps at a hub pay a golden <b>WEB BONUS</b> (+50%). Build it, keep it alive, profit.' },
       { h: 'Heavy Bugs', t: 'Beetles, stinkbugs, and slugs are heavy — a single strand only <b>drags</b> them. They need <b>two strands touching</b> to actually hold.' },
       { h: 'Hubs', t: '3+ strands meeting at one point create a <b>hub</b> — bugs inside move at 50% speed. Place eggs inside a hub for <b>fortified nest</b> protection (damage reduced to 32%).' },
       { h: 'Combos', t: 'Wrap bugs within 4s of each other to build a <b>combo multiplier</b> (x1.5 per step, max x3). Combos stack with the Venom Fangs wrap bonus.' },
@@ -3545,6 +3569,11 @@
           if (broodMeter >= BROOD_MAX) { eggReady = true; floatTxt(spider.x, spider.y - 44, 'EGG READY!', '#22c55e'); SFX.buy(); }
         }
 
+        // dew harvest: hubs condense web silk out of the night air
+        if (S.dew > 0 && hubs.length) {
+          webSilk = Math.min(webSilkMax(), webSilk + S.dew * 1.2 * Math.min(3, hubs.length) * dt);
+        }
+
         // hold EAT: graze strands as you walk over them
         if (eatHeld) eatNearbyStrand();
 
@@ -3707,6 +3736,27 @@
       // still drives itself (don't freeze it), and idle-wander is kept at bay.
       // rage overrides holdStill — the spider must chase
       if (holdStill && !autoWeb && !rageActive() && state === 'play') { mx = 0; my = 0; lastInputAt = t; }
+      // SILK HIGHWAYS: the spider glides along its own strands — the web is
+      // a transit network, not just a trap
+      if ((mx || my) && strands.length && state === 'play') {
+        var hwBest = 144, hwS = null; // within 12px of a strand
+        for (var hw2 = 0; hw2 < strands.length; hw2++) {
+          var hwCp = closestOnSeg(spider.x, spider.y, strands[hw2]);
+          var hwD = dist2(spider.x, spider.y, hwCp.x, hwCp.y);
+          if (hwD < hwBest) { hwBest = hwD; hwS = strands[hw2]; }
+        }
+        if (hwS) {
+          var hwK = 1.2 + (S && S.hw ? S.hw * 0.15 : 0);
+          var hux = hwS.x2 - hwS.x1, huy = hwS.y2 - hwS.y1;
+          var hul = Math.hypot(hux, huy) || 1; hux /= hul; huy /= hul;
+          var hPar = mx * hux + my * huy;
+          mx += hux * hPar * (hwK - 1);
+          my += huy * hPar * (hwK - 1);
+          if (Math.abs(hPar) > 0.6 && Math.random() < 0.2) { // glide streaks
+            parts.push({ x: spider.x, y: spider.y, vx: -hux * hPar * 40, vy: -huy * hPar * 40, life: 0.4, color: '#e4e4e7', r: 1 });
+          }
+        }
+      }
       spider.x += mx;
       spider.y += my;
       spider.vx = dt > 0 ? mx / dt : 0;
@@ -3843,7 +3893,7 @@
           SFX.deny();
         } else {
           webSilk -= strandCost(len);
-          strands.push({ x1: building.x, y1: building.y, x2: end.x, y2: end.y, decayAt: 0 });
+          strands.push({ x1: building.x, y1: building.y, x2: end.x, y2: end.y, decayAt: 0, born: now() });
           recalcSupport();
           pop(end.x, end.y, '#fff', 5, 1.5);
           SFX.wrap();
@@ -4332,7 +4382,7 @@
       var cost = strandCost(len);
       if (webSilk < cost) { stopAutoWeb('out of web silk'); return false; }
       webSilk -= cost;
-      strands.push({ x1: x1, y1: y1, x2: p2.x, y2: p2.y, decayAt: 0 });
+      strands.push({ x1: x1, y1: y1, x2: p2.x, y2: p2.y, decayAt: 0, born: now() });
       recalcSupport();
       updateHud(true);
       return true;
@@ -4411,6 +4461,17 @@
           var cr = segCross(s, o);
           if (cr) { crossings.push(cr); att[i] += 2; att[j] += 2; }
         }
+      }
+      // WALL ANCHORS: an endpoint pinned at the arena edge grips the world
+      // itself — it counts as full support and never frays. Corner-to-corner
+      // spans are real architecture now.
+      var WM = 24;
+      function onWall(x, y){ return x < WM || x > W - WM || y < WM || y > H - WM; }
+      for (i = 0; i < strands.length; i++) {
+        strands[i].a1 = onWall(strands[i].x1, strands[i].y1);
+        strands[i].a2 = onWall(strands[i].x2, strands[i].y2);
+        if (strands[i].a1) att[i] += 2;
+        if (strands[i].a2) att[i] += 2;
       }
       for (i = 0; i < strands.length; i++) {
         if (att[i] >= 2) strands[i].decayAt = 0;
@@ -4574,7 +4635,7 @@
           b.webbed = true; b.hp = 0;
           b.vx = 0; b.vy = 0;
           b.x = nearest.cp.x; b.y = nearest.cp.y;
-          b.webT = t + b.t.esc * 1000 * toughMult() * (b.escMult || 1);
+          b.webT = t + b.t.esc * 1000 * toughMult() * (b.escMult || 1) * SILK_MAT[silkTier(nearest.s, t)];
           b.strand = nearest.s;
           ripples.push({ x: nearest.cp.x, y: nearest.cp.y, r: 4, life: 1 });
           pop(b.x, b.y, '#fff', 5, 1.5);
@@ -4670,11 +4731,20 @@
           if (t > b.webT) {
             b.webbed = false;
             b.hp = Math.max(1, b.hp);
-            if (b.strand) { // chewed through: the strand breaks
-              breakStrand(b.strand);
-              b.strand = null;
-              b.strandImmune = t + 2000;
-              floatTxt(b.x, b.y - 16, 'broke free!', '#71717a');
+            if (b.strand) {
+              if (silkTier(b.strand, t) === 2) {
+                // gilded silk holds: the bug escapes but the strand survives,
+                // dropping back to seasoned
+                b.strand.born = t - 12001;
+                floatTxt(b.x, b.y - 16, 'silk held!', '#fde047');
+                b.strand = null;
+                b.strandImmune = t + 2000;
+              } else { // chewed through: the strand breaks
+                breakStrand(b.strand);
+                b.strand = null;
+                b.strandImmune = t + 2000;
+                floatTxt(b.x, b.y - 16, 'broke free!', '#71717a');
+              }
             }
             SFX.free();
             var fa = Math.random() * TAU;
@@ -5427,6 +5497,9 @@
       for (i = 0; i < strands.length; i++) {
         var st = strands[i];
         var alpha = 0.55, color = '255,255,255';
+        var tier = silkTier(st, t);
+        if (tier === 1) alpha = 0.72; // seasoned silk reads brighter
+        else if (tier === 2) { color = '250,204,21'; alpha = 0.72 + Math.sin(t * 0.004 + i) * 0.1; } // gilded
         var bc = st.bugCount || 0;
         if (st.decayAt) {
           var left = Math.max(0, (st.decayAt - t) / 12000);
@@ -5459,6 +5532,15 @@
         ctx.stroke();
         ctx.fillStyle = 'rgba(' + color + ',' + alpha + ')';
         dot(st.x1, st.y1, 2); dot(st.x2, st.y2, 2);
+        // wall anchors: a visible stud where silk grips the arena edge
+        if (st.a1 || st.a2) {
+          ctx.fillStyle = 'rgba(212,212,216,0.6)';
+          if (st.a1) { dot(st.x1, st.y1, 3.4); }
+          if (st.a2) { dot(st.x2, st.y2, 3.4); }
+          ctx.fillStyle = 'rgba(220,38,38,0.8)';
+          if (st.a1) dot(st.x1, st.y1, 1.3);
+          if (st.a2) dot(st.x2, st.y2, 1.3);
+        }
       }
 
       // hubs: 3+ strands at a point grow spiral rings — a true web. bugs
