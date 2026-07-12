@@ -604,20 +604,33 @@
               [n,n,n,n, n,n,n,n, 72,n,n,n, 74,n,n,n],
               [71,n,n,n, n,n,n,n, n,n,n,n, n,n,n,n]), role: 'lead', wave: 'square', vol: 0.014, len: 3.4 }
         ] },
-        // "Eight Legs at Work" — the hunt. Em C G D, driving.
-        field: { tempo: 112, tracks: [
+        // "Fugue in A Minor (for Synthesizers)" — the hunt, after J.S. Bach.
+        // A real 3-voice fugue exposition over an 8-bar loop: the SUBJECT
+        // states alone (bars 1-2), the ANSWER enters a fifth up while voice
+        // one plays the COUNTERSUBJECT (3-4), the bass takes the subject
+        // under figuration (5-6), and an episode cadences V-i back to A
+        // minor so the loop breathes (7-8). Square waves are the manuals,
+        // the triangle is the pedal, one quiet hat keeps the hunt moving.
+        field: { tempo: 104, tracks: [
+          // voice 1 (soprano manual): subject -> countersubject -> figuration -> episode
           { p: bars(
-              [40,n,52,n, 40,n,52,n, 40,n,52,n, 40,n,52,52],
-              [36,n,48,n, 36,n,48,n, 36,n,48,n, 36,n,48,48],
-              [43,n,55,n, 43,n,55,n, 43,n,55,n, 43,n,55,55],
-              [38,n,50,n, 38,n,50,n, 38,n,50,n, 38,n,50,50]), role: 'bass', wave: 'triangle', vol: 0.055, len: 0.9 },
+              [69,n,72,n, 71,n,69,n, 76,n,n,n, 74,n,72,n, 71,n,74,n, 72,n,71,n, 68,n,71,n, 64,n,n,n],
+              [69,n,68,n, 69,n,71,n, 72,n,69,n, 74,n,72,n, 71,n,72,n, 74,n,76,n, 74,n,72,n, 71,n,69,n],
+              [76,74,72,74, 76,n,72,n, 77,76,74,76, 77,n,74,n, 76,74,71,74, 76,n,71,n, 75,71,68,71, 75,n,71,n],
+              [77,n,76,n, 74,n,72,n, 71,n,69,n, 68,n,71,n, 69,n,n,n, n,n,n,n, 68,n,n,n, 69,n,n,n]), role: 'lead', wave: 'square', vol: 0.016, len: 1.6 },
+          // voice 2 (alto manual): rest -> ANSWER (subject at the fifth) -> held inner line -> episode
           { p: bars(
-              [76,n,n,74, 76,n,79,n, n,n,76,n, 74,n,71,n],
-              [72,n,n,71, 72,n,76,n, n,n,72,n, 71,n,67,n],
-              [67,n,71,n, 74,n,71,n, 67,n,n,n, 69,n,71,n],
-              [74,n,71,n, 69,n,66,n, 64,n,n,n, n,n,n,n]), role: 'lead', wave: 'square', vol: 0.016, len: 1.7 },
-          { p: hat.concat(hat, hat, hat), role: 'hat', noise: true, vol: 0.010, len: 0.25 },
-          { p: snare.concat(snare, snare, snare), role: 'snare', noise: true, vol: 0.022, len: 0.8 }
+              [n,n,n,n, n,n,n,n, n,n,n,n, n,n,n,n, n,n,n,n, n,n,n,n, n,n,n,n, n,n,n,n],
+              [76,n,79,n, 78,n,76,n, 83,n,n,n, 81,n,79,n, 78,n,81,n, 79,n,78,n, 75,n,78,n, 71,n,n,n],
+              [64,n,n,n, n,n,n,n, 65,n,n,n, n,n,n,n, 64,n,n,n, n,n,n,n, 62,n,n,n, 59,n,n,n],
+              [74,n,72,n, 71,n,69,n, 65,n,64,n, 62,n,64,n, 60,n,n,n, 64,n,n,n, 59,n,n,n, 57,n,n,n]), role: 'arp', wave: 'square', vol: 0.011, len: 1.6 },
+          // voice 3 (pedal): silence -> tonic/dominant pedal -> SUBJECT in the bass -> cadence
+          { p: bars(
+              [n,n,n,n, n,n,n,n, n,n,n,n, n,n,n,n, n,n,n,n, n,n,n,n, n,n,n,n, n,n,n,n],
+              [45,n,n,n, n,n,n,n, 45,n,n,n, n,n,n,n, 40,n,n,n, n,n,n,n, 40,n,n,n, n,n,n,n],
+              [45,n,48,n, 47,n,45,n, 52,n,n,n, 50,n,48,n, 47,n,50,n, 48,n,47,n, 44,n,47,n, 40,n,n,n],
+              [50,n,48,n, 47,n,45,n, 41,n,43,n, 44,n,44,n, 45,n,n,n, 40,n,n,n, 44,n,n,n, 45,n,n,n]), role: 'bass', wave: 'triangle', vol: 0.055, len: 1.2 },
+          { p: hat.concat(hat, hat, hat, hat, hat, hat, hat), role: 'hat', noise: true, vol: 0.007, len: 0.25 }
         ] },
         // "The Molt King" — boss levels. Dm Bb Gm A, menacing.
         boss: { tempo: 138, tracks: [
