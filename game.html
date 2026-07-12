@@ -636,6 +636,40 @@
       var tHat = [1,n,n, 1,n,n, 1,n,n, 1,n,n];
       var tTamb = [n,n,n, n,n,n, 1,n,n, n,n,n];
 
+      // ---- "March of the Thousand Hatchlings" — staccato Dm march ----
+      var hb1 = [38,n,n,n, 45,n,n,n, 41,n,n,n, 45,n,n,n], hb2 = [43,n,n,n, 50,n,n,n, 46,n,n,n, 50,n,n,n];
+      var hb3 = [36,n,n,n, 43,n,n,n, 40,n,n,n, 43,n,n,n], hb4 = [45,n,n,n, 52,n,n,n, 49,n,n,n, 52,n,n,n];
+      var hp1 = [62,n,62,n, 65,n,64,n, 62,n,61,n, 62,n,n,n], hp2 = [65,n,67,n, 70,n,67,n, 65,n,64,n, 65,n,n,n];
+      var hp3 = [64,n,62,n, 60,n,62,n, 64,n,65,n, 67,n,n,n], hp4 = [69,n,68,n, 69,n,64,n, 61,n,64,n, 62,n,n,n];
+      var hp5 = [74,n,74,n, 77,n,76,n, 74,n,73,n, 74,n,n,n], hp6 = [77,n,79,n, 82,n,79,n, 77,n,76,n, 77,n,n,n];
+      var hp7 = [76,n,74,n, 72,n,74,n, 76,n,77,n, 79,n,n,n], hp8 = [81,n,80,n, 81,n,76,n, 73,n,76,n, 74,n,n,n];
+      var hpEnd = [62,n,n,n, 62,n,n,n, 62,n,n,n, n,n,n,n];
+      var hSn = [1,n,n,n, 1,n,1,1, 1,n,n,n, 1,n,1,n];
+
+      // ---- "Waltz on a Single Thread" — Em waltz, 12-step bars (3/4) ----
+      function wBar(root){ return [root,n,n,n, n,n,n,n, n,n,n,n]; }
+      function wPah(t1, t2){ return [n,n,n,n, t1,n,n,n, t2,n,n,n]; }
+      var wEm = wBar(40), wAm = wBar(45), wB7 = wBar(47), wG = wBar(43), wD = wBar(50), wC = wBar(48);
+      var pEm = wPah(67,59), pAm = wPah(64,60), pB7 = wPah(66,59), pG = wPah(67,62), pD = wPah(66,62), pC = wPah(64,60);
+      var w1 = [64,n,n,n, 67,n,n,n, 71,n,n,n], w2 = [72,n,n,n, 71,n,69,n, 67,n,n,n];
+      var w3 = [66,n,n,n, 68,n,n,n, 71,n,n,n], w4 = [64,n,n,n, n,n,n,n, n,n,n,n];
+      var w5 = [67,n,n,n, 74,n,n,n, 71,n,n,n], w6 = [69,n,n,n, 66,n,n,n, 62,n,n,n];
+      var w7 = [64,n,n,n, 67,n,64,n, 71,n,n,n], w8 = [68,n,n,n, 66,n,n,n, n,n,n,n];
+      var wA2 = [69,n,n,n, 66,n,n,n, 69,n,n,n], wB2 = [67,n,n,n, n,n,n,n, 62,n,n,n];
+      var w13 = [72,n,n,n, 76,n,n,n, 74,n,n,n], w14 = [72,n,n,n, 69,n,n,n, 64,n,n,n];
+      var w15 = [66,n,n,n, 68,n,n,n, 71,n,n,n], w16 = [76,n,n,n, n,n,n,n, n,n,n,n];
+      var wHat = [n,n,n,n, 1,n,n,n, 1,n,n,n];
+
+      // ---- "Scuttle Boogie" — 12-bar blues in A, walking boogie bass ----
+      var gA = [45,n,49,n, 52,n,54,n, 55,n,54,n, 52,n,49,n];
+      var gD = [50,n,54,n, 57,n,59,n, 60,n,59,n, 57,n,54,n];
+      var gE = [52,n,56,n, 59,n,61,n, 62,n,61,n, 59,n,56,n];
+      var gr1 = [69,n,72,n, 74,n,75,n, 74,n,72,n, 69,n,n,n], gr2 = [n,n,69,72, 74,n,72,n, 69,n,67,n, 69,n,n,n];
+      var gr4 = [n,n,n,n, 76,n,74,n, 72,n,74,n, 72,69,n,n], gr5 = [74,n,77,n, 79,n,80,n, 79,n,77,n, 74,n,n,n];
+      var gr6 = [n,n,74,n, 77,n,74,n, 72,n,69,n, n,n,n,n], gr8 = [n,n,n,n, n,n,69,n, 72,n,69,n, 67,n,69,n];
+      var gr9 = [76,n,79,n, 81,n,80,n, 79,n,76,n, n,n,n,n], gr10 = [74,n,77,n, 79,n,77,n, 74,n,72,n, n,n,n,n];
+      var gr11 = [69,n,n,n, 72,74,75,74, 72,n,69,n, n,n,n,n], gr12 = [64,n,68,n, 69,n,72,n, 71,n,68,n, 64,n,n,n];
+
       // ---- "The Molt King" (boss) — now 8 bars with a screaming B strain ----
       var kb1 = [38,38,50,n, 38,n,50,n, 38,38,50,n, 38,n,50,50], kb2 = [46,46,58,n, 46,n,58,n, 46,46,58,n, 46,n,58,58];
       var kb3 = [43,43,55,n, 43,n,55,n, 43,43,55,n, 43,n,55,55], kb4 = [45,45,57,n, 45,n,57,n, 45,45,52,n, 45,n,52,57];
@@ -664,6 +698,24 @@
           { p: bars(tbA,tbA,tbA,tbE, tbF,tbD,tbE,tbA, tbA,tbA,tbA,tbE, tbF,tbD,tbE,tbA), role: 'bass', wave: 'triangle', vol: 0.055, len: 0.9 },
           { p: rep(tHat, 16), role: 'hat', noise: true, vol: 0.008, len: 0.22 },
           { p: rep(tTamb, 16), role: 'snare', noise: true, vol: 0.018, len: 0.5 }
+        ] },
+        field3: { tempo: 112, tracks: [
+          { p: bars(hb1,hb2,hb1,hb4, hb1,hb2,hb3,hb4, hb1,hb2,hb3,hb4, hb1,hb2,hb4,hb1), role: 'bass', wave: 'triangle', vol: 0.055, len: 0.55 },
+          { p: bars(hp1,hp2,hp1,hp4, hp1,hp2,hp3,hp4, hp5,hp6,hp7,hp8, hp1,hp2,hp4,hpEnd), role: 'lead', wave: 'square', vol: 0.015, len: 0.7 },
+          { p: rep(hSn, 16), role: 'snare', noise: true, vol: 0.016, len: 0.5 },
+          { p: rep(hat, 16), role: 'hat', noise: true, vol: 0.006, len: 0.25 }
+        ] },
+        field4: { tempo: 100, tracks: [
+          { p: bars(wEm,wAm,wB7,wEm, wG,wD,wEm,wB7, wEm,wAm,wD,wG, wC,wAm,wB7,wEm), role: 'bass', wave: 'triangle', vol: 0.05, len: 3.0 },
+          { p: bars(pEm,pAm,pB7,pEm, pG,pD,pEm,pB7, pEm,pAm,pD,pG, pC,pAm,pB7,pEm), role: 'arp', wave: 'square', vol: 0.010, len: 1.4 },
+          { p: bars(w1,w2,w3,w4, w5,w6,w7,w8, w1,w2,wA2,wB2, w13,w14,w15,w16), role: 'lead', wave: 'square', vol: 0.015, len: 2.6 },
+          { p: rep(wHat, 16), role: 'hat', noise: true, vol: 0.005, len: 0.2 }
+        ] },
+        field5: { tempo: 124, tracks: [
+          { p: bars(gA,gA,gA,gA, gD,gD,gA,gA, gE,gD,gA,gE), role: 'bass', wave: 'triangle', vol: 0.055, len: 0.7 },
+          { p: bars(gr1,gr2,gr1,gr4, gr5,gr6,gr1,gr8, gr9,gr10,gr11,gr12), role: 'lead', wave: 'square', vol: 0.016, len: 1.2 },
+          { p: rep(hat, 12), role: 'hat', noise: true, vol: 0.008, len: 0.25 },
+          { p: rep(snare, 12), role: 'snare', noise: true, vol: 0.020, len: 0.7 }
         ] },
         boss: { tempo: 138, tracks: [
           { p: bars(kb1,kb2,kb3,kb4, kb1,kb2,kb3,kb4), role: 'bass', wave: 'triangle', vol: 0.06, len: 0.9 },
@@ -724,7 +776,10 @@
     // pick the tune for wherever the player is
     function musForState(){
       if (state === 'menu' || state === 'gloss' || state === 'controls' || state === 'scores') musPlay('menu');
-      else if (state === 'play' || state === 'shop' || state === 'intro') musPlay(!tutorial && level % 5 === 0 ? 'boss' : (!tutorial && level % 2 === 0 ? 'field2' : 'field'));
+      else if (state === 'play' || state === 'shop' || state === 'intro') {
+        var HUNT = ['field', 'field2', 'field3', 'field4', 'field5'];
+        musPlay(!tutorial && level % 5 === 0 ? 'boss' : (tutorial ? 'field' : HUNT[(level - 1) % HUNT.length]));
+      }
       else if (state === 'over') musStop();
     }
     setInterval(function(){ // lookahead scheduler: stays sample-accurate
