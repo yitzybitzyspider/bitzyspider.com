@@ -977,6 +977,7 @@
     var rageUntil = 0;              // timestamp: rage mode active while now() < rageUntil
     var gems = [];                  // small pickups dropped by wrapped bugs
     var fallenLog = [];             // last strands that fell (for R to re-weave)
+    var webAlarmAt = 0;             // throttle the WEB UNDER ATTACK cue
     var surgeUntil = 0;             // silk-droplet SURGE: weaving is free
     var swarmAt = 0;                // next swarm-burst time
     var quotaCued = false;          // "3 TO GO!" shown this level
@@ -2524,7 +2525,7 @@
       stink:   'Keeps its distance and spits goo that slows you. Heavy — it needs TWO strands to be held.',
       slug:    'A slow tank that smears slime trails. A NEST RAIDER: it crawls straight for your eggs and devours spiderlings. Heavy — needs TWO strands to hold.',
       worm:    'A webworm that hunts your strands and devours them. It won\'t stick — shoot it down.',
-      boss:    'Dragonfly: a tough flyer. Three web-shots to down it, and it shreds any strand it crosses.',
+      boss:    'Dragonfly: a tough flyer that shreds strands — but each tear STAGGERS it, dense webs snag it, and while tangled it takes DOUBLE shot damage. Feed it silk, then punish it.',
       queen:   'BOSS — orbits the arena and spawns wasps. Wrap it to claim Royal Jelly (full hearts).',
       mantis:  'BOSS — stalks you and lunges to sting. Wrap it for a 2x-points charm.',
       mothking:'BOSS — a giant moth that summons swarms. Wrap it for a speed boost.',
@@ -2685,6 +2686,12 @@
     function webBug(b){
       SFX.hit();
       b.hp--;
+      // a tearer snarled in silk is VULNERABLE: shots land twice as hard.
+      // Let it hit your web, then punish it.
+      if ((b.t.tears || b.t.boss) && b.dragUntil && now() < b.dragUntil && b.hp > 0) {
+        b.hp--;
+        floatTxt(b.x, b.y - 26, 'TANGLED! x2', '#fde047');
+      }
       b.webbed = true;
       b.vx = 0; b.vy = 0;
       b.webT = now() + (b.hp <= 0 ? webDur() : 900); // partial webs on boss break fast
@@ -4665,7 +4672,22 @@
                 s.born = t - 12001;
                 b.dragUntil = t + 700; b.dragSlow = 0.35;
                 pop(cp.x, cp.y, '#fde047', 6, 2);
-              } else { breakStrand(s); shake = 6; }
+              } else if (b.tearAt && t < b.tearAt) {
+                // its teeth are busy — instead of tearing, the next strand
+                // SNAGS it. Dense webs bog a dragonfly down.
+                b.dragUntil = Math.max(b.dragUntil || 0, t + 320); b.dragSlow = 0.4;
+                pop(cp.x, cp.y, '#e4e4e7', 3, 1.5);
+              } else {
+                // tearing costs it: one strand per 450ms, and each tear
+                // staggers it — a torn web fights back in its own way
+                b.tearAt = t + 450;
+                b.dragUntil = Math.max(b.dragUntil || 0, t + 300); b.dragSlow = 0.5;
+                breakStrand(s); shake = 6;
+                if (t > webAlarmAt) {
+                  webAlarmAt = t + 4000;
+                  floatTxt(cp.x, cp.y - 14, 'WEB UNDER ATTACK!', '#f87171');
+                }
+              }
               continue;
             }
             touching.push(s);
