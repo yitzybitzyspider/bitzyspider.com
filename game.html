@@ -4,7 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Bug Hunt | BitzySpider Arcade</title>
-  <meta name="robots" content="noindex" />
+  <meta name="description" content="A zero-dependency browser arcade game: you are the spider. Weave webs, wield weapons, survive the swarm. Built by hand in one HTML file." />
+  <meta property="og:title" content="Bug Hunt \u2014 BitzySpider Arcade" />
+  <meta property="og:description" content="You are the spider. Weave webs, wield weapons, survive the swarm. A complete arcade game in one HTML file." />
+  <meta property="og:image" content="https://bitzyspider.com/photos/bughunt-card.png" />
+  <meta property="og:url" content="https://bitzyspider.com/game.html" />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -138,9 +144,15 @@
     /* ---------- Shop ---------- */
     .shopRow {
       display: flex; align-items: center; gap: 10px; text-align: left;
-      border-top: 1px solid #18181b; padding: 11px 0; font-size: 12px;
+      border-top: 1px solid #18181b; padding: 9px 0; font-size: 12px;
     }
     .shopRow:first-of-type { border-top: none; }
+    /* the shop outgrew a single column — two columns on wide screens */
+    @media (min-width: 700px) {
+      .shopCard { max-width: 760px; }
+      #shopRows { display: grid; grid-template-columns: 1fr 1fr; column-gap: 26px; }
+      #shopRows .shopRow:nth-of-type(2) { border-top: none; }
+    }
     .shopRow .info { flex: 1; min-width: 0; }
     .shopRow .nm { font-weight: 700; font-size: 12px; }
     .shopRow .pips { color: #dc2626; font-size: 9px; letter-spacing: 2px; margin-left: 6px; }
@@ -176,6 +188,23 @@
     }
     .nameInput:focus { border-color: #dc2626; }
     .nameInput::placeholder { color: #52525b; letter-spacing: 0.08em; }
+
+    /* ---------- Jukebox ---------- */
+    .jukeCard { max-width: 440px; width: calc(100vw - 32px); }
+    .jukeRow {
+      display: flex; align-items: center; gap: 10px; width: 100%;
+      padding: 8px 12px; margin: 5px 0; text-align: left; cursor: pointer;
+      font-family: inherit; background: rgba(24,24,27,0.5); color: #e4e4e7;
+      border: 1px solid #27272a; border-radius: 8px; transition: border-color 0.15s, background 0.15s;
+    }
+    .jukeRow:hover { border-color: #3f3f46; }
+    .jukeRow.on { border-color: rgba(220,38,38,0.6); background: rgba(220,38,38,0.08); }
+    .jukeRow .jp { width: 16px; flex-shrink: 0; color: #dc2626; font-size: 12px; }
+    .jukeRow .jn { flex: 1; min-width: 0; }
+    .jukeRow .jn b { display: block; font-size: 12px; letter-spacing: 0.05em; }
+    .jukeRow .jn span { font-size: 9.5px; color: #71717a; font-style: italic; }
+    .jukeRow .jt { flex-shrink: 0; font-size: 9px; letter-spacing: 0.12em; color: #52525b; }
+    .jukeRow.on .jt { color: #dc2626; }
 
     /* ---------- Controls reference (menu + pause) ---------- */
     .secHead { font-size: 9px; letter-spacing: 0.28em; color: #52525b; margin: 16px 0 8px; }
@@ -328,6 +357,7 @@
         <button class="btn ghost" id="btnControlsMenu">CONTROLS</button>
         <button class="btn ghost" id="btnGlossMenu">FIELD GUIDE</button>
         <button class="btn ghost" id="btnScoresMenu">HIGH SCORES</button>
+        <button class="btn ghost" id="btnJukeMenu">&#9835; JUKEBOX</button>
       </div>
     </div>
   </div>
@@ -358,9 +388,19 @@
     </div>
   </div>
 
+  <!-- Jukebox -->
+  <div class="overlay" id="ovJuke">
+    <div class="card jukeCard">
+      <h2>JUKE<span class="red">BOX</span></h2>
+      <div class="sub" style="margin-top:6px">every tune in the game &mdash; composed in-house on 8-bit synths.<br>tap a track to spin it; tap again to stop.</div>
+      <div id="jukeRows" style="margin-top:14px"></div>
+      <div style="margin-top:12px"><button class="btn ghost" id="btnJukeBack">BACK</button></div>
+    </div>
+  </div>
+
   <!-- Shop (level clear) -->
   <div class="overlay" id="ovShop">
-    <div class="card">
+    <div class="card shopCard">
       <h2>LEVEL <span id="sLvl">1</span> <span style="color:#dc2626">CLEARED</span></h2>
       <div id="sRank" style="color:#fbbf24;font-size:11px;letter-spacing:0.15em;margin-top:8px"></div>
       <div class="statline">BONUS +<span id="sBonus">0</span> &nbsp;&middot;&nbsp; SPEND: <span id="shopCash">0</span> pts</div>
@@ -400,6 +440,7 @@
       <h2 style="color:#dc2626">GAME OVER</h2>
       <div class="sub">You got debugged.</div>
       <div id="oRank" style="color:#fbbf24;font-size:13px;font-weight:700;letter-spacing:0.12em;margin:8px 0;display:none"></div>
+      <div id="oStats" style="color:#71717a;font-size:11px;line-height:1.8;margin:6px 0"></div>
       <div class="statline">
         SCORE <span class="red" id="oScore">0</span> &nbsp;&middot;&nbsp; BEST <span class="red" id="oHigh">0</span><br>
         <span id="oLvl"></span>
@@ -410,6 +451,7 @@
         <div id="oSubmitMsg" style="color:#71717a;font-size:11px;margin-top:8px;min-height:1em"></div>
       </div>
       <button class="btn" id="btnRetry">TRY AGAIN</button>
+      <button class="btn ghost" id="btnShare">SHARE RUN</button>
       <button class="btn ghost" id="btnScoresOver">HIGH SCORES</button>
       <button class="btn ghost" id="btnMenu">MENU</button>
     </div>
@@ -544,15 +586,39 @@
       if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){} }
       if (AC && AC.state === 'suspended') AC.resume();
     }
+    // master bus: a compressor + headroom gain that every voice routes
+    // through. Summed peaks (bass + lead + hats + SFX landing together)
+    // used to clip the output and pop — the compressor rounds them off.
+    var masterOut = null;
+    function outNode(){
+      if (!AC) return null;
+      if (!masterOut) {
+        try {
+          var comp = AC.createDynamicsCompressor();
+          var mg = AC.createGain();
+          mg.gain.value = 0.8;
+          comp.connect(mg); mg.connect(AC.destination);
+          masterOut = comp;
+        } catch(e){ masterOut = AC.destination; }
+      }
+      return masterOut;
+    }
     function beep(f, d, type, v, slide){
       if (muted || !AC) return;
       try {
         var o = AC.createOscillator(), g = AC.createGain();
         o.type = type || 'square'; o.frequency.value = f;
         if (slide) o.frequency.exponentialRampToValueAtTime(slide, AC.currentTime + d);
-        g.gain.value = v || 0.04;
+        // a 4ms attack ramp — starting a waveform at full gain is a click.
+        // gain.value = 0 too: a GainNode defaults to 1.0, and the source's
+        // first sample can render BEFORE the automation event lands (they
+        // round to the sample grid independently) — that one unity-gain
+        // sample was a full-scale impulse. The pop.
+        g.gain.value = 0;
+        g.gain.setValueAtTime(0.0001, AC.currentTime);
+        g.gain.linearRampToValueAtTime(v || 0.04, AC.currentTime + 0.004);
         g.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime + d);
-        o.connect(g); g.connect(AC.destination);
+        o.connect(g); g.connect(outNode());
         o.start(); o.stop(AC.currentTime + d);
       } catch(e){}
     }
@@ -565,6 +631,7 @@
       free:  function(){ beep(300, 0.14, 'sawtooth', 0.035, 150); },
       deny:  function(){ beep(180, 0.1, 'square', 0.04); },
       rage:  function(){ beep(200, 0.25, 'sawtooth', 0.06, 800); setTimeout(function(){ beep(400, 0.3, 'sawtooth', 0.06, 1200); }, 100); },
+      gameover: function(){ [392, 311, 262, 196].forEach(function(f, i){ setTimeout(function(){ beep(f, 0.24, 'sawtooth', 0.045, f * 0.9); }, i * 150); }); },
       buy:   function(){ beep(1200, 0.06, 'square', 0.05); },
       laser: function(){ beep(1400, 0.12, 'sine', 0.05, 300); },
       boom:  function(){ beep(90, 0.28, 'square', 0.08, 40); setTimeout(function(){ beep(60, 0.2, 'sawtooth', 0.05); }, 60); },
@@ -679,6 +746,108 @@
       var kl7 = [67,n,65,n, 67,n,70,n, 74,n,72,n, 70,n,67,n], kl8 = [73,n,n,73, 74,n,73,n, 69,n,68,n, 69,n,n,n];
       var kHat = [1,n,1,n, 1,n,1,n, 1,n,1,n, 1,n,1,n];
       var kHatF = [1,n,1,n, 1,n,1,n, 1,n,1,1, 1,1,1,1];
+      var R16 = rep([n], 16), R12 = rep([n], 12);
+
+      // ---- "In the Hall of the Spider Queen" (after Edvard Grieg) ----
+      // the stalking theme creeps in low, climbs by fifths, sharpens its
+      // claws (the raised-third variant), then breaks into a frenzy
+      var q1 = [57,n,59,n, 60,n,62,n, 64,n,60,n, 64,n,n,n];
+      var q2 = [65,n,62,n, 65,n,n,n, 64,n,60,n, 64,n,n,n];
+      var q2b = [65,n,62,n, 65,n,n,n, 64,n,n,n, n,n,n,n];
+      var q3 = [64,n,66,n, 67,n,69,n, 71,n,67,n, 71,n,n,n];
+      var q4 = [72,n,69,n, 72,n,n,n, 71,n,67,n, 71,n,n,n];
+      var q5 = [57,n,59,n, 61,n,63,n, 64,n,61,n, 64,n,n,n];
+      var q6 = [66,n,63,n, 66,n,n,n, 64,n,61,n, 64,n,n,n];
+      var q7 = [69,n,71,n, 72,n,74,n, 76,n,72,n, 76,n,n,n];
+      var q8 = [77,n,74,n, 77,n,n,n, 76,n,72,n, 76,n,n,n];
+      var q9 = [76,72,69,n, 76,72,69,n, 77,74,69,n, 77,74,69,n];
+      var q10 = [76,72,69,n, 76,72,69,n, 81,n,n,n, 69,n,n,n];
+      var qF1 = [81,n,80,n, 81,n,80,n, 81,80,81,80, 81,n,n,n];
+      var qF2 = [69,n,n,n, 57,n,n,n, 69,57,69,n, n,n,n,n];
+      var qbA = [45,n,n,n, 52,n,n,n, 45,n,n,n, 52,n,n,n];
+      var qbE = [40,n,n,n, 47,n,n,n, 40,n,n,n, 47,n,n,n];
+      var qb8 = [45,n,52,n, 45,n,52,n, 45,n,52,n, 45,n,52,n];
+      var qbF = [41,n,53,n, 40,n,52,n, 45,n,52,n, 45,n,52,n];
+      var qbEnd = [45,n,n,n, 33,n,n,n, 45,33,45,n, n,n,n,n];
+      var qHatQ = [1,n,n,n, 1,n,n,n, 1,n,n,n, 1,n,n,n];
+      var qHat8 = [1,n,1,n, 1,n,1,n, 1,n,1,n, 1,n,1,n];
+      var qHatF = [1,n,1,1, 1,n,1,n, 1,n,1,1, 1,1,1,1];
+
+      // ---- "Flight of the Bumblebee" (after Rimsky-Korsakov) ----
+      // the swarm tune: chromatic 16th-note runs that almost never land
+      var bz1 = [76,75,74,73, 74,73,72,71, 72,71,70,69, 70,69,68,67];
+      var bz2 = [68,69,70,71, 72,73,74,75, 76,75,74,73, 72,71,70,69];
+      var bz3 = [69,68,69,68, 69,68,69,70, 69,68,69,68, 69,70,71,72];
+      var bz4 = [73,74,75,76, 75,74,73,72, 73,74,75,76, 77,78,79,80];
+      var bz5 = [81,80,79,78, 79,78,77,76, 77,76,75,74, 75,74,73,72];
+      var bz6 = [73,72,71,70, 71,70,69,68, 69,68,67,66, 67,68,69,70];
+      var bz7 = [76,n,74,n, 72,n,74,n, 76,n,77,n, 76,n,74,n];
+      var bz8 = [72,n,74,n, 76,74,72,71, 69,n,n,n, 64,n,68,n];
+      var bz8v = [72,n,74,n, 76,74,72,71, 69,n,71,n, 72,n,74,n];
+      var bzEnd = [69,68,67,66, 65,64,63,62, 61,60,59,58, 57,n,n,n];
+      var zbA = [45,n,45,n, 45,n,45,n, 45,n,45,n, 45,n,45,n];
+      var zbF = [41,n,41,n, 41,n,41,n, 41,n,41,n, 41,n,41,n];
+      var zbE = [40,n,40,n, 40,n,40,n, 40,n,40,n, 40,n,40,n];
+      var zbD = [38,n,38,n, 38,n,38,n, 38,n,38,n, 38,n,38,n];
+
+      // ---- "Danse Macabre on Eight Legs" (after Saint-Saens) — 3/4 waltz ----
+      // death tunes the fiddle: the falling waltz theme, then the devil's
+      // tritone sawing away on the open strings
+      var dm1 = [74,n,n,n, 72,n,n,n, 70,n,n,n];
+      var dm2 = [69,n,n,n, 67,n,n,n, n,n,n,n];
+      var dm3 = [70,n,n,n, 72,n,n,n, 70,n,n,n];
+      var dm4 = [69,n,n,n, 62,n,n,n, n,n,n,n];
+      var dm4b = [69,n,n,n, 74,n,n,n, n,n,n,n];
+      var dm5 = [69,n,75,n, 69,n,75,n, 69,n,75,n];
+      var dm6 = [74,n,n,n, 70,n,n,n, 67,n,n,n];
+      var dm6b = [74,n,72,n, 70,n,69,n, 67,n,n,n];
+      var dm7 = [67,n,n,n, 70,n,74,n, 79,n,n,n];
+      var dm8 = [77,n,n,n, 74,n,n,n, n,n,n,n];
+      var dmEnd = [67,n,n,n, 55,n,n,n, n,n,n,n];
+      var dbG = [43,n,n,n, n,n,n,n, n,n,n,n], dbD = [38,n,n,n, n,n,n,n, n,n,n,n];
+      var dbEb = [39,n,n,n, n,n,n,n, n,n,n,n];
+      var dpG = [n,n,n,n, 58,n,n,n, 62,n,n,n], dpD = [n,n,n,n, 57,n,n,n, 62,n,n,n];
+      var dpEb = [n,n,n,n, 58,n,n,n, 63,n,n,n];
+      var dHat = [n,n,n,n, 1,n,n,n, 1,n,n,n];
+
+      // ---- "Toccata of the Funnel-Web" (after J.S. Bach, boss alternate) ----
+      // the organ flourish falls through three octaves into the crypt,
+      // rolls the diminished chord, then churns like a pedal fugue
+      var tc1 = [81,79,81,n, n,n,n,n, 79,77,76,74, 73,n,74,n];
+      var tc2 = [69,67,69,n, n,n,n,n, 67,65,64,62, 61,n,62,n];
+      var tc3 = [57,55,57,n, n,n,n,n, 55,53,52,50, 49,n,50,n];
+      var tc4 = [50,n,n,n, n,n,n,n, 49,n,52,n, 55,n,58,n];
+      var tc5 = [61,n,58,n, 55,n,52,n, 49,n,52,n, 55,n,58,n];
+      var tc6 = [61,n,64,n, 67,n,70,n, 73,n,n,n, 74,n,n,n];
+      var tc7 = [62,64,65,64, 62,64,65,64, 62,64,65,64, 62,64,65,64];
+      var tc8 = [60,62,64,62, 60,62,64,62, 58,60,62,60, 58,60,62,60];
+      var tc9 = [74,72,70,69, 70,69,67,65, 67,65,64,62, 64,62,61,62];
+      var tc10 = [62,n,69,n, 74,n,73,n, 74,n,n,n, n,n,n,n];
+      var tcEnd = [62,n,n,n, 50,n,n,n, 38,n,n,n, n,n,n,n];
+      var cbD = [38,n,n,n, n,n,n,n, 38,n,n,n, n,n,n,n];
+      var cbD8 = [38,n,38,n, 38,n,38,n, 38,n,38,n, 38,n,38,n];
+      var cbGm = [43,n,43,n, 43,n,43,n, 41,n,41,n, 40,n,40,n];
+      var cbCB = [36,n,36,n, 36,n,36,n, 34,n,34,n, 34,n,34,n];
+      var cbA = [45,n,45,n, 45,n,45,n, 33,n,n,n, 45,n,n,n];
+      var cbEnd = [38,n,n,n, 38,n,n,n, 38,n,n,n, n,n,n,n];
+
+      // ---- "Moonlight on the Web" (after Beethoven) — tutorial calm ----
+      // the adagio's rolling triplets, one soft note per step
+      var aCs = [56,61,64, 56,61,64, 56,61,64, 56,61,64];
+      var aA  = [57,61,64, 57,61,64, 57,61,64, 57,61,64];
+      var aFs = [54,57,61, 54,57,61, 54,57,61, 54,57,61];
+      var aGs = [56,60,63, 56,60,63, 56,60,63, 56,60,63];
+      var vCs = [37,n,n, n,n,n, n,n,n, n,n,n], vA = [33,n,n, n,n,n, n,n,n, n,n,n];
+      var vFs = [30,n,n, n,n,n, n,n,n, n,n,n], vGs = [32,n,n, n,n,n, n,n,n, n,n,n];
+      var lu1 = [68,n,n, n,n,n, n,n,n, n,n,n];
+      var lu2 = [68,n,n, n,n,n, 68,n,n, 69,n,n];
+      var lu3 = [68,n,n, n,n,n, 66,n,n, 64,n,n];
+      var lu4 = [63,n,n, n,n,n, n,n,n, n,n,n];
+      var lu5 = [64,n,n, n,n,n, n,n,n, n,n,n];
+      var lu6 = [64,n,n, n,n,n, 63,n,n, 61,n,n];
+      var lu7 = [63,n,n, n,n,n, 61,n,n, 59,n,n];
+      var lu8 = [61,n,n, n,n,n, n,n,n, n,n,n];
+      var lu8e = [61,n,n, n,n,n, 56,n,n, n,n,n];
 
       return {
         menu: { tempo: 84, tracks: [
@@ -722,17 +891,70 @@
           { p: bars(kl1,kl2,kl3,kl4, kl5,kl6,kl7,kl8), role: 'lead', wave: 'square', vol: 0.016, len: 1.4 },
           { p: bars(kHat,kHat,kHat,kHatF, kHat,kHat,kHat,kHatF), role: 'hat', noise: true, vol: 0.009, len: 0.22 },
           { p: rep(snare, 8), role: 'snare', noise: true, vol: 0.024, len: 0.8 }
+        ] },
+        field6: { tempo: 138, tracks: [
+          { p: bars(q1,q2,q1,q2b, q3,q4,q5,q6, q7,q8,q7,q8, q9,q10,qF1,qF2), role: 'lead', wave: 'square', vol: 0.015, len: 1.3 },
+          { p: bars(qbA,qbA,qbA,qbA, qbE,qbE,qbA,qbA, qb8,qb8,qb8,qb8, qb8,qb8,qbF,qbEnd), role: 'bass', wave: 'triangle', vol: 0.055, len: 0.9 },
+          { p: bars(qHatQ,qHatQ,qHatQ,qHatQ, hat,hat,hat,hat, qHat8,qHat8,qHat8,qHat8, qHatF,qHatF,qHatF,qHatF), role: 'hat', noise: true, vol: 0.007, len: 0.22 },
+          { p: bars(R16,R16,R16,R16, R16,R16,R16,R16, snare,snare,snare,snare, snare,snare,snare,snare), role: 'snare', noise: true, vol: 0.018, len: 0.6 }
+        ] },
+        field7: { tempo: 152, tracks: [
+          { p: bars(bz1,bz2,bz1,bz3, bz4,bz5,bz6,bz3, bz7,bz8,bz7,bz8v, bz1,bz2,bz5,bzEnd), role: 'lead', wave: 'square', vol: 0.013, len: 0.75 },
+          { p: bars(zbA,zbA,zbA,zbA, zbF,zbF,zbE,zbE, zbD,zbD,zbE,zbE, zbA,zbA,zbE,zbA), role: 'bass', wave: 'triangle', vol: 0.05, len: 0.5 },
+          { p: rep(hat, 16), role: 'hat', noise: true, vol: 0.007, len: 0.2 },
+          { p: rep(snare, 16), role: 'snare', noise: true, vol: 0.016, len: 0.5 }
+        ] },
+        field8: { tempo: 126, tracks: [
+          { p: bars(dm1,dm2,dm3,dm4, dm1,dm2,dm3,dm4b, dm5,dm6,dm5,dm6b, dm7,dm8,dm1,dmEnd), role: 'lead', wave: 'square', vol: 0.015, len: 2.2 },
+          { p: bars(dbG,dbG,dbD,dbG, dbG,dbG,dbD,dbG, dbD,dbG,dbD,dbG, dbEb,dbD,dbG,dbG), role: 'bass', wave: 'triangle', vol: 0.05, len: 2.6 },
+          { p: bars(dpG,dpG,dpD,dpG, dpG,dpG,dpD,dpG, dpD,dpG,dpD,dpG, dpEb,dpD,dpG,dpG), role: 'arp', wave: 'square', vol: 0.010, len: 1.2 },
+          { p: rep(dHat, 16), role: 'hat', noise: true, vol: 0.006, len: 0.2 }
+        ] },
+        boss2: { tempo: 132, tracks: [
+          { p: bars(tc1,tc2,tc3,tc4, tc5,tc6,tc7,tc8, tc7,tc9,tc7,tc8, tc9,tc10,tc5,tcEnd), role: 'lead', wave: 'square', vol: 0.016, len: 1.1 },
+          { p: bars(cbD,cbD,cbD,cbD, cbD8,cbD8,cbD8,cbCB, cbD8,cbGm,cbD8,cbCB, cbGm,cbA,cbD8,cbEnd), role: 'bass', wave: 'triangle', vol: 0.06, len: 0.8 },
+          { p: bars(R16,R16,R16,R16, kHat,kHat,kHat,kHatF, kHat,kHat,kHat,kHatF, kHat,kHat,kHatF,kHatF), role: 'hat', noise: true, vol: 0.008, len: 0.22 },
+          { p: bars(R16,R16,R16,R16, snare,snare,snare,snare, snare,snare,snare,snare, snare,snare,snare,snare), role: 'snare', noise: true, vol: 0.022, len: 0.7 }
+        ] },
+        lull: { tempo: 58, tracks: [
+          { p: bars(aCs,aCs,aA,aFs, aGs,aCs,aA,aGs, aCs,aCs,aA,aFs, aGs,aCs,aGs,aCs), role: 'arp', wave: 'triangle', vol: 0.016, len: 1.6 },
+          { p: bars(vCs,vCs,vA,vFs, vGs,vCs,vA,vGs, vCs,vCs,vA,vFs, vGs,vCs,vGs,vCs), role: 'bass', wave: 'triangle', vol: 0.05, len: 4.0 },
+          { p: bars(R12,R12,R12,R12, lu1,lu2,lu3,lu4, lu5,lu6,lu7,lu8, lu1,lu3,lu7,lu8e), role: 'lead', wave: 'square', vol: 0.011, len: 3.0 }
         ] }
       };
     })();
+    // every tune in the game — drives the jukebox and the hunt rotation
+    var HUNT_ROTATION = ['field', 'field2', 'field3', 'field4', 'field5', 'field6', 'field7', 'field8'];
+    var TRACK_INFO = [
+      { k: 'menu',   name: 'Silk Lullaby',                        by: 'original',                  tag: 'MENU' },
+      { k: 'field',  name: 'Fugue in A Minor (for Synthesizers)', by: 'after J.S. Bach',           tag: 'HUNT' },
+      { k: 'field2', name: 'Tarantella of the Black Widow',       by: 'original',                  tag: 'HUNT' },
+      { k: 'field3', name: 'March of the Thousand Hatchlings',    by: 'original',                  tag: 'HUNT' },
+      { k: 'field4', name: 'Waltz on a Single Thread',            by: 'original',                  tag: 'HUNT' },
+      { k: 'field5', name: 'Scuttle Boogie',                      by: 'original',                  tag: 'HUNT' },
+      { k: 'field6', name: 'In the Hall of the Spider Queen',     by: 'after Edvard Grieg',        tag: 'HUNT' },
+      { k: 'field7', name: 'Flight of the Bumblebee',             by: 'after Rimsky-Korsakov',     tag: 'HUNT' },
+      { k: 'field8', name: 'Danse Macabre on Eight Legs',         by: 'after Camille Saint-Saëns', tag: 'HUNT' },
+      { k: 'boss',   name: 'The Molt King',                       by: 'original',                  tag: 'BOSS' },
+      { k: 'boss2',  name: 'Toccata of the Funnel-Web',           by: 'after J.S. Bach',           tag: 'BOSS' },
+      { k: 'lull',   name: 'Moonlight on the Web',                by: 'after Beethoven',           tag: 'TUTORIAL' }
+    ];
     function musTone(fq, at, dur, wave, vol){
       try {
         var o = AC.createOscillator(), g = AC.createGain();
         o.type = wave; o.frequency.value = fq;
-        g.gain.setValueAtTime(0.0001, at);
-        g.gain.exponentialRampToValueAtTime(vol, at + 0.012);
-        g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
-        o.connect(g); g.connect(AC.destination);
+        // linear 8ms attack, exponential decay, then a linear tail all the
+        // way to zero BEFORE the oscillator stops — no truncation click.
+        // gain.value = 0 kills the note-start race: the default gain is 1.0
+        // and the oscillator's first sample can land a sample before the
+        // setValueAtTime event does, leaking one full-scale sample — a pop
+        g.gain.value = 0;
+        g.gain.setValueAtTime(0, at);
+        g.gain.linearRampToValueAtTime(vol, at + 0.008);
+        g.gain.setValueAtTime(vol, at + 0.008);
+        g.gain.exponentialRampToValueAtTime(0.001, at + dur);
+        g.gain.linearRampToValueAtTime(0, at + dur + 0.015);
+        o.connect(g); g.connect(outNode());
         o.start(at); o.stop(at + dur + 0.03);
       } catch(e){}
     }
@@ -745,9 +967,15 @@
         }
         var s = AC.createBufferSource(), g = AC.createGain();
         s.buffer = MUS.noiseBuf;
-        g.gain.setValueAtTime(vol, at);
-        g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
-        s.connect(g); g.connect(AC.destination);
+        // percussion popped because the noise burst began at full volume —
+        // a 3ms ramp keeps the snap without the speaker-thump. gain.value=0
+        // also closes the start-vs-automation sample race (see musTone)
+        g.gain.value = 0;
+        g.gain.setValueAtTime(0, at);
+        g.gain.linearRampToValueAtTime(vol, at + 0.003);
+        g.gain.exponentialRampToValueAtTime(0.001, at + dur);
+        g.gain.linearRampToValueAtTime(0, at + dur + 0.01);
+        s.connect(g); g.connect(outNode());
         s.start(at); s.stop(at + dur + 0.02);
       } catch(e){}
     }
@@ -776,9 +1004,11 @@
     // pick the tune for wherever the player is
     function musForState(){
       if (state === 'menu' || state === 'gloss' || state === 'controls' || state === 'scores') musPlay('menu');
+      else if (state === 'jukebox') { /* whatever the player put on keeps spinning */ }
       else if (state === 'play' || state === 'shop' || state === 'intro') {
-        var HUNT = ['field', 'field2', 'field3', 'field4', 'field5'];
-        musPlay(!tutorial && level % 5 === 0 ? 'boss' : (tutorial ? 'field' : HUNT[(level - 1) % HUNT.length]));
+        if (tutorial) musPlay('lull');
+        else if (level % 5 === 0) musPlay(level % 10 === 0 ? 'boss2' : 'boss');
+        else musPlay(HUNT_ROTATION[(level - 1) % HUNT_ROTATION.length]);
       }
       else if (state === 'over') musStop();
     }
@@ -809,7 +1039,7 @@
     }, 90);
 
     // ---------- stats / upgrades ----------
-    var GAME_VERSION = 'v31';
+    var GAME_VERSION = 'v34';
     var S; // current run stats
     function freshStats(){ return { speed: 0, range: 0, silk: 0, grip: 0, tough: 0, venom: 0, spread: 0, brood: 0, hw: 0, dew: 0, heartT: 0, dblShot: 0, fortify: 0, bomb: 0, extraLife: 0, loom: 0 }; }
     function wrapMult(){ return 1.5 + (S ? S.venom * 0.25 : 0); } // wrapped catch bonus
@@ -977,6 +1207,9 @@
     var rageUntil = 0;              // timestamp: rage mode active while now() < rageUntil
     var gems = [];                  // small pickups dropped by wrapped bugs
     var fallenLog = [];             // last strands that fell (for R to re-weave)
+    // run-report stats, shown on the game-over card
+    var runMaxCombo = 0, runBossKills = 0, runMaxStrands = 0, runMaxGilded = 0, runWeapons = {};
+    var webAlarmAt = 0;             // throttle the WEB UNDER ATTACK cue
     var surgeUntil = 0;             // silk-droplet SURGE: weaving is free
     var swarmAt = 0;                // next swarm-burst time
     var quotaCued = false;          // "3 TO GO!" shown this level
@@ -998,6 +1231,7 @@
     var BOOM_R = 90;     // bazooka blast radius
     function shotModeActive(){ return (shotMode && now() < shotModeUntil) ? shotMode : null; }
     function grantShotMode(k){
+      runWeapons[k] = 1;
       shotMode = k; shotModeUntil = now() + SHOT_MODE_DUR;
       floatTxt(spider.x, spider.y - 40, SHOT_MODES[k].name + '!', SHOT_MODES[k].color, true);
       pop(spider.x, spider.y, SHOT_MODES[k].color, 14, 3);
@@ -2524,7 +2758,7 @@
       stink:   'Keeps its distance and spits goo that slows you. Heavy — it needs TWO strands to be held.',
       slug:    'A slow tank that smears slime trails. A NEST RAIDER: it crawls straight for your eggs and devours spiderlings. Heavy — needs TWO strands to hold.',
       worm:    'A webworm that hunts your strands and devours them. It won\'t stick — shoot it down.',
-      boss:    'Dragonfly: a tough flyer. Three web-shots to down it, and it shreds any strand it crosses.',
+      boss:    'Dragonfly: a tough flyer that shreds strands — but each tear STAGGERS it, dense webs snag it, and while tangled it takes DOUBLE shot damage. Feed it silk, then punish it.',
       queen:   'BOSS — orbits the arena and spawns wasps. Wrap it to claim Royal Jelly (full hearts).',
       mantis:  'BOSS — stalks you and lunges to sting. Wrap it for a 2x-points charm.',
       mothking:'BOSS — a giant moth that summons swarms. Wrap it for a speed boost.',
@@ -2685,6 +2919,12 @@
     function webBug(b){
       SFX.hit();
       b.hp--;
+      // a tearer snarled in silk is VULNERABLE: shots land twice as hard.
+      // Let it hit your web, then punish it.
+      if ((b.t.tears || b.t.boss) && b.dragUntil && now() < b.dragUntil && b.hp > 0) {
+        b.hp--;
+        floatTxt(b.x, b.y - 26, 'TANGLED! x2', '#fde047');
+      }
       b.webbed = true;
       b.vx = 0; b.vy = 0;
       b.webT = now() + (b.hp <= 0 ? webDur() : 900); // partial webs on boss break fast
@@ -2713,6 +2953,8 @@
         if (t < comboUntil) comboN++; else comboN = 1;
         comboUntil = t + 4000;
         var mult = Math.min(3, 1 + 0.5 * (comboN - 1));
+        if (comboN > runMaxCombo) runMaxCombo = comboN;
+        if (b.t.boss) runBossKills++;
         pts = Math.round(b.t.score * wrapMult() * mult);
         // home-field bonus: wraps at one of your hubs pay half again more
         for (var hbi = 0; hbi < hubs.length; hbi++) {
@@ -2863,6 +3105,7 @@
       gems = []; quotaCued = false;
       shotMode = null; shotModeUntil = 0;
       fallenLog = []; surgeUntil = 0;
+      runMaxCombo = 0; runBossKills = 0; runMaxStrands = 0; runMaxGilded = 0; runWeapons = {};
       lastInputAt = now();
       autoWeb = false; autoCenter = null; autoEdges = null; bombs = 0;
       drops = []; buffScoreUntil = 0; buffSpeedUntil = 0; shieldHits = 0;
@@ -2973,7 +3216,16 @@
       beginLevel();
     }
     function gameOver(){
+      SFX.gameover();
       save('hi', hi); save('total', totalBugs);
+      // the run report: what kind of spider were you this time?
+      var rp = [];
+      rp.push('BIGGEST COMBO <span style="color:#fbbf24">x' + Math.max(1, runMaxCombo) + '</span>');
+      if (runBossKills) rp.push('<span style="color:#dc2626">' + runBossKills + '</span> BOSS' + (runBossKills > 1 ? 'ES' : '') + ' DOWN');
+      if (runMaxStrands) rp.push('WEB PEAK <span style="color:#e4e4e7">' + runMaxStrands + '</span> STRAND' + (runMaxStrands > 1 ? 'S' : '') + (runMaxGilded ? ' (<span style="color:#fde047">' + runMaxGilded + ' gilded</span>)' : ''));
+      var wCount = Object.keys(runWeapons).length;
+      if (wCount) rp.push(wCount + ' WEAPON' + (wCount > 1 ? 'S' : '') + ' WIELDED');
+      document.getElementById('oStats').innerHTML = rp.join(' &middot; ');
       var place = recordScore(score, level);
       document.getElementById('oScore').textContent = score;
       document.getElementById('oHigh').textContent = hi;
@@ -3069,7 +3321,7 @@
     }
 
     // ---------- state / overlays ----------
-    var overlays = { menu: 'ovMenu', shop: 'ovShop', pause: 'ovPause', over: 'ovOver', intro: 'ovIntro', gloss: 'ovGloss', controls: 'ovControls', scores: 'ovScores' };
+    var overlays = { menu: 'ovMenu', shop: 'ovShop', pause: 'ovPause', over: 'ovOver', intro: 'ovIntro', gloss: 'ovGloss', controls: 'ovControls', scores: 'ovScores', jukebox: 'ovJuke' };
     function setState(s){
       state = s;
       if (s !== 'play') holdStill = false; // never stay frozen outside play
@@ -3228,6 +3480,24 @@
     document.getElementById('btnResume').addEventListener('click', function(){ setState('play'); });
     document.getElementById('btnQuit').addEventListener('click', toMenu);
     document.getElementById('btnRetry').addEventListener('click', function(){ startGame(); });
+    document.getElementById('btnShare').addEventListener('click', function(){
+      var msg = '\ud83d\udd77\ufe0f BUG HUNT \u2014 ' + score + ' pts, level ' + level + ' (' + rankName(level) + ').'
+        + (runMaxCombo > 1 ? ' Biggest combo x' + runMaxCombo + '.' : '')
+        + (runBossKills ? ' ' + runBossKills + ' boss' + (runBossKills > 1 ? 'es' : '') + ' down.' : '')
+        + ' Beat me: bitzyspider.com/game.html';
+      var btn = document.getElementById('btnShare');
+      function flash(ok){ btn.textContent = ok ? 'COPIED \u2713' : 'COPY FAILED'; setTimeout(function(){ btn.textContent = 'SHARE RUN'; }, 1600); }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(msg).then(function(){ flash(true); }, function(){ flash(false); });
+      } else {
+        try {
+          var ta = document.createElement('textarea');
+          ta.value = msg; document.body.appendChild(ta); ta.select();
+          document.execCommand('copy'); document.body.removeChild(ta);
+          flash(true);
+        } catch(e){ flash(false); }
+      }
+    });
     document.getElementById('btnMenu').addEventListener('click', toMenu);
     document.getElementById('btnMute').addEventListener('click', function(e){ e.stopPropagation(); toggleMute(); });
     document.getElementById('btnWeb').addEventListener('click', function(e){ e.stopPropagation(); audio(); startOrPin(); });
@@ -3554,6 +3824,39 @@
     document.getElementById('scoreTabs').addEventListener('click', function(e){
       var b = e.target; if (!b || !b.getAttribute) return;
       var tab = b.getAttribute('data-stab'); if (tab) showScoreTab(tab);
+    });
+
+    // ---------- jukebox ----------
+    var jukeReturn = 'menu';
+    function jukeSpin(k){
+      if (!SONGS[k]) return;
+      // picking a record while muted means "I want to hear it" — unmute
+      if (muted) { muted = false; save('mute', '0'); document.getElementById('btnMute').innerHTML = '&#128266;'; }
+      if (!musicOn) { musicOn = true; save('music', '1'); }
+      syncSound();
+      if (MUS.song === k) musStop(); else musPlay(k);
+      renderJuke();
+    }
+    function renderJuke(){
+      var el = document.getElementById('jukeRows'); if (!el) return;
+      var html = '';
+      for (var i = 0; i < TRACK_INFO.length; i++) {
+        var t = TRACK_INFO[i], on = MUS.song === t.k;
+        html += '<button class="jukeRow' + (on ? ' on' : '') + '" data-song="' + t.k + '">'
+          + '<span class="jp">' + (on ? '&#9654;' : '&#9834;') + '</span>'
+          + '<span class="jn"><b>' + t.name + '</b><span>' + t.by + '</span></span>'
+          + '<span class="jt">' + t.tag + '</span></button>';
+      }
+      el.innerHTML = html;
+    }
+    function openJukebox(from){ jukeReturn = from || 'menu'; renderJuke(); setState('jukebox'); }
+    document.getElementById('btnJukeMenu').addEventListener('click', function(){ audio(); openJukebox('menu'); });
+    document.getElementById('btnJukeBack').addEventListener('click', function(){ setState(jukeReturn); });
+    document.getElementById('jukeRows').addEventListener('click', function(e){
+      var b = e.target && e.target.closest ? e.target.closest('.jukeRow') : null;
+      if (!b) return;
+      audio();
+      jukeSpin(b.getAttribute('data-song'));
     });
 
     // submit the just-finished run to the global board
@@ -4531,6 +4834,7 @@
       }
       // likewise, each crossing's woven diamond is bounded by the closest of
       // the four strand endpoints around it, so the knit stays inside the web
+      if (strands.length > runMaxStrands) runMaxStrands = strands.length;
       for (i = 0; i < crossings.length; i++) {
         var c = crossings[i];
         c.rMax = Math.sqrt(Math.min(
@@ -4665,7 +4969,22 @@
                 s.born = t - 12001;
                 b.dragUntil = t + 700; b.dragSlow = 0.35;
                 pop(cp.x, cp.y, '#fde047', 6, 2);
-              } else { breakStrand(s); shake = 6; }
+              } else if (b.tearAt && t < b.tearAt) {
+                // its teeth are busy — instead of tearing, the next strand
+                // SNAGS it. Dense webs bog a dragonfly down.
+                b.dragUntil = Math.max(b.dragUntil || 0, t + 320); b.dragSlow = 0.4;
+                pop(cp.x, cp.y, '#e4e4e7', 3, 1.5);
+              } else {
+                // tearing costs it: one strand per 450ms, and each tear
+                // staggers it — a torn web fights back in its own way
+                b.tearAt = t + 450;
+                b.dragUntil = Math.max(b.dragUntil || 0, t + 300); b.dragSlow = 0.5;
+                breakStrand(s); shake = 6;
+                if (t > webAlarmAt) {
+                  webAlarmAt = t + 4000;
+                  floatTxt(cp.x, cp.y - 14, 'WEB UNDER ATTACK!', '#f87171');
+                }
+              }
               continue;
             }
             touching.push(s);
@@ -5550,10 +5869,12 @@
 
       // built web strands (slight sag, fray when decaying, red when breaking)
       // multi-bug strands blink faster and glow more intensely
+      var gildedNow = 0;
       for (i = 0; i < strands.length; i++) {
         var st = strands[i];
         var alpha = 0.55, color = '255,255,255';
         var tier = silkTier(st, t);
+        if (tier === 2) gildedNow++;
         if (tier === 0 && S && S.loom > 0) color = ['191,219,254', '216,180,254', '252,165,165'][S.loom - 1]; // royal loom dye
         if (tier === 1) alpha = 0.72; // seasoned silk reads brighter
         else if (tier === 2) { color = '250,204,21'; alpha = 0.72 + Math.sin(t * 0.004 + i) * 0.1; } // gilded
@@ -5589,6 +5910,7 @@
         ctx.stroke();
         ctx.fillStyle = 'rgba(' + color + ',' + alpha + ')';
         dot(st.x1, st.y1, 2); dot(st.x2, st.y2, 2);
+        if (gildedNow > runMaxGilded) runMaxGilded = gildedNow;
         // wall anchors: a visible stud where silk grips the arena edge
         if (st.a1 || st.a2) {
           ctx.fillStyle = 'rgba(212,212,216,0.6)';
