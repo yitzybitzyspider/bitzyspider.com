@@ -4,7 +4,13 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Bug Hunt | BitzySpider Arcade</title>
-  <meta name="robots" content="noindex" />
+  <meta name="description" content="A zero-dependency browser arcade game: you are the spider. Weave webs, wield weapons, survive the swarm. Built by hand in one HTML file." />
+  <meta property="og:title" content="Bug Hunt \u2014 BitzySpider Arcade" />
+  <meta property="og:description" content="You are the spider. Weave webs, wield weapons, survive the swarm. A complete arcade game in one HTML file." />
+  <meta property="og:image" content="https://bitzyspider.com/photos/bughunt-card.png" />
+  <meta property="og:url" content="https://bitzyspider.com/game.html" />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -138,9 +144,15 @@
     /* ---------- Shop ---------- */
     .shopRow {
       display: flex; align-items: center; gap: 10px; text-align: left;
-      border-top: 1px solid #18181b; padding: 11px 0; font-size: 12px;
+      border-top: 1px solid #18181b; padding: 9px 0; font-size: 12px;
     }
     .shopRow:first-of-type { border-top: none; }
+    /* the shop outgrew a single column — two columns on wide screens */
+    @media (min-width: 700px) {
+      .shopCard { max-width: 760px; }
+      #shopRows { display: grid; grid-template-columns: 1fr 1fr; column-gap: 26px; }
+      #shopRows .shopRow:nth-of-type(2) { border-top: none; }
+    }
     .shopRow .info { flex: 1; min-width: 0; }
     .shopRow .nm { font-weight: 700; font-size: 12px; }
     .shopRow .pips { color: #dc2626; font-size: 9px; letter-spacing: 2px; margin-left: 6px; }
@@ -360,7 +372,7 @@
 
   <!-- Shop (level clear) -->
   <div class="overlay" id="ovShop">
-    <div class="card">
+    <div class="card shopCard">
       <h2>LEVEL <span id="sLvl">1</span> <span style="color:#dc2626">CLEARED</span></h2>
       <div id="sRank" style="color:#fbbf24;font-size:11px;letter-spacing:0.15em;margin-top:8px"></div>
       <div class="statline">BONUS +<span id="sBonus">0</span> &nbsp;&middot;&nbsp; SPEND: <span id="shopCash">0</span> pts</div>
@@ -400,6 +412,7 @@
       <h2 style="color:#dc2626">GAME OVER</h2>
       <div class="sub">You got debugged.</div>
       <div id="oRank" style="color:#fbbf24;font-size:13px;font-weight:700;letter-spacing:0.12em;margin:8px 0;display:none"></div>
+      <div id="oStats" style="color:#71717a;font-size:11px;line-height:1.8;margin:6px 0"></div>
       <div class="statline">
         SCORE <span class="red" id="oScore">0</span> &nbsp;&middot;&nbsp; BEST <span class="red" id="oHigh">0</span><br>
         <span id="oLvl"></span>
@@ -410,6 +423,7 @@
         <div id="oSubmitMsg" style="color:#71717a;font-size:11px;margin-top:8px;min-height:1em"></div>
       </div>
       <button class="btn" id="btnRetry">TRY AGAIN</button>
+      <button class="btn ghost" id="btnShare">SHARE RUN</button>
       <button class="btn ghost" id="btnScoresOver">HIGH SCORES</button>
       <button class="btn ghost" id="btnMenu">MENU</button>
     </div>
@@ -565,6 +579,7 @@
       free:  function(){ beep(300, 0.14, 'sawtooth', 0.035, 150); },
       deny:  function(){ beep(180, 0.1, 'square', 0.04); },
       rage:  function(){ beep(200, 0.25, 'sawtooth', 0.06, 800); setTimeout(function(){ beep(400, 0.3, 'sawtooth', 0.06, 1200); }, 100); },
+      gameover: function(){ [392, 311, 262, 196].forEach(function(f, i){ setTimeout(function(){ beep(f, 0.24, 'sawtooth', 0.045, f * 0.9); }, i * 150); }); },
       buy:   function(){ beep(1200, 0.06, 'square', 0.05); },
       laser: function(){ beep(1400, 0.12, 'sine', 0.05, 300); },
       boom:  function(){ beep(90, 0.28, 'square', 0.08, 40); setTimeout(function(){ beep(60, 0.2, 'sawtooth', 0.05); }, 60); },
@@ -977,6 +992,8 @@
     var rageUntil = 0;              // timestamp: rage mode active while now() < rageUntil
     var gems = [];                  // small pickups dropped by wrapped bugs
     var fallenLog = [];             // last strands that fell (for R to re-weave)
+    // run-report stats, shown on the game-over card
+    var runMaxCombo = 0, runBossKills = 0, runMaxStrands = 0, runMaxGilded = 0, runWeapons = {};
     var webAlarmAt = 0;             // throttle the WEB UNDER ATTACK cue
     var surgeUntil = 0;             // silk-droplet SURGE: weaving is free
     var swarmAt = 0;                // next swarm-burst time
@@ -999,6 +1016,7 @@
     var BOOM_R = 90;     // bazooka blast radius
     function shotModeActive(){ return (shotMode && now() < shotModeUntil) ? shotMode : null; }
     function grantShotMode(k){
+      runWeapons[k] = 1;
       shotMode = k; shotModeUntil = now() + SHOT_MODE_DUR;
       floatTxt(spider.x, spider.y - 40, SHOT_MODES[k].name + '!', SHOT_MODES[k].color, true);
       pop(spider.x, spider.y, SHOT_MODES[k].color, 14, 3);
@@ -2720,6 +2738,8 @@
         if (t < comboUntil) comboN++; else comboN = 1;
         comboUntil = t + 4000;
         var mult = Math.min(3, 1 + 0.5 * (comboN - 1));
+        if (comboN > runMaxCombo) runMaxCombo = comboN;
+        if (b.t.boss) runBossKills++;
         pts = Math.round(b.t.score * wrapMult() * mult);
         // home-field bonus: wraps at one of your hubs pay half again more
         for (var hbi = 0; hbi < hubs.length; hbi++) {
@@ -2870,6 +2890,7 @@
       gems = []; quotaCued = false;
       shotMode = null; shotModeUntil = 0;
       fallenLog = []; surgeUntil = 0;
+      runMaxCombo = 0; runBossKills = 0; runMaxStrands = 0; runMaxGilded = 0; runWeapons = {};
       lastInputAt = now();
       autoWeb = false; autoCenter = null; autoEdges = null; bombs = 0;
       drops = []; buffScoreUntil = 0; buffSpeedUntil = 0; shieldHits = 0;
@@ -2980,7 +3001,16 @@
       beginLevel();
     }
     function gameOver(){
+      SFX.gameover();
       save('hi', hi); save('total', totalBugs);
+      // the run report: what kind of spider were you this time?
+      var rp = [];
+      rp.push('BIGGEST COMBO <span style="color:#fbbf24">x' + Math.max(1, runMaxCombo) + '</span>');
+      if (runBossKills) rp.push('<span style="color:#dc2626">' + runBossKills + '</span> BOSS' + (runBossKills > 1 ? 'ES' : '') + ' DOWN');
+      if (runMaxStrands) rp.push('WEB PEAK <span style="color:#e4e4e7">' + runMaxStrands + '</span> STRAND' + (runMaxStrands > 1 ? 'S' : '') + (runMaxGilded ? ' (<span style="color:#fde047">' + runMaxGilded + ' gilded</span>)' : ''));
+      var wCount = Object.keys(runWeapons).length;
+      if (wCount) rp.push(wCount + ' WEAPON' + (wCount > 1 ? 'S' : '') + ' WIELDED');
+      document.getElementById('oStats').innerHTML = rp.join(' &middot; ');
       var place = recordScore(score, level);
       document.getElementById('oScore').textContent = score;
       document.getElementById('oHigh').textContent = hi;
@@ -3235,6 +3265,24 @@
     document.getElementById('btnResume').addEventListener('click', function(){ setState('play'); });
     document.getElementById('btnQuit').addEventListener('click', toMenu);
     document.getElementById('btnRetry').addEventListener('click', function(){ startGame(); });
+    document.getElementById('btnShare').addEventListener('click', function(){
+      var msg = '\ud83d\udd77\ufe0f BUG HUNT \u2014 ' + score + ' pts, level ' + level + ' (' + rankName(level) + ').'
+        + (runMaxCombo > 1 ? ' Biggest combo x' + runMaxCombo + '.' : '')
+        + (runBossKills ? ' ' + runBossKills + ' boss' + (runBossKills > 1 ? 'es' : '') + ' down.' : '')
+        + ' Beat me: bitzyspider.com/game.html';
+      var btn = document.getElementById('btnShare');
+      function flash(ok){ btn.textContent = ok ? 'COPIED \u2713' : 'COPY FAILED'; setTimeout(function(){ btn.textContent = 'SHARE RUN'; }, 1600); }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(msg).then(function(){ flash(true); }, function(){ flash(false); });
+      } else {
+        try {
+          var ta = document.createElement('textarea');
+          ta.value = msg; document.body.appendChild(ta); ta.select();
+          document.execCommand('copy'); document.body.removeChild(ta);
+          flash(true);
+        } catch(e){ flash(false); }
+      }
+    });
     document.getElementById('btnMenu').addEventListener('click', toMenu);
     document.getElementById('btnMute').addEventListener('click', function(e){ e.stopPropagation(); toggleMute(); });
     document.getElementById('btnWeb').addEventListener('click', function(e){ e.stopPropagation(); audio(); startOrPin(); });
@@ -4538,6 +4586,7 @@
       }
       // likewise, each crossing's woven diamond is bounded by the closest of
       // the four strand endpoints around it, so the knit stays inside the web
+      if (strands.length > runMaxStrands) runMaxStrands = strands.length;
       for (i = 0; i < crossings.length; i++) {
         var c = crossings[i];
         c.rMax = Math.sqrt(Math.min(
@@ -5572,10 +5621,12 @@
 
       // built web strands (slight sag, fray when decaying, red when breaking)
       // multi-bug strands blink faster and glow more intensely
+      var gildedNow = 0;
       for (i = 0; i < strands.length; i++) {
         var st = strands[i];
         var alpha = 0.55, color = '255,255,255';
         var tier = silkTier(st, t);
+        if (tier === 2) gildedNow++;
         if (tier === 0 && S && S.loom > 0) color = ['191,219,254', '216,180,254', '252,165,165'][S.loom - 1]; // royal loom dye
         if (tier === 1) alpha = 0.72; // seasoned silk reads brighter
         else if (tier === 2) { color = '250,204,21'; alpha = 0.72 + Math.sin(t * 0.004 + i) * 0.1; } // gilded
@@ -5611,6 +5662,7 @@
         ctx.stroke();
         ctx.fillStyle = 'rgba(' + color + ',' + alpha + ')';
         dot(st.x1, st.y1, 2); dot(st.x2, st.y2, 2);
+        if (gildedNow > runMaxGilded) runMaxGilded = gildedNow;
         // wall anchors: a visible stud where silk grips the arena edge
         if (st.a1 || st.a2) {
           ctx.fillStyle = 'rgba(212,212,216,0.6)';
