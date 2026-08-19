@@ -7,12 +7,29 @@ var pass = 0;
 function ok(cond, name){ if (!cond) throw new Error('FAIL: ' + name); pass++; console.log('  ok ' + name); }
 
 // boot + menu music
-ok(getEl('verLabel').textContent.indexOf('v32') !== -1, 'boots at v32');
+ok(getEl('verLabel').textContent.indexOf('v33') !== -1, 'boots at v33');
 ok(W._dbgMus().song === 'menu', 'menu tune queued');
-['menu','field','field2','field3','field4','field5','boss'].forEach(function(k){
+Object.keys(W._dbgSongs).forEach(function(k){
   var s = W._dbgSongs[k];
   ok(s && s.tracks.length && s.tracks.every(function(tr){ return tr.p.length % 16 === 0; }), 'song ' + k + ' well-formed');
 });
+ok(Object.keys(W._dbgSongs).length >= 12, 'twelve tunes on the record shelf');
+
+// jukebox
+var jk = W._dbgTracks.map(function(t){ return t.k; });
+ok(Object.keys(W._dbgSongs).every(function(k){ return jk.indexOf(k) !== -1; }), 'jukebox lists every tune');
+getEl('btnJukeMenu').click();
+ok(W._dbgState() === 'jukebox', 'jukebox opens');
+W._dbgJukeSpin('field7');
+ok(W._dbgMus().song === 'field7', 'jukebox spins a pick');
+getEl('btnJukeBack').click();
+ok(W._dbgState() === 'menu' && W._dbgMus().song === 'menu', 'back to menu resumes the lullaby');
+
+// rotation: new tunes reachable, toccata on L10 bosses, moonlight in tutorial
+ok(W._dbgMusForLevel(6) === 'field6', 'hunt rotation reaches the new tunes');
+ok(W._dbgMusForLevel(10) === 'boss2', 'toccata takes the L10 boss');
+ok(W._dbgMusForLevel(5) === 'boss', 'molt king keeps the L5 boss');
+ok(W._dbgMusForLevel(1, true) === 'lull', 'tutorial plays moonlight');
 
 // start a run
 getEl('btnStart').click(); dismissIntro();

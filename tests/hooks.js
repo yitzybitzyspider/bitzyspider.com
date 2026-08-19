@@ -61,3 +61,6 @@
     window._dbgStrandCost = function(len){ return strandCost(len); };
     window._dbgSurge = function(){ return surgeUntil; };
     window._dbgRun = function(){ return { combo: runMaxCombo, bosses: runBossKills, strands: runMaxStrands, gilded: runMaxGilded, weapons: Object.keys(runWeapons).length }; };
+    window._dbgTracks = TRACK_INFO;
+    window._dbgJukeSpin = function(k){ jukeSpin(k); };
+    window._dbgMusForLevel = function(lv, tut){ var oL = level, oS = state, oT = tutorial; level = lv; state = 'play'; tutorial = !!tut; musForState(); var got = MUS.song; level = oL; state = oS; tutorial = oT; musForState(); return got; };
