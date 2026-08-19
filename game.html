@@ -609,7 +609,12 @@
         var o = AC.createOscillator(), g = AC.createGain();
         o.type = type || 'square'; o.frequency.value = f;
         if (slide) o.frequency.exponentialRampToValueAtTime(slide, AC.currentTime + d);
-        // a 4ms attack ramp — starting a waveform at full gain is a click
+        // a 4ms attack ramp — starting a waveform at full gain is a click.
+        // gain.value = 0 too: a GainNode defaults to 1.0, and the source's
+        // first sample can render BEFORE the automation event lands (they
+        // round to the sample grid independently) — that one unity-gain
+        // sample was a full-scale impulse. The pop.
+        g.gain.value = 0;
         g.gain.setValueAtTime(0.0001, AC.currentTime);
         g.gain.linearRampToValueAtTime(v || 0.04, AC.currentTime + 0.004);
         g.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime + d);
@@ -939,7 +944,11 @@
         var o = AC.createOscillator(), g = AC.createGain();
         o.type = wave; o.frequency.value = fq;
         // linear 8ms attack, exponential decay, then a linear tail all the
-        // way to zero BEFORE the oscillator stops — no truncation click
+        // way to zero BEFORE the oscillator stops — no truncation click.
+        // gain.value = 0 kills the note-start race: the default gain is 1.0
+        // and the oscillator's first sample can land a sample before the
+        // setValueAtTime event does, leaking one full-scale sample — a pop
+        g.gain.value = 0;
         g.gain.setValueAtTime(0, at);
         g.gain.linearRampToValueAtTime(vol, at + 0.008);
         g.gain.setValueAtTime(vol, at + 0.008);
@@ -959,7 +968,9 @@
         var s = AC.createBufferSource(), g = AC.createGain();
         s.buffer = MUS.noiseBuf;
         // percussion popped because the noise burst began at full volume —
-        // a 3ms ramp keeps the snap without the speaker-thump
+        // a 3ms ramp keeps the snap without the speaker-thump. gain.value=0
+        // also closes the start-vs-automation sample race (see musTone)
+        g.gain.value = 0;
         g.gain.setValueAtTime(0, at);
         g.gain.linearRampToValueAtTime(vol, at + 0.003);
         g.gain.exponentialRampToValueAtTime(0.001, at + dur);
@@ -1028,7 +1039,7 @@
     }, 90);
 
     // ---------- stats / upgrades ----------
-    var GAME_VERSION = 'v33';
+    var GAME_VERSION = 'v34';
     var S; // current run stats
     function freshStats(){ return { speed: 0, range: 0, silk: 0, grip: 0, tough: 0, venom: 0, spread: 0, brood: 0, hw: 0, dew: 0, heartT: 0, dblShot: 0, fortify: 0, bomb: 0, extraLife: 0, loom: 0 }; }
     function wrapMult(){ return 1.5 + (S ? S.venom * 0.25 : 0); } // wrapped catch bonus
