@@ -7,7 +7,7 @@ var pass = 0;
 function ok(cond, name){ if (!cond) throw new Error('FAIL: ' + name); pass++; console.log('  ok ' + name); }
 
 // boot + menu music
-ok(getEl('verLabel').textContent.indexOf('v31') !== -1, 'boots at v31');
+ok(getEl('verLabel').textContent.indexOf('v32') !== -1, 'boots at v32');
 ok(W._dbgMus().song === 'menu', 'menu tune queued');
 ['menu','field','field2','field3','field4','field5','boss'].forEach(function(k){
   var s = W._dbgSongs[k];
