@@ -558,15 +558,34 @@
       if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){} }
       if (AC && AC.state === 'suspended') AC.resume();
     }
+    // master bus: a compressor + headroom gain that every voice routes
+    // through. Summed peaks (bass + lead + hats + SFX landing together)
+    // used to clip the output and pop — the compressor rounds them off.
+    var masterOut = null;
+    function outNode(){
+      if (!AC) return null;
+      if (!masterOut) {
+        try {
+          var comp = AC.createDynamicsCompressor();
+          var mg = AC.createGain();
+          mg.gain.value = 0.8;
+          comp.connect(mg); mg.connect(AC.destination);
+          masterOut = comp;
+        } catch(e){ masterOut = AC.destination; }
+      }
+      return masterOut;
+    }
     function beep(f, d, type, v, slide){
       if (muted || !AC) return;
       try {
         var o = AC.createOscillator(), g = AC.createGain();
         o.type = type || 'square'; o.frequency.value = f;
         if (slide) o.frequency.exponentialRampToValueAtTime(slide, AC.currentTime + d);
-        g.gain.value = v || 0.04;
+        // a 4ms attack ramp — starting a waveform at full gain is a click
+        g.gain.setValueAtTime(0.0001, AC.currentTime);
+        g.gain.linearRampToValueAtTime(v || 0.04, AC.currentTime + 0.004);
         g.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime + d);
-        o.connect(g); g.connect(AC.destination);
+        o.connect(g); g.connect(outNode());
         o.start(); o.stop(AC.currentTime + d);
       } catch(e){}
     }
@@ -744,10 +763,14 @@
       try {
         var o = AC.createOscillator(), g = AC.createGain();
         o.type = wave; o.frequency.value = fq;
-        g.gain.setValueAtTime(0.0001, at);
-        g.gain.exponentialRampToValueAtTime(vol, at + 0.012);
-        g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
-        o.connect(g); g.connect(AC.destination);
+        // linear 8ms attack, exponential decay, then a linear tail all the
+        // way to zero BEFORE the oscillator stops — no truncation click
+        g.gain.setValueAtTime(0, at);
+        g.gain.linearRampToValueAtTime(vol, at + 0.008);
+        g.gain.setValueAtTime(vol, at + 0.008);
+        g.gain.exponentialRampToValueAtTime(0.001, at + dur);
+        g.gain.linearRampToValueAtTime(0, at + dur + 0.015);
+        o.connect(g); g.connect(outNode());
         o.start(at); o.stop(at + dur + 0.03);
       } catch(e){}
     }
@@ -760,9 +783,13 @@
         }
         var s = AC.createBufferSource(), g = AC.createGain();
         s.buffer = MUS.noiseBuf;
-        g.gain.setValueAtTime(vol, at);
-        g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
-        s.connect(g); g.connect(AC.destination);
+        // percussion popped because the noise burst began at full volume —
+        // a 3ms ramp keeps the snap without the speaker-thump
+        g.gain.setValueAtTime(0, at);
+        g.gain.linearRampToValueAtTime(vol, at + 0.003);
+        g.gain.exponentialRampToValueAtTime(0.001, at + dur);
+        g.gain.linearRampToValueAtTime(0, at + dur + 0.01);
+        s.connect(g); g.connect(outNode());
         s.start(at); s.stop(at + dur + 0.02);
       } catch(e){}
     }
