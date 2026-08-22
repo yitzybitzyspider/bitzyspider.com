@@ -24,7 +24,7 @@ The goal is that someone lands on the page and within a few seconds thinks: "Thi
 
 **The spider replaces the cursor on desktop:** This is intentional and a little aggressive as a design choice. It forces engagement - you can't ignore it. It says "this site is different" within the first second. The tradeoff is some people will find it annoying, but the people Yitzy wants to talk to will think it's cool.
 
-**Mobile spider lives in a corner:** On mobile the full-screen spider was too intrusive - it followed your finger and blocked content. The corner web with the dangling spider keeps the brand present without getting in the way. The fly chase after a minute of idle is a reward for people who stick around. Tapping the spider lets you opt into the full interactive experience.
+**Mobile spider follows the finger:** Since the Aug 2026 redesign, mobile gets the same full-screen spider as desktop - it follows a drag with a 50px lift above the finger. (The old corner-web spider retired with the React page.)
 
 **"BUGS DEBUGGED" counter:** Playful double meaning. The spider literally catches bugs on screen, and Yitzy catches bugs in production code. It's a small dopamine hit that keeps people moving their mouse. The counter is intentionally subtle (small, bottom-left, no backdrop blur) so it doesn't compete with the content.
 
@@ -36,89 +36,76 @@ The goal is that someone lands on the page and within a few seconds thinks: "Thi
 
 ## What this site is
 
-A single-page portfolio with an interactive spider that follows your cursor (desktop) or lives in a corner web (mobile). The spider is the central brand metaphor - Yitzy "untangles wicked problems" like a spider builds webs.
+A single-page portfolio with an interactive spider that follows your cursor (desktop) or your finger (mobile). The spider is the central brand metaphor - Yitzy "untangles wicked problems" like a spider builds webs.
 
 ## How the code is organized
 
-This repo is a **production build only** - there is no source code. The React app was built with Vite and the output was committed directly. If you need to change React components, you have to edit the minified JS. If you need to add new behavior, add it as a plain script in `index.html`.
-
-**The majority of the site's customization now lives in `index.html` as plain JS scripts** that inject into or replace the React-rendered DOM. The minified React bundle provides the skeleton (nav, hero heading, section containers, spider canvas) and the scripts in `index.html` override content, add new sections, and fix layout issues.
+**REDESIGN (Aug 2026): the site is now a single hand-written static page.** The old
+React/Vite production build is retired (archived in `legacy/` and in git history).
+The current `index.html` was built from the "Direction A - The Web" layout designed
+in Claude Design, with all content inlined as static HTML and a small amount of
+plain JS (spider layer, film strip, card-height equalizer).
 
 ### Files
 
 ```
-index.html              Entry point. Loads the React bundle and contains:
-                        - <style> block: CSS overrides for heading size,
-                          nav clearance, mobile fixes
-                        - Spider kill switch script (?spider=0)
-                        - Mobile spider script (corner web + dangle)
-                        - Current Projects section injection (Astrid)
-                        - Work section card replacement (4 experience cards)
-                        - Toolkit section replacement (7-category grid)
-                        - Education section injection (2 photo cards)
-                        - Section nav buttons injection (hero)
-                        - Contact section redesign (icons, rows)
-                        - Longboard gallery card injection
-                        - Community section redesign (3 photo cards)
-                        - Section spacing unifier
-                        - Desktop spider hint text
-                        - Bug Hunt game link (fixed pill + hero line)
-                        - Logo click-to-top handler
-                        - Desktop nav link injection (Skills, Education)
-                        - Mobile slide-up hamburger nav menu
-                        This is the easiest and preferred file to edit.
+index.html              The entire site: one static HTML page. Contains a single
+                        <style> block (CSS variables + classes, mobile media
+                        queries at 900px and 600px) and three small scripts:
+                        - spider kill switch (?spider=0 / localStorage spider=off)
+                        - film strip renderer (FILM_FRAMES array — add film
+                          photos here; EMPTY_SLOTS dashed placeholders follow)
+                        - Track Record card-height equalizer (data-eq-card)
+                        Section ids: top, track_record, about, skills, education,
+                        community, off_the_clock, contact.
 
-LEASE_Formula.pdf       Work sample PDF for commercial real estate card
-2023_SFWMD_SLRFRP.pdf   Work sample PDF for infrastructure card
+spider.js               The interactive spider, ported VERBATIM from the old
+                        React bundle (same constants: 0.1 position ease, 0.15
+                        rotation ease, 8 IK legs, idle-follow the fly after
+                        2.5s, silk trail). Defines the <spider-layer> custom
+                        element; index.html appends it on DOMContentLoaded
+                        unless the kill switch is on. It docks its BUGS
+                        DEBUGGED counter into #bug-count-slot in the hero.
+                        Do not retune the feel — the original speed is the
+                        speed Yitzy wants.
 
-assets/
-  index-ZZwLr-Wf.js    Minified React app (~296KB). Contains ALL components,
-                        the interactive spider, Framer Motion, Lucide icons,
-                        and Tailwind runtime. Editing this is possible but
-                        delicate - only do simple string replacements.
+Yitzy_Rosenberg_Resume.docx  Current resume (Aug 2026, "Operations PM"
+                        version — Berkeley + YYR). Linked from the contact
+                        section's Download CV button. Older PDFs remain in the
+                        repo root but are no longer linked.
 
-  index-Cn99QLM1.css   Compiled Tailwind v4.1.12 CSS (~104KB). Only classes
-                        that were used at build time exist here. You cannot
-                        use arbitrary Tailwind classes unless they already
-                        appear in this file.
+legacy/index-legacy.html  The retired React-era page (loads /assets/*). Kept
+                        for reference; not linked from anywhere.
 
-favicon.svg             Spider icon (SVG). Dark body, white eyes, red
-                        hourglass marking, 8 legs.
+assets/                 The old minified React bundle + compiled Tailwind CSS.
+                        Only used by legacy/index-legacy.html now.
 
-photos/                 All images used on the site:
-  professional-headshot.jpg   OG/social sharing image
-  headshot.jpg                About section (sticky on desktop, static on mobile)
-  community.jpg               Friday Night Dinners card
-  volunteering.jpg            Local Volunteering card
-  aguaclara.jpg               AguaClara Reach card
-  scuba.jpg                   Gallery - Scuba Diving
-  travel.jpg                  Gallery - Handstand/Travel (object-position: center 20%)
-  film-collage.jpg            Gallery - Film Photography
-  film-headshot.jpg           Small film photo
-  flight.jpg                  Gallery - Private Pilot
-  longboard.jpg               Gallery - Board Meeting (longboard)
-  Yitzy_Rosenberg_CV.pdf      Duplicate of root CV (used in some links)
+photos/                 All images. Notable additions:
+  berkeley-placeholder.svg      The Berkeley Haas Campanile banner on the
+                                education card (Yitzy explicitly picked this
+                                over the redesign's CSS wordmark banner).
+  berkeley-logo-placeholder.svg Cal roundel (currently unused by the page).
 
-Yitzy_Rosenberg_CV.pdf  Resume download (linked from contact section)
-yitzy-rosenberg.vcf     vCard contact file (linked from contact section)
-CNAME                   GitHub Pages custom domain: bitzyspider.com
-.nojekyll               Tells GitHub Pages not to run Jekyll
+LEASE_Formula.pdf       Work sample PDF (Real Estate card)
+2023_SFWMD_SLRFRP.pdf   Work sample PDF (Infrastructure card)
+yitzy-rosenberg.vcf     vCard (Save Contact button)
+CNAME / .nojekyll       GitHub Pages plumbing (domain: bitzyspider.com)
 
-game.html               "Bug Hunt" — standalone arcade game. Linked from the
-                        main site via a fixed bottom-right pill ("WANT MORE
-                        BUGS? PLAY BUG HUNT →" on desktop; shortened to just
-                        "PLAY BUG HUNT →" with tighter sizing on touch so it
-                        doesn't collide with the bottom-left BUGS DEBUGGED
-                        counter) and a hero hint line, both injected by a script
-                        at the end of index.html. Fully self-contained
-                        (HTML+CSS+JS, no dependencies). Safe to iterate on
-                        without touching index.html.
-
-SUPABASE_SETUP.md       How to turn on the optional global leaderboard for Bug
-                        Hunt: create a free Supabase project, run the table SQL
-                        + RLS policies, paste the URL + anon key into game.html's
-                        CLOUD block. Off by default (scores stay local).
+game.html               "Bug Hunt" — standalone arcade game, untouched by the
+                        redesign. Linked from the nav pill and the hero card.
+SUPABASE_SETUP.md       Optional global leaderboard setup for Bug Hunt.
 ```
+
+### Editing tips (current architecture)
+
+- All copy is plain HTML in `index.html` — edit it directly. No build step.
+- To add film photos to the "Analog Soul" strip: drop files in `photos/` and
+  append paths to the `FILM_FRAMES` array in `index.html` (supports
+  `'path|background-position'`). Reduce `EMPTY_SLOTS` as real frames land.
+- Hover states are CSS classes in the `<style>` block, not inline handlers.
+- The design source (Claude Design canvas export: Direction A/B `.dc.html`,
+  `content.js` data, notes) is not committed — the page IS the artifact.
+- Test locally: any static server from the repo root; the spider needs no build.
 
 ## Bug Hunt game (game.html)
 
@@ -205,238 +192,17 @@ A standalone arcade game built on the site's spider brand. Lives entirely in `ga
 - Resize/orientation changes clamp the spider, target, bugs, and strand endpoints back into the new bounds, so the game stays playable at any window size
 - The game JS can be syntax-checked with `node --check` and smoke-tested headlessly by stubbing window/document/canvas (the stub needs `closePath`); an invincible-bot variant (patch `hearts--` and starting level via sed on the extracted JS) exercises boss/stinkbug/slug levels; the strand system is testable by simulating W-key weaving and watching `#silkLbl` strand counts decay
 
-## The React app (inside index-ZZwLr-Wf.js)
-
-The minified JS renders the initial DOM skeleton. Many sections are then **replaced or augmented by scripts in `index.html`**. The React components provide section containers with IDs that the scripts poll for and inject into.
-
-| Section     | React provides | Scripts in index.html override |
-|-------------|---------------|-------------------------------|
-| **Nav**     | Fixed top bar. Logo + spider icon, section links, "Say Hello" button | **Logo** made clickable (scrolls to top). **Desktop:** Skills and Education links injected after Work. **Mobile:** "Say Hello" replaced with hamburger icon that opens a slide-up menu with all sections; swipe-down to dismiss |
-| **Hero**    | Heading "I UNTANGLE WICKED PROBLEMS", subtitle, tagline, placeholder for nav buttons | CSS overrides heading size (`clamp(2.8rem, 7vw, 5.5rem)`), hides stray `<br>`, adds `padding-top: 10rem`. Scripts inject section nav buttons and desktop spider hint |
-| **Current Projects** | *(does not exist in React)* | **Fully injected** before Work section: Astrid app demo in iPhone frame + description card |
-| **About**   | "The Non-Linear Path" - life story, headshot, spider metaphor, Assess/Hack/Build methodology | CSS disables sticky headshot on mobile |
-| **Work**    | "How I Spend My Energy" - section container with grid | **Grid contents replaced** with 4 standalone experience cards (Real Estate, Startup, Infrastructure, VC). Work sample badges color-matched to card accents (red or blue). Toolkit replaced with 7-category grid (id=`skills`). **Education section injected** after toolkit with 2 photo cards (Cornell, Self-taught) |
-| **Community** | "The Math of Community" - section container | **Rebuilt** as 3 photo cards: Friday Night Dinners, Local Volunteering, AguaClara Reach |
-| **Gallery** | "Off The Clock" - 4 cards: Scuba, Travel, Film Photography, Private Pilot | **Longboard card appended** (5th card). Grid converted to flexbox for centered bottom row. Travel image repositioned |
-| **Contact** | "Let's Connect the Dots" - two button rows | **Button contents replaced**: Row 1 = Email, Phone, Save Contact (white). Row 2 = LinkedIn (blue), Download CV (red). All with SVG icons |
-| **Footer**  | Logo, copyright | — |
-
-### Section IDs (used for navigation)
-
-The React app's original section IDs have been changed. The scripts in `index.html` rely on these IDs:
-
-- `current_work` — "What I'm Building Now" (injected section)
-- `track_record` — "How I Spend My Energy" (Work/experience cards + toolkit)
-- `skills` — Toolkit grid (id added by script onto the React-rendered toolkit container)
-- `education` — "Education" (injected section, 2 photo cards)
-- `community` — "The Math of Community"
-- `off_the_clock` — "Off The Clock" (gallery)
-- `contact` — "Let's Connect the Dots"
-
-The hero section nav buttons, desktop nav links, and mobile hamburger menu all link to these IDs. If you rename a section ID in the minified JS, update the corresponding `href` in the nav button script, the desktop nav injection script, and the mobile nav menu script.
-
-### The Interactive Spider (desktop)
-
-Lives inside the React app. Renders on a full-viewport `<canvas>` element with `fixed inset-0 pointer-events-none z-50`.
-
-**How it works:**
-- Follows the mouse cursor (or touch position on mobile if in full-screen mode)
-- Has 8 legs with inverse kinematics - each leg steps toward target positions
-- Eyes track the bug/fly position
-- A bug/fly wanders the screen; when the spider's head gets within 30px, it "catches" it and the counter increments
-- After 2.5 seconds of no mouse movement, the spider wanders autonomously with random velocity
-- Leaves a silk trail: fading white lines connecting recent positions (lifetime: 5 seconds)
-
-**Spider visual (faces RIGHT by default):**
-- Body: `#1a1a1a` ellipse (20x16) with white 2px stroke, centered at (-5, 0)
-- Fangs: `#ff4444` triangles
-- Head: `#1a1a1a` circle (radius 12) at (15, 0) with white stroke
-- Eyes: white sclera (radius 4.5) at (19, -5) and (19, 5), dark pupils (radius 2) that track the bug, white highlights
-- Mouth: small white arc
-- Legs: white 2px strokes with `#ff4444` joint circles (radius 1.5-2)
-
-**Key constants in the minified JS:**
-- `Md=20` - spider body width
-- `Iy=12` - head radius
-- `Fy=8` - number of legs
-- `Dd=6` - bug body size
-- `Oy=2500` - idle timeout (ms) before autonomous wandering
-- `ma=8` - max wander velocity
-- `Nd=0.5` - random velocity factor
-- `pa=5000` - silk trail lifetime (ms)
-
-**Counter UI:**
-- Fixed position, bottom-left corner (`fixed bottom-4 left-4 z-[60]`)
-- Shows "BUGS DEBUGGED: X" in monospace, with the number in red
-- Small text (`text-xs`, `md:text-sm`), thin border, no backdrop blur
-- `pointer-events-none` so it doesn't interfere with scrolling
-- On mobile: hidden by the mobile spider script (replaced with corner web)
-
-**Tagline** (in hero section):
-- "(You debug the bugs on screen. I debug the ones in production.)"
-- Followed by a subtle hint: "Move your cursor to guide the spider. Catch the bugs." (desktop only, injected by script)
-
-### Cursor behavior (desktop)
-
-The React spider hides the system cursor (`document.body.style.cursor = "none"`) on non-touch devices. The spider itself acts as the cursor. All clickable elements have `cursor-none` class.
-
-## The Mobile Spider (inside index.html)
-
-This is a plain JavaScript IIFE at the bottom of `index.html`. It only runs on touch devices. It exists because the full-screen spider is too intrusive on mobile - it follows your finger everywhere and gets in the way of reading.
-
-**What it does:**
-
-1. **Hides the React spider** - sets the original canvas and counter to `display: none`
-2. **Creates a 160x200 canvas** fixed in the top-right corner
-3. **Draws a web** - 8 spokes + 5 concentric rings radiating from the top-right corner
-4. **Spider dangles** from an anchor point on the web (~135 degrees, 85% out along the spoke), hanging from a silk thread, gently swaying
-5. **After 60 seconds idle**, a fly spawns and buzzes around erratically. The spider detaches and chases it, leaving a silk trail
-6. **Tap the spider** to enter full-screen mode (shows the original React spider + counter). Returns to corner mode after 5 seconds of no touch activity
-
-**The corner spider is visually identical to the React spider**, just scaled to 0.45x. Same body, head, eyes, fangs, legs, mouth. Eyes track the fly.
-
-**Key variables in the mobile script:**
-- `W=160, H=200` - corner canvas size
-- `SC=0.45` - spider scale factor
-- `FLY_DELAY=60000` - 60 seconds before fly appears
-- `RETURN_TIMEOUT=5000` - 5 seconds before returning to corner from full-screen
-- `trailLifetime=5000` - silk trail fades over 5 seconds
-- `threadLen=50` - dangle thread length
-- `swaySpeed=0.015, swayAmp=4` - gentle sway parameters
-
-## Editing tips
-
-**Preferred approach: inject via `index.html` scripts.** Almost all recent changes were done this way. The pattern is:
-
-1. Poll for a React-rendered element by ID or selector using `setInterval`
-2. Once found, `clearInterval` and inject/replace content
-3. Use inline styles or existing Tailwind classes for styling
-
-This is far safer and more readable than editing the minified bundle.
-
-**To change text content in the React skeleton** (headings, descriptions, button labels):
-- Search for the exact string in `assets/index-ZZwLr-Wf.js` and do a string replacement
-- Be careful not to change the length of strings that are adjacent to important code
-- Only do this for strings that aren't already overridden by `index.html` scripts
-
-**To change styles on React-rendered elements:**
-- **Prefer CSS overrides in the `<style>` block** in `index.html` with `!important`
-- If you must edit the minified JS: find the `className:"..."` and only use Tailwind classes that exist in `assets/index-Cn99QLM1.css`
-- To check if a class exists: `grep -o 'classname' assets/index-Cn99QLM1.css`
-
-**To add new sections or features:**
-- Add a `<script>` tag in `index.html` following the existing polling pattern
-- Poll for a known element, inject your content relative to it
-- See the Current Projects script for an example of injecting a whole new section
-
-**To change the mobile spider:**
-- Edit the script directly in `index.html` - it's plain readable JavaScript
-
-**To change images:**
-- Replace files in `photos/` keeping the same filenames
-- Or update the filename references in the relevant script (most are now in `index.html`)
-
-**To change experience cards, toolkit, community cards, or contact buttons:**
-- These are all defined in plain JS objects/arrays in `index.html` scripts
-- Edit the data directly — no minified JS involved
-
-## Tech stack
-
-- React 18+ (bundled, no source)
-- Tailwind CSS v4.1.12 (compiled)
-- Framer Motion (animations, page transitions)
-- Lucide React (icons)
-- HTML5 Canvas 2D (spider rendering)
-- Vite (build tool, not present in repo)
-- GitHub Pages (hosting)
-
-## Design language
-
-- **Colors:** Black background (`#000`), white text, red accents (`#dc2626`, `#ff4444`), blue accents (`#3b82f6` on alternating work cards, `#0A66C2` on LinkedIn button). Work sample badges match their card's accent color (red cards get red badges, blue cards get blue badges)
-- **Card style:** Dark background (`rgba(24,24,27,0.2)`), zinc border (`#27272a`), border lightens on hover (to accent color at 30% opacity)
-- **Fonts:** Monospace for code-themed elements (counter, section labels, taglines), sans-serif for body
-- **Layout:** Single column on mobile, multi-column grid on desktop. Gallery uses flexbox to center the bottom row of 5 cards
-- **Interactions:** Framer Motion hover/tap on React elements. Injected cards use CSS transitions (border-color, transform, image scale)
-- **Section spacing:** Unified to `padding: 5rem 0` via script override (React default was `py-32`)
-
-## Lessons learned
-
-Things that tripped us up and how to avoid them in the future:
-
-### The React h1 has a phantom `<br>`
-
-The minified React app renders the hero heading as `"" + <br> + "I UNTANGLE..."`. That empty string + line break wastes a full line of vertical space, pushing the visible heading behind the fixed nav. **Fix:** CSS rule `h1 > br:first-of-type { display: none !important; }` in the `<style>` block.
-
-### The fixed nav requires generous hero padding
-
-The nav bar is ~80px tall and `position: fixed`. The hero section needs `padding-top: 10rem` (160px) to ensure the heading clears it, especially at large font sizes. The original React `pt-24` (96px) was not enough. **Fix:** CSS rule `section:first-of-type { padding-top: 10rem !important; }`.
-
-### CSS `!important` is necessary to override React
-
-The minified bundle applies Tailwind classes directly. To override them from `index.html`, you need `!important` on your CSS rules. Without it, the specificity of the compiled Tailwind classes wins.
-
-### Heading size must be responsive
-
-The React app used `text-6xl md:text-8xl` which was enormous on some screens and invisible on others. **Fix:** `clamp(2.8rem, 7vw, 5.5rem)` scales smoothly from mobile to desktop without breakpoint jumps.
-
-### Sticky elements break on mobile
-
-The About section headshot uses `sticky top-32` which overlays content on small screens. **Fix:** CSS media query disables sticky on `max-width: 767px`.
-
-### DOM injection pattern
-
-All `index.html` scripts follow the same pattern:
-```js
-var poll = setInterval(function(){
-  var el = document.getElementById('section_id');
-  if (!el) return;
-  clearInterval(poll);
-  // Now safe to modify el
-}, 200);
-```
-This is necessary because React renders asynchronously. The 200ms interval is a good balance between responsiveness and CPU usage.
-
-### Don't try to replace the React app wholesale
-
-Early attempts to rewrite the entire page or refactor into a modular build system caused regressions. The safest approach is to **keep the React bundle as the skeleton** and **surgically override specific sections** from `index.html` scripts. Each script is self-contained and only touches one section.
-
-### Section IDs were renamed
-
-The original React section IDs (`work`, `gallery`, etc.) were changed to more descriptive names (`track_record`, `off_the_clock`, etc.). All nav links, scroll targets, and injection scripts must use the new IDs. If you change an ID in the minified JS, grep `index.html` for every reference to the old name.
-
-### Navigation links exist in three places
-
-The desktop nav bar, hero section nav buttons, and mobile hamburger menu all contain section links. When adding or removing a navigable section, **all three must be updated**:
-1. **Hero buttons** — the `buttons` array in the hero nav buttons injection script
-2. **Desktop nav** — the desktop nav link injection script (queries for `nav .hidden.md\\:flex`)
-3. **Mobile menu** — the `sections` array in the mobile slide-up nav script
-
-Missing any one of these will create an inconsistent experience between desktop and mobile.
-
-### Desktop nav link ordering matters
-
-The desktop nav injection script inserts links relative to existing React-rendered links using `insertBefore(newLink, referenceLink.nextSibling)`. The insertion order must be **reverse** of how you want them to appear if inserting after the same element, or you can chain them (insert A after Work, then insert B after A). The current order is: About, Work, Skills, Education, Community, Off the Clock.
-
-### The React nav logo is a `<div>`, not an `<a>`
-
-The BITZYSPIDER.COM logo in the top-left nav is rendered as a plain `<div>` (not a link). A script adds a click handler to scroll to the top of the page. If you ever need to change this behavior, the selector is `nav .text-2xl.font-bold`.
-
-### Work sample PDFs live in the repo root
-
-The work sample PDFs (`LEASE_Formula.pdf`, `2023_SFWMD_SLRFRP.pdf`) are served from the repo root, not a `/docs/` subdirectory. GitHub Pages serves all files in the root. The `badgeLink` paths in the work card data must be `'/LEASE_Formula.pdf'` not `'/docs/LEASE_Formula.pdf'`. Subdirectory paths will 404 on GitHub Pages unless that directory actually exists.
-
-### Badge colors should match their card's accent
-
-Work experience cards alternate between red (`#dc2626`) and blue (`#3b82f6`) accents. The "Work Sample" badges on each card should use the same color as the card's accent, not a hardcoded red. The hover color also needs to shift: red cards hover to `#ef4444`, blue cards hover to `#60a5fa`.
-
-### Mobile nav replaces "Say Hello" with a hamburger
-
-On touch devices, the "Say Hello" button in the top-right nav is hidden and replaced with a hamburger icon. Tapping it opens a slide-up sheet with all section links. The sheet supports swipe-down to dismiss (threshold: 80px). This script only runs on touch devices (`'ontouchstart' in window || navigator.maxTouchPoints`).
-
-### The `skills` ID is assigned by script, not React
-
-The toolkit section doesn't have an ID in the React bundle. The toolkit replacement script assigns `toolkit.id = 'skills'` so that nav links can scroll to it. If the toolkit script is removed or rewritten, this ID assignment must be preserved or navigation will break.
-
-### Education section is injected, not React-rendered
-
-The Education section (id=`education`) is fully injected by a script in `index.html` after the toolkit. It contains two photo cards (Cornell Engineering, Self-Taught Foundation). The photos use the class `.edu-photo` with responsive height (`360px` desktop, `300px` mobile). If you need to add more education cards, add objects to the `schools` array in that script.
+## Legacy notes (React era)
+
+Everything below this line described the pre-redesign architecture (React bundle
++ DOM-injection scripts in index.html). That page now lives at
+`legacy/index-legacy.html`; the notes are preserved in git history. Still-true
+facts worth keeping:
+
+- Work sample PDFs are served from the repo root (GitHub Pages serves all root
+  files); links must be `/LEASE_Formula.pdf`, not a subdirectory.
+- The spider visual/physics documentation (body ellipse 20x16, head r12, 8 IK
+  legs, red #ff4444 joints, silk trail 5s, idle wander after 2.5s) now applies
+  to `spider.js`, which is a verbatim port of that code.
+- The desktop spider hides the system cursor; on touch devices it follows the
+  finger with a 50px lift.

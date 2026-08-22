@@ -1,0 +1,1385 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Yitzy Rosenberg | I Untangle Wicked Problems</title>
+    <meta name="description" content="Systems Engineer. 2x Founder. MBA + M.Eng candidate at UC Berkeley Haas. From water infrastructure for 10M people to AI-powered operations systems." />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <!-- Open Graph / Social Sharing -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Yitzy Rosenberg | I Untangle Wicked Problems" />
+    <meta property="og:description" content="Systems Engineer. 2x Founder. MBA + M.Eng candidate at UC Berkeley Haas. From water infrastructure for 10M people to AI-powered operations systems." />
+    <meta property="og:image" content="/photos/professional-headshot.jpg" />
+    <meta property="og:url" content="https://bitzyspider.com" />
+    <meta property="og:site_name" content="BitzySpider.com" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Yitzy Rosenberg | I Untangle Wicked Problems" />
+    <meta name="twitter:description" content="Systems Engineer. 2x Founder. MBA + M.Eng candidate at UC Berkeley Haas. From water infrastructure for 10M people to AI-powered operations systems." />
+    <meta name="twitter:image" content="/photos/professional-headshot.jpg" />
+
+    <!-- Theme Color -->
+    <meta name="theme-color" content="#000000" />
+    <script type="module" crossorigin src="/assets/index-ZZwLr-Wf.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-Cn99QLM1.css">
+
+    <!-- Fix hero heading: responsive size, hide stray <br>, mobile fixes -->
+    <style>
+      h1 { font-size: clamp(2.8rem, 7vw, 5.5rem) !important; line-height: 1.1 !important; }
+      /* The React h1 starts with an empty "" + <br>. Hide it so text starts immediately. */
+      h1 > br:first-of-type { display: none !important; }
+      /* Hero section needs more top padding to clear the fixed nav */
+      section:first-of-type { padding-top: 10rem !important; }
+      @media (max-width: 767px) {
+        /* Disable sticky headshot on mobile */
+        .sticky.top-32 { position: relative !important; top: auto !important; }
+      }
+    </style>
+    <!-- Spider layer kill switch: ?spider=0 or localStorage spider=off hides spider only; site content unchanged -->
+    <script>
+    (function(){
+      function spiderDisabled() {
+        if (typeof URLSearchParams !== 'undefined' && new URLSearchParams(location.search).get('spider') === '0') return true;
+        try { return localStorage.getItem('spider') === 'off'; } catch (e) { return false; }
+      }
+      function hideSpiderLayer() {
+        var c = document.querySelector('canvas');
+        if (c) { c.style.display = 'none'; document.body.style.cursor = 'auto'; }
+        var n = c && c.nextElementSibling;
+        if (n && n.textContent && n.textContent.indexOf('CAUGHT') !== -1) n.style.display = 'none';
+      }
+      if (spiderDisabled()) {
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function(){ setTimeout(hideSpiderLayer, 500); });
+        else setTimeout(hideSpiderLayer, 500);
+      }
+    })();
+    </script>
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script>
+    // Spider instructions: inject under "Growth Strategist" in the hero
+    (function(){
+      function findAndInject(){
+        var walk = function(el){
+          if (!el || el.nodeType !== 1) return null;
+          if (el.textContent && el.textContent.indexOf('Growth Strategist') !== -1) {
+            if (el.id === 'spider-instructions') return null;
+            return el;
+          }
+          for (var i = 0; i < el.childNodes.length; i++) {
+            var r = walk(el.childNodes[i]);
+            if (r) return r;
+          }
+          return null;
+        };
+        var root = document.getElementById('root');
+        if (!root) return;
+        var target = walk(root);
+        if (!target || document.getElementById('spider-instructions')) return;
+        var block = target.closest ? target.closest('p') || target.closest('div') || target : target;
+        var div = document.createElement('p');
+        div.id = 'spider-instructions';
+        div.className = 'text-sm mt-3';
+        div.style.cssText = 'color:rgba(255,255,255,0.5);max-width:28rem;margin-left:auto;margin-right:auto;text-align:center;';
+        div.textContent = 'Tap the spider to start debugging. Double tap the spider to return to the web.';
+        block.parentNode.insertBefore(div, block.nextSibling);
+        return true;
+      }
+      function poll(){
+        if (findAndInject()) return;
+        setTimeout(poll, 300);
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', poll);
+      else poll();
+    })();
+    </script>
+    <script>
+    // Mobile: canvas always fullscreen (same as web). Touch = spider follows finger (mousemove). Double-tap = spider returns to corner. pointer-events:none so page scrolls.
+    (function(){
+      if(!('ontouchstart' in window) && !navigator.maxTouchPoints) return;
+
+      var touchX = 0, touchY = 0;
+      var cornerScreenX = 0, cornerScreenY = 100;
+      var lastTapTime = 0, lastTapX = 0, lastTapY = 0;
+      var returnStartTime = 0, returnStartX = 0, returnStartY = 0, returnDuration = 500;
+      var returning = false;
+
+      function dispatchMouseMove(x, y){
+        try { window.dispatchEvent(new MouseEvent('mousemove', { clientX: x, clientY: y, bubbles: true })); } catch(e) {}
+      }
+
+      function onTouchMove(e){
+        if(returning || !e.touches.length) return;
+        touchX = e.touches[0].clientX; touchY = e.touches[0].clientY;
+        dispatchMouseMove(touchX, touchY);
+      }
+      function onTouchStart(e){
+        if(!e.touches.length) return;
+        var x = e.touches[0].clientX, y = e.touches[0].clientY, t = Date.now();
+        if(t - lastTapTime < 400 && Math.hypot(x - lastTapX, y - lastTapY) < 60){
+          lastTapTime = 0;
+          returning = true;
+          returnStartTime = Date.now();
+          returnStartX = touchX; returnStartY = touchY;
+          returnAnim();
+          return;
+        }
+        lastTapTime = t; lastTapX = x; lastTapY = y;
+      }
+
+      function returnAnim(){
+        if(!returning) return;
+        var now = Date.now();
+        var t = Math.min((now - returnStartTime) / returnDuration, 1);
+        var ease = 1 - Math.pow(1 - t, 2);
+        var x = returnStartX + (cornerScreenX - returnStartX) * ease;
+        var y = returnStartY + (cornerScreenY - returnStartY) * ease;
+        dispatchMouseMove(x, y);
+        if(t >= 1){ returning = false; return; }
+        requestAnimationFrame(returnAnim);
+      }
+
+      var poll = setInterval(function(){
+        var c = document.querySelector('canvas');
+        if(!c) return;
+        clearInterval(poll);
+        cornerScreenX = window.innerWidth - 80;
+        c.style.cssText = (c.style.cssText || '') + ';pointer-events:none;';
+        document.addEventListener('touchmove', onTouchMove, { passive: true });
+        document.addEventListener('touchstart', onTouchStart, { passive: true });
+      }, 200);
+    })();
+    </script>
+
+    <script>
+    // Hero: Berkeley Haas status pill under the tagline
+    (function(){
+      var poll = setInterval(function(){
+        var hero = document.querySelector('[id] h1');
+        if (!hero || document.getElementById('berkeley-pill')) return;
+        var tagline = null;
+        var sibs = hero.parentElement ? hero.parentElement.children : [];
+        for (var i = 0; i < sibs.length; i++) {
+          if (sibs[i].tagName === 'P' && sibs[i].textContent.indexOf('Growth Strategist') !== -1) { tagline = sibs[i]; break; }
+        }
+        if (!tagline) return;
+        clearInterval(poll);
+        var pill = document.createElement('p');
+        pill.id = 'berkeley-pill';
+        pill.className = 'font-mono text-xs';
+        pill.style.cssText = 'display:inline-flex;align-items:center;gap:0.5rem;margin-top:1rem;padding:0.4rem 0.9rem;' +
+          'border:1px solid rgba(253,181,21,0.4);border-radius:9999px;color:#FDB515;letter-spacing:0.08em;background:rgba(253,181,21,0.06)';
+        pill.innerHTML = '<span style="width:6px;height:6px;border-radius:50%;background:#FDB515;display:inline-block"></span>' +
+          'NOW: MBA + M.ENG CANDIDATE @ UC BERKELEY HAAS';
+        var wrap = document.createElement('div');
+        wrap.style.cssText = 'text-align:center';
+        wrap.appendChild(pill);
+        tagline.parentNode.insertBefore(wrap, tagline.nextSibling);
+      }, 200);
+    })();
+    </script>
+
+    <script>
+    // Current Projects section: inject above the Work section with Astrid app demo
+    (function(){
+      var poll = setInterval(function(){
+        var work = document.getElementById('track_record');
+        if (!work) return;
+        clearInterval(poll);
+        injectSection(work);
+      }, 200);
+
+      function injectSection(workSection) {
+        // ----- Styles for the iPhone frame -----
+        var style = document.createElement('style');
+        style.textContent =
+          '.iphone-frame {' +
+            '--phone-width: 280px;' +
+            '--phone-radius: 40px;' +
+            'width: var(--phone-width);' +
+            'height: calc(var(--phone-width) * 2.16);' +
+            'background: #1a1a1a;' +
+            'border: 6px solid #333;' +
+            'border-radius: var(--phone-radius);' +
+            'position: relative;' +
+            'margin: 0 auto;' +
+            'box-shadow: 0 20px 50px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05);' +
+          '}' +
+          '.iphone-frame .speaker {' +
+            'position: absolute;' +
+            'top: 15px;' +
+            'left: 50%;' +
+            'transform: translateX(-50%);' +
+            'width: 60px;' +
+            'height: 5px;' +
+            'background: #222;' +
+            'border-radius: 10px;' +
+            'z-index: 10;' +
+          '}' +
+          '.iphone-frame .screen-content {' +
+            'position: absolute;' +
+            'top: 5px;' +
+            'left: 5px;' +
+            'right: 5px;' +
+            'bottom: 5px;' +
+            'background: #000;' +
+            'border-radius: calc(var(--phone-radius) - 8px);' +
+            'overflow: hidden;' +
+          '}' +
+          '.iphone-frame .screen-content iframe {' +
+            'width: 100%;' +
+            'height: 100%;' +
+            'border: none;' +
+          '}' +
+          '.iphone-frame .home-bar {' +
+            'position: absolute;' +
+            'bottom: 12px;' +
+            'left: 50%;' +
+            'transform: translateX(-50%);' +
+            'width: 100px;' +
+            'height: 4px;' +
+            'background: rgba(255,255,255,0.2);' +
+            'border-radius: 10px;' +
+          '}' +
+          '@media (min-width: 768px) {' +
+            '.iphone-frame { --phone-width: 320px; }' +
+          '}';
+        document.head.appendChild(style);
+
+        // ----- Build the section -----
+        var section = document.createElement('section');
+        section.id = 'current_work';
+        section.className = 'py-32 px-4';
+
+        section.innerHTML =
+          '<div class="max-w-7xl mx-auto">' +
+
+            // Heading (matches site pattern: text-center mb-20, h2 + subtitle)
+            '<div class="text-center mb-16">' +
+              '<h2 class="text-4xl md:text-5xl font-bold mb-6">What I\u2019m Building Now</h2>' +
+              '<p class="text-lg" style="color:#9ca3af;max-width:42rem;margin:0 auto">' +
+                'The best way to understand how I think is to see what I ship.' +
+              '</p>' +
+            '</div>' +
+
+            // Phone left, card right — same grid as work cards
+            '<div class="grid lg:grid-cols-2 gap-12" style="align-items:start">' +
+
+              // Phone (left column, centered)
+              '<div style="display:flex;justify-content:center">' +
+                '<div class="iphone-frame">' +
+                  '<div class="speaker"></div>' +
+                  '<div class="screen-content">' +
+                    '<iframe ' +
+                      'src="https://www.youtube-nocookie.com/embed/DjVovCBWpB8?rel=0&modestbranding=1&iv_load_policy=3&autoplay=0" ' +
+                      'title="Astrid App Demo" ' +
+                      'frameborder="0" ' +
+                      'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" ' +
+                      'allowfullscreen>' +
+                    '</iframe>' +
+                  '</div>' +
+                  '<div class="home-bar"></div>' +
+                '</div>' +
+              '</div>' +
+
+              // Card (right column, same width as work cards)
+              '<div class="p-8 rounded-2xl" id="astrid-card" style="background:rgba(24,24,27,0.2);border:1px solid #27272a;transition:border-color 0.3s">' +
+                '<h3 class="text-2xl font-bold mb-2" style="color:white">Astrid</h3>' +
+                '<p class="font-mono text-xs mb-6" style="color:#6b7280;letter-spacing:0.1em">' +
+                  'Co-Founder @ Astrid &middot; Health Tech' +
+                '</p>' +
+                '<p class="font-mono text-xs mb-2" style="color:#dc2626;letter-spacing:0.1em">THE WICKED PROBLEM</p>' +
+                '<p class="text-lg italic pl-4 mb-4" style="color:white;border-left:4px solid #dc2626">' +
+                  'PMDD is a moving target where biological and systemic variables are so intertwined that diagnosis is currently invisible to modern medicine, leaving patients misdiagnosed and gaslit.' +
+                '</p>' +
+                '<p class="text-sm mb-4" style="color:#9ca3af">Built a diagnostic bridge to automate behavioral tracking and eliminate the misdiagnosis loop.</p>' +
+                '<div style="display:flex;flex-direction:column;gap:0.5rem">' +
+                  '<p class="text-sm leading-relaxed" style="color:#9ca3af;padding-left:1rem">' +
+                    '<span class="font-semibold" style="color:#dc2626">The Diagnostic Bridge:</span> Automating the months of behavioral tracking required for formal diagnosis to eliminate the \u201Cdata fatigue\u201D barrier.' +
+                  '</p>' +
+                  '<p class="text-sm leading-relaxed" style="color:#9ca3af;padding-left:1rem">' +
+                    '<span class="font-semibold" style="color:#dc2626">Pattern Recognition:</span> Moving beyond \u201Cone-size-fits-all\u201D medicine by mapping how the condition interacts with neurodivergence and external stress.' +
+                  '</p>' +
+                  '<p class="text-sm leading-relaxed" style="color:#9ca3af;padding-left:1rem">' +
+                    '<span class="font-semibold" style="color:#dc2626">Ending the Misdiagnosis Loop:</span> Providing objective, cyclical data that prevents the incorrect long-term prescriptions that often mask the root cause.' +
+                  '</p>' +
+                '</div>' +
+              '</div>' +
+
+            '</div>' +
+          '</div>';
+
+        // Insert right before the Work section
+        workSection.parentNode.insertBefore(section, workSection);
+
+        // Add hover effect matching work cards
+        var astridCard = document.getElementById('astrid-card');
+        if (astridCard) {
+          astridCard.onmouseenter = function(){ astridCard.style.borderColor = '#dc26264d'; };
+          astridCard.onmouseleave = function(){ astridCard.style.borderColor = '#27272a'; };
+        }
+      }
+    })();
+    </script>
+
+    <script>
+    // Work section: Replace 2-column Operator/Engineer grid with 4 experience cards
+    (function(){
+      var experiences = [
+        {
+          title: 'The Systems Consultancy',
+          role: 'Founder & Operations Consultant',
+          company: 'YYR Consulting',
+          dates: '2026 \u2013 Present',
+          color: '#dc2626',
+          badge: 'Link',
+          badgeLink: 'https://yyrconsulting.com/',
+          featured: true,
+          problem: 'Growth-stage companies drowning in spreadsheets and tribal knowledge don\u2019t need another slide deck of recommendations. They need working systems.',
+          fix: 'Founded an operations and AI systems consultancy that ships production software instead of PowerPoints.',
+          bullets: [
+            { label: 'The Hub', text: 'Architected and shipped Gearsupply Hub, a custom AI-coded internal platform with role-based access control and cloud infrastructure, replacing triple-counted spreadsheets with a single source of truth across $10M in inventory.' },
+            { label: 'The Workflows', text: 'Designed and integrated end-to-end operational workflows across serial tracking, receiving, testing, and fulfillment within Odoo, cutting inventory error rates from 100+ to 3-4 per bay across the warehouse.' },
+            { label: 'The Handoff', text: 'Built a KPI dashboard and asset recovery system driving roughly $1M in expected recovery, then onboarded a non-technical Director of Operations to run every system independently within two months.' }
+          ]
+        },
+        {
+          title: 'The Real Estate Turnaround',
+          role: 'Head of Special Projects, Asset & Product Manager',
+          company: 'Woolbright Development',
+          dates: '2024 \u2013 2025',
+          color: '#3b82f6',
+          badge: 'Work Sample',
+          badgeLink: '/LEASE_Formula.pdf',
+          problem: 'Dragging a legacy, intuition-based industry into the future by replacing manual processes with high-velocity, data-driven systems.',
+          fix: 'Treated a $1B+ shopping center portfolio like a systems engineering challenge.',
+          bullets: [
+            { label: 'The Leasing Engine', text: 'Built and launched a proprietary leasing framework and full CRM product modeling pipeline throughput, asset attractiveness, and execution friction, generating $14M in portfolio value at distressed properties where prior agents had failed.' },
+            { label: 'The Diagnosis', text: 'Conducted structured user research across three departments, diagnosing operational gaps and redesigning core workflows to give the CEO and leadership team measurable performance visibility for the first time.' },
+            { label: 'The Acquisitions Tool', text: 'Defined, built, and shipped an AI-assisted acquisition tool automating OM parsing, ownership research, and risk categorization, scaling the team\u2019s weekly deal review capacity 10x.' }
+          ]
+        },
+        {
+          title: 'The Startup Scale Up',
+          role: 'Director of Operations',
+          company: 'Gearsupply',
+          dates: '2023 \u2013 2024',
+          color: '#dc2626',
+          badge: 'Link',
+          badgeLink: 'https://gearsupply.com/',
+          problem: 'Building a company\u2019s internal nervous system from scratch while it\u2019s already running at full speed and scaling toward $15M in revenue.',
+          fix: 'Rewired the company nervous system and built the operations team from scratch.',
+          bullets: [
+            { label: 'The Rescue', text: 'Diagnosed and resolved critical operational failures across warehouse leases, insurance, and logistics within weeks of joining a near-shutdown operation, restoring full business continuity across three locations.' },
+            { label: 'The Architecture', text: 'Built and shipped the company\u2019s first integrated inventory and CRM platform connecting accounting, sales, purchasing, and warehouse operations, eliminating the complexity that had driven the entire sales team to resign.' },
+            { label: 'The Scale', text: 'Scaled operations from 3 to 20 people in under a year while leading international expansion into Mexico, building customs workflows, cross-border logistics infrastructure, and metric-based performance systems.' }
+          ]
+        },
+        {
+          title: 'The 100 Year Infrastructure',
+          role: 'District Resiliency Project Manager',
+          company: 'South Florida Water Management District',
+          dates: '2021 \u2013 2023',
+          color: '#3b82f6',
+          badge: 'Work Sample',
+          badgeLink: '/2023_SFWMD_SLRFRP.pdf',
+          problem: 'Balancing the immediate engineering needs of 10 million people against the long-term, existential threat of sea-level rise and a shifting climate.',
+          fix: 'Moved the district from reactive planning to advanced modeling and innovation.',
+          bullets: [
+            { label: 'The Scale', text: 'Oversaw budgeting and project management for over $350 million in public infrastructure and planning projects.' },
+            { label: 'The Innovation Program', text: 'Built a zero-to-one water innovation program from idea to funded reality in six months, securing millions in grants and private partnerships to pilot three nutrient runoff technologies. The program is still active today.' },
+            { label: 'The Framework', text: 'Drove alignment across 20+ subject matter experts to design and ship a water supply planning process now formally adopted into the Lower East Coast regional regulatory framework.' }
+          ]
+        },
+        {
+          title: 'The Venture Capital Lens',
+          role: 'Venture Capital Analyst & Kessler Fellow',
+          company: 'Chloe Capital',
+          dates: '2020 \u2013 2021',
+          color: '#3b82f6',
+          badge: 'Link',
+          badgeLink: 'https://chloecapital.com/',
+          problem: 'Identifying the signal in the noise of early-stage tech to separate high-impact investment opportunities from the hype of a pitch deck.',
+          fix: 'Applied data automation and deep due diligence to the venture capital pipeline.',
+          bullets: [
+            { label: 'The Capital Sourcing', text: 'Built one of the earliest automated investor scraping and outreach systems before the tooling was ubiquitous, generating LP connections that directly contributed to the firm\u2019s inaugural $50M fund raise.' },
+            { label: 'The Diligence', text: 'Conducted full investment diligence across 50+ companies while building the firm\u2019s first CRM and portfolio monitoring system tracking performance across 20 portfolio companies.' },
+            { label: 'The White Paper', text: 'Published a widely cited white paper on gender lens investing while managing a four-person fellowship program.' }
+          ]
+        }
+      ];
+
+      // Poll for the React work section to render, then replace the grid
+      var poll = setInterval(function(){
+        var work = document.getElementById('track_record');
+        if (!work) return;
+        var container = work.firstElementChild;
+        if (!container || container.children.length < 2) return;
+        var grid = container.children[1];
+        if (!grid || grid.className.indexOf('gap-12') === -1) return;
+        clearInterval(poll);
+        replaceGrid(grid);
+      }, 200);
+
+      function replaceGrid(grid) {
+        grid.innerHTML = '';
+
+        experiences.forEach(function(exp) {
+          var card = document.createElement('div');
+          card.className = 'p-8 rounded-2xl';
+          card.style.cssText = 'background:rgba(24,24,27,0.2);border:1px solid #27272a;transition:border-color 0.3s';
+          card.onmouseenter = function(){ card.style.borderColor = exp.color + '4d'; };
+          card.onmouseleave = function(){ card.style.borderColor = '#27272a'; };
+
+          card.style.position = 'relative';
+
+          // Current role spans the full row
+          if (exp.featured) card.style.gridColumn = '1 / -1';
+
+          // Badge (colored to match card accent)
+          var badgeHtml = '';
+          if (exp.badge) {
+            var hoverColor = exp.color === '#3b82f6' ? '#60a5fa' : '#ef4444';
+            badgeHtml = '<a href="' + (exp.badgeLink || '#') + '" target="_blank" rel="noopener noreferrer" ' +
+              'style="position:absolute;top:0.75rem;right:0.75rem;z-index:2;background:' + exp.color + ';color:white;font-size:0.65rem;font-weight:700;padding:0.25rem 0.6rem;border-radius:9999px;text-decoration:none;letter-spacing:0.05em;text-transform:uppercase" ' +
+              'onmouseenter="this.style.background=\'' + hoverColor + '\'" onmouseleave="this.style.background=\'' + exp.color + '\'">' +
+              exp.badge + '</a>';
+          }
+
+          card.innerHTML =
+            badgeHtml +
+            '<h3 class="text-2xl font-bold mb-2" style="color:white">' + exp.title + '</h3>' +
+            '<p class="font-mono text-xs mb-6" style="color:#6b7280;letter-spacing:0.1em">' +
+              exp.role + ' @ ' + exp.company + ' &middot; ' + exp.dates + '</p>' +
+            '<p class="font-mono text-xs mb-2" style="color:' + exp.color + ';letter-spacing:0.1em">THE WICKED PROBLEM</p>' +
+            '<p class="text-lg italic pl-4 mb-4" style="color:white;border-left:4px solid ' + exp.color + '">' +
+              exp.problem + '</p>' +
+            '<p class="text-sm mb-4" style="color:#9ca3af">' + exp.fix + '</p>' +
+            buildBullets(exp.bullets, exp.color);
+
+          grid.appendChild(card);
+        });
+      }
+
+      function buildBullets(bullets, color) {
+        return '<div style="display:flex;flex-direction:column;gap:0.5rem">' +
+          bullets.map(function(b) {
+            return '<p class="text-sm leading-relaxed" style="color:#9ca3af;padding-left:1rem">' +
+              '<span class="font-semibold" style="color:' + color + '">' + b.label + ':</span> ' +
+              b.text + '</p>';
+          }).join('') +
+        '</div>';
+      }
+    })();
+    </script>
+
+    <script>
+    // Toolkit section: Replace 2-column Languages/Superpowers with full 6-category toolkit
+    (function(){
+      var categories = [
+        {
+          title: 'Statistics',
+          items: ['ANOVA', 'FMEA', 'MonteCarlo Simulations', 'Uncertainty, Descriptive, Sensitivity and Risk Analysis']
+        },
+        {
+          title: 'Finance',
+          items: ['Fund, Project, and Investment Finance', 'Debt, Pricing, Forecasting', 'DCF', 'LBO', 'Real Estate Underwriting']
+        },
+        {
+          title: 'Systems',
+          items: ['Linear and Dynamic Programming', 'Multi-Objective Optimization', 'Civil and Environmental Engineering']
+        },
+        {
+          title: 'Coding',
+          items: ['Advanced Excel', 'Python', 'Auto Lisp', 'R', 'MATLAB', 'VBA', 'VBScript', 'SQL', 'JavaScript', 'SysML', 'C', 'C++']
+        },
+        {
+          title: 'Software',
+          items: ['HubSpot', 'Salesforce', 'PowerBI', 'AutoCAD', 'ArcGIS', 'Jira', 'Trello', 'AirTable', 'Odoo', 'Argus', 'Procore', 'Wrike', 'SAP']
+        },
+        {
+          title: 'Languages',
+          items: ['English', 'Espa\u00f1ol', '\u05e2\u05d1\u05e8\u05d9\u05ea']
+        },
+        {
+          title: 'Certifications',
+          items: ['Associate Systems Engineering Professional (ASEP)', 'Fundamentals of Engineering (FE/EIT)', 'Lean Six Sigma Black Belt']
+        }
+      ];
+
+      var poll = setInterval(function(){
+        var work = document.getElementById('track_record');
+        if (!work) return;
+        // The toolkit is the last child of the work section's container - the div with "The Toolkit" heading
+        var container = work.firstElementChild;
+        if (!container) return;
+        var toolkit = container.querySelector('.bg-zinc-900\\/40');
+        if (!toolkit) return;
+        clearInterval(poll);
+        toolkit.id = 'skills';
+        replaceToolkit(toolkit);
+      }, 200);
+
+      function replaceToolkit(el) {
+        var html = '<h3 class="text-2xl font-bold mb-8 flex items-center gap-3">' +
+          '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-400"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>' +
+          ' My Toolkit</h3>' +
+          '<div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">';
+
+        categories.forEach(function(cat) {
+          html += '<div class="bg-zinc-900 rounded-lg p-6 border border-zinc-800">' +
+            '<h4 class="text-red-500 font-mono text-sm mb-4 uppercase tracking-widest">' + cat.title + '</h4>';
+
+          html += '<div class="flex flex-wrap gap-2">';
+          cat.items.forEach(function(item) {
+            html += '<span class="text-sm font-mono text-gray-300">' + item + '</span>';
+            if (cat.items.indexOf(item) < cat.items.length - 1) {
+              html += '<span class="text-zinc-600">\u00b7</span>';
+            }
+          });
+          html += '</div>';
+
+          html += '</div>';
+        });
+
+        html += '</div>';
+        el.innerHTML = html;
+      }
+    })();
+    </script>
+
+    <script>
+    // Education section: inject after toolkit inside track_record
+    (function(){
+      var degrees = [
+        {
+          school: 'UC Berkeley · Haas School of Business',
+          degree: 'MBA & Master of Engineering (Dual Degree)',
+          detail: 'Industrial Engineering & Operations Research',
+          gpa: '2028',
+          gpaLabel: 'Expected',
+          color: '#FDB515',
+          featured: true,
+          photo: 'photos/berkeley-placeholder.svg',
+          photoAlt: 'UC Berkeley Haas placeholder banner',
+          logo: 'photos/berkeley-logo-placeholder.svg',
+          logoNoBg: true,
+          leadershipLabel: 'FELLOWSHIPS & SCHOLARSHIPS',
+          leadership: [
+            'Consortium Fellow',
+            'Mark Ross Fellow',
+            'Craig Engineering Scholarship',
+            'Haas Merit Scholarship'
+          ]
+        },
+        {
+          school: 'Cornell University',
+          degree: 'Masters of Systems Engineering',
+          detail: 'Financial & Business Systems',
+          gpa: '4.0',
+          gpaLabel: 'GPA',
+          color: '#dc2626',
+          photo: 'photos/Diplomas.JPG',
+          photoAlt: 'Masters and Bachelors diplomas',
+          logo: 'photos/Cornell_University_Logo.png',
+          leadership: [
+            'Engaged Leadership Certification',
+            'President, International Council on Systems Engineering Student Chapter',
+            'Graduate Student Researcher, AguaClara',
+            'Co-Entrepreneurial Lead, National Science Foundation I-Corps',
+            'Lead Teaching Assistant for NBA6230 & 6233 "Actualizing Your Startup"',
+            'Lead Teaching Assistant for NBA3000 & 5640 "Designing New Ventures"',
+            'Research Assistant, SC Johnson School of Business'
+          ]
+        },
+        {
+          school: 'Cornell University',
+          degree: 'Bachelors of Environmental Engineering',
+          detail: 'Entrepreneurship \u00b7 Cum Laude',
+          gpa: '3.7',
+          gpaLabel: 'Cumulative GPA',
+          color: '#dc2626',
+          photo: 'photos/CornellGraduation.jpg',
+          photoAlt: 'Cornell graduation at McGraw Tower',
+          logo: 'photos/Cornell_University_Logo.png',
+          leadership: [
+            'Vice-President of Cornell Rotaract Club',
+            'Senior Leadership in AguaClara Cornell',
+            'Senior Leadership in Engineers Without Borders',
+            'Unit Head and Counselor in Camp Kesem',
+            'Kessler Fellow',
+            'Engagement Intern for Hillel',
+            'House Manager for Triphammer Cooperative',
+            'Mentor for CU-Empower',
+            'Peer Advisor for Environmental Engineering',
+            'Ambassador for Civil and Environmental Program',
+            'Contributor to Rotary WASH Grant Writing Team',
+            'Engineering Leadership Certification'
+          ]
+        },
+        {
+          school: 'Technion \u2013 Israel Institute of Technology',
+          degree: 'Engineering for Developing Communities',
+          detail: 'Haifa, Israel \u00b7 Study Abroad',
+          gpa: '3.9',
+          gpaLabel: 'GPA',
+          color: '#3b82f6',
+          photo: 'photos/technion.jpg',
+          photoAlt: 'Technion group photo',
+          logo: 'photos/Technion_logo.svg.png',
+          logoNoBg: true,
+          leadership: []
+        },
+        {
+          school: 'Broward College',
+          degree: 'Associates in Arts',
+          detail: 'Chemical Engineering \u00b7 Highest Honors',
+          gpa: '3.9',
+          gpaLabel: 'GPA',
+          color: '#3b82f6',
+          photo: 'photos/BCGrad.jpeg',
+          photoAlt: 'Broward College graduation with president',
+          logo: 'photos/BrowardCollegeLogo.svg',
+          leadership: [
+            'Founder & President of the Chemistry Club',
+            'Founder of the Textbook Exchange Library',
+            'Vice-President of Fellowship for Phi Theta Kappa Honors',
+            'South Campus Bureau Chief for "The Observer"',
+            'Jurisprudence in Student Government',
+            'Member of the Student Leadership Committee',
+            'Writer for Honors Newsletter',
+            'Senior Member of Model United Nations',
+            'Honors Student Committee Club',
+            'Central Campus Events Coordinator',
+            'South Campus Events Coordinator',
+            'Robotics Student Government Representative',
+            'Service Chair for the National Society of Leadership and Success',
+            'Chai Lifeline Miami',
+            'Friendship Circle Miami'
+          ]
+        }
+      ];
+
+      var awards = [
+        'Aspen Institute Future Climate Leader (2023)',
+        'American Water Works Association Scholar (2020)',
+        'Kessler Fellow (2019)',
+        'American Chemical Society Scholar (2018)',
+        'Honorary Discipline Award \u2013 Physics (2018)',
+        'Future Resilient Leader Award (2018)',
+        'Jack Kent Cooke Scholar Semifinalist (2017, 2016)',
+        'Bocchino Family Scholarship Award (2017)',
+        'Student Life Leadership Award (2017)',
+        'Honorary Discipline Award \u2013 Chemistry & Spanish (2017)',
+        'Presidents Award (2017)',
+        'Student Life Civic Award \u2013 The Observer & Phi Theta Kappa (2017)',
+        'Best Position Paper & Outstanding Delegation \u2013 Southern Regional MUN (2017)',
+        'Rasmuson Award (2016)',
+        'Robert Elmer Award (2015)',
+        'Scholars Grant (2015)',
+        'William Porterfield Award (2015)',
+        'Presidents List (Fall 2017, 2016, 2015, 2014 \u00b7 Spring 2017, 2015, 2014, 2013)',
+        'Dean\u2019s List (Spring 2019 \u00b7 Fall 2016)'
+      ];
+
+      var currentLeadership = [
+        'President, Cornell Club of Fort Lauderdale & Boca Raton',
+        'Board Member, Young Professionals in Infrastructure',
+        'Young Professionals in Energy',
+        'Aspen Institute Future Climate Leader'
+      ];
+
+      var poll = setInterval(function(){
+        var work = document.getElementById('track_record');
+        if (!work) return;
+        var container = work.firstElementChild;
+        if (!container) return;
+        var toolkit = container.querySelector('.bg-zinc-900\\/40');
+        if (!toolkit) return;
+        clearInterval(poll);
+
+        var section = document.createElement('div');
+        section.id = 'education';
+        section.style.cssText = 'margin-top:4rem;';
+
+        // Section heading
+        var html = '<h3 class="text-2xl font-bold mb-8 flex items-center gap-3">' +
+          '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-400"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 1.1 2.7 3 6 3s6-1.9 6-3v-5"/></svg>' +
+          ' Education</h3>';
+
+        // Degree cards - 2x2 grid, matching work cards width
+        html += '<div class="edu-grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:1.5rem;">';
+
+        degrees.forEach(function(d, idx) {
+          var leadId = 'edu-lead-' + idx;
+          html += '<div class="edu-card' + (d.featured ? ' edu-card-featured' : '') + '" style="background:rgba(24,24,27,0.4);border:1px solid #27272a;border-radius:0.75rem;overflow:hidden;transition:border-color 0.3s;' + (d.featured ? 'grid-column:1 / -1;' : '') + '" ' +
+            'onmouseenter="this.style.borderColor=\'' + d.color + '4d\'" onmouseleave="this.style.borderColor=\'#27272a\'">';
+
+          // Photo - uses class for responsive height
+          html += '<div class="edu-photo" style="width:100%;overflow:hidden;">' +
+            '<img src="' + d.photo + '" alt="' + d.photoAlt + '" style="width:100%;height:100%;object-fit:cover;transition:transform 0.5s;" ' +
+            'onmouseenter="this.style.transform=\'scale(1.05)\'" onmouseleave="this.style.transform=\'scale(1)\'">' +
+            '</div>';
+
+          // Content - flex row with text on left and logo on right
+          html += '<div style="padding:1.5rem;display:flex;align-items:flex-start;gap:1rem;">';
+
+          // Text side
+          html += '<div style="flex:1;min-width:0;">';
+
+          // School name
+          html += '<p style="font-family:monospace;font-size:0.75rem;color:' + d.color + ';text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.25rem;">' + d.school + '</p>';
+
+          // Degree
+          html += '<h4 style="font-size:1.15rem;font-weight:700;color:#fff;margin-bottom:0.25rem;">' + d.degree + '</h4>';
+
+          // Detail + GPA
+          html += '<p style="font-size:0.85rem;color:#a1a1aa;margin-bottom:0.5rem;">' + d.detail + ' &nbsp;\u00b7&nbsp; <span style="color:' + d.color + ';font-weight:600;">' + d.gpaLabel + ': ' + d.gpa + '</span></p>';
+
+          html += '</div>';
+
+          // Logo on right
+          if (d.logo) {
+            if (d.logoNoBg) {
+              html += '<div style="flex-shrink:0;width:56px;height:56px;display:flex;align-items:center;justify-content:center;">' +
+                '<img src="' + d.logo + '" alt="' + d.school + ' logo" style="max-width:100%;max-height:100%;object-fit:contain;">' +
+                '</div>';
+            } else {
+              html += '<div style="flex-shrink:0;width:56px;height:56px;border-radius:50%;background:#fff;overflow:hidden;">' +
+                '<img src="' + d.logo + '" alt="' + d.school + ' logo" style="width:100%;height:100%;object-fit:cover;">' +
+                '</div>';
+            }
+          }
+
+          html += '</div>';
+
+          // Leadership dropdown (collapsible like Awards)
+          if (d.leadership && d.leadership.length > 0) {
+            html += '<div style="padding:0 1.5rem 1rem;">';
+            html += '<details id="' + leadId + '" style="border-top:1px solid #27272a;">';
+            html += '<summary style="cursor:pointer;font-family:monospace;font-size:0.7rem;color:#a1a1aa;letter-spacing:0.05em;list-style:none;display:flex;align-items:center;gap:0.4rem;user-select:none;padding:0.5rem 0;">' +
+              '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="' + d.color + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' +
+              ' ' + (d.leadershipLabel || 'LEADERSHIP') + ' (' + d.leadership.length + ')' +
+              '<svg class="edu-chev-' + idx + '" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:auto;transition:transform 0.3s;"><polyline points="6 9 12 15 18 9"/></svg>' +
+              '</summary>';
+            html += '<div style="padding:0.25rem 0 0.5rem;">';
+            d.leadership.forEach(function(r) {
+              html += '<p style="font-size:0.8rem;color:#71717a;line-height:1.7;padding-left:0.25rem;">\u2022 ' + r + '</p>';
+            });
+            html += '</div></details>';
+            html += '</div>';
+          }
+
+          html += '</div>';
+        });
+
+        html += '</div>';
+
+        // Current leadership strip
+        html += '<div style="margin-top:2rem;padding:1.25rem 1.5rem;background:rgba(24,24,27,0.4);border:1px solid #27272a;border-radius:0.75rem;">';
+        html += '<p style="font-family:monospace;font-size:0.7rem;color:#dc2626;text-transform:uppercase;letter-spacing:0.15em;margin-bottom:0.5rem;">Current Leadership</p>';
+        html += '<div style="display:flex;flex-wrap:wrap;gap:0.5rem;">';
+        currentLeadership.forEach(function(role) {
+          html += '<span style="font-size:0.8rem;color:#d4d4d8;padding:0.25rem 0.75rem;border:1px solid #3f3f46;border-radius:9999px;white-space:nowrap;">' + role + '</span>';
+        });
+        html += '</div></div>';
+
+        // Awards - collapsible
+        html += '<details style="margin-top:1.5rem;background:rgba(24,24,27,0.4);border:1px solid #27272a;border-radius:0.75rem;overflow:hidden;">';
+        html += '<summary style="padding:1.25rem 1.5rem;cursor:pointer;font-family:monospace;font-size:0.8rem;color:#a1a1aa;letter-spacing:0.05em;list-style:none;display:flex;align-items:center;gap:0.5rem;user-select:none;">' +
+          '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>' +
+          ' AWARDS &amp; HONORS (' + awards.length + ')' +
+          '<svg class="edu-chevron" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:auto;transition:transform 0.3s;"><polyline points="6 9 12 15 18 9"/></svg>' +
+          '</summary>';
+        html += '<div style="padding:0 1.5rem 1.25rem;display:flex;flex-wrap:wrap;gap:0.5rem;">';
+        awards.forEach(function(a) {
+          html += '<span style="font-size:0.8rem;color:#d4d4d8;padding:0.25rem 0.75rem;background:rgba(39,39,42,0.5);border-radius:9999px;">' + a + '</span>';
+        });
+        html += '</div></details>';
+
+        section.innerHTML = html;
+
+        // Insert after toolkit
+        toolkit.parentNode.insertBefore(section, toolkit.nextSibling);
+
+        // Chevron rotation on Awards toggle
+        var awardDetails = section.querySelector('details:not([id])');
+        if (awardDetails) {
+          awardDetails.addEventListener('toggle', function() {
+            var chev = awardDetails.querySelector('.edu-chevron');
+            if (chev) chev.style.transform = awardDetails.open ? 'rotate(180deg)' : '';
+          });
+        }
+
+        // Chevron rotation for each Leadership dropdown
+        degrees.forEach(function(d, idx) {
+          var det = document.getElementById('edu-lead-' + idx);
+          if (det) {
+            det.addEventListener('toggle', function() {
+              var chev = det.querySelector('.edu-chev-' + idx);
+              if (chev) chev.style.transform = det.open ? 'rotate(180deg)' : '';
+            });
+          }
+        });
+      }, 200);
+
+      // Responsive: taller photos on desktop, stack to 1 column on mobile
+      var style = document.createElement('style');
+      style.textContent =
+        '.edu-photo{height:360px}' +
+        '.edu-card-featured .edu-photo{height:260px}' +
+        '.edu-card-featured .edu-photo img{object-position:center}' +
+        '@media(max-width:767px){' +
+          '.edu-grid{grid-template-columns:1fr!important;max-width:100%!important;}' +
+          '.edu-photo{height:300px}' +
+          '.edu-card-featured .edu-photo{height:200px}' +
+        '}';
+      document.head.appendChild(style);
+    })();
+    </script>
+
+    <script>
+    // Add section navigation buttons in the hero (before About)
+    (function(){
+      var poll = setInterval(function(){
+        var nav = document.getElementById('hero-nav');
+        if (!nav) return;
+        clearInterval(poll);
+
+        var buttons = [
+          { label: 'What I\u2019m Building', href: '#current_work' },
+          { label: 'My Track Record', href: '#track_record' },
+          { label: 'Skills', href: '#skills' },
+          { label: 'Education', href: '#education' },
+          { label: 'Community', href: '#community' },
+          { label: 'Off the Clock', href: '#off_the_clock' },
+          { label: 'Get in Touch', href: '#contact' }
+        ];
+
+        buttons.forEach(function(btn) {
+          var a = document.createElement('a');
+          a.href = btn.href;
+          a.textContent = btn.label;
+          a.className = 'font-bold cursor-none';
+          a.style.cssText = 'display:inline-flex;align-items:center;gap:0.5rem;padding:0.75rem 1.5rem;border-radius:9999px;font-size:0.875rem;border:1px solid #3f3f46;color:#d4d4d8;background:transparent;transition:all 0.3s;text-decoration:none';
+          a.onmouseenter = function(){ a.style.borderColor='#dc2626'; a.style.color='#fff'; };
+          a.onmouseleave = function(){ a.style.borderColor='#3f3f46'; a.style.color='#d4d4d8'; };
+          nav.appendChild(a);
+        });
+      }, 200);
+    })();
+    </script>
+
+    <script>
+    // Redesign Contact section: Row 1 = Email, Phone, Save Contact; Row 2 = LinkedIn, Download CV
+    (function(){
+      var poll = setInterval(function(){
+        var contact = document.getElementById('contact');
+        if (!contact) return;
+        var rows = contact.querySelectorAll('.flex.flex-col.md\\:flex-row.gap-4');
+        if (rows.length < 2) return;
+        clearInterval(poll);
+
+        // SVG icons
+        var icons = {
+          email: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>',
+          phone: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>',
+          contact: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>',
+          linkedin: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>',
+          download: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>'
+        };
+
+        // Clear both existing rows
+        rows[0].innerHTML = '';
+        rows[1].innerHTML = '';
+
+        // Row 1: Email, Phone, Save Contact — alternating white / grey / white
+        var baseRow1 = 'text-lg px-8 py-4 rounded-full font-bold transition-all flex items-center justify-center gap-2 cursor-none';
+
+        var emailBtn = document.createElement('a');
+        emailBtn.href = 'mailto:yitzy@bitzyspider.com';
+        emailBtn.className = 'bg-white text-black hover:bg-red-500 hover:text-white ' + baseRow1;
+        emailBtn.innerHTML = icons.email + ' yitzy@bitzyspider.com';
+        rows[0].appendChild(emailBtn);
+
+        var phoneBtn = document.createElement('a');
+        phoneBtn.href = 'tel:3044494899';
+        phoneBtn.className = 'bg-white text-black hover:bg-red-500 hover:text-white ' + baseRow1;
+        phoneBtn.innerHTML = icons.phone + ' <span class="font-mono">(304) 44-YITZY</span>';
+        rows[0].appendChild(phoneBtn);
+
+        var saveBtn = document.createElement('a');
+        saveBtn.href = '/yitzy-rosenberg.vcf';
+        saveBtn.download = true;
+        saveBtn.className = 'bg-white text-black hover:bg-red-500 hover:text-white ' + baseRow1;
+        saveBtn.innerHTML = icons.contact + ' Save Contact';
+        rows[0].appendChild(saveBtn);
+
+        // Row 2: LinkedIn, Download CV (external links)
+        var linkedinBtn = document.createElement('a');
+        linkedinBtn.href = 'https://www.linkedin.com/in/yitzyrosenberg/';
+        linkedinBtn.target = '_blank';
+        linkedinBtn.rel = 'noopener noreferrer';
+        linkedinBtn.className = 'bg-[#0A66C2] text-white text-lg px-8 py-4 rounded-full font-bold hover:bg-[#004182] transition-all flex items-center justify-center gap-2 cursor-none';
+        linkedinBtn.innerHTML = icons.linkedin + ' LinkedIn';
+        rows[1].appendChild(linkedinBtn);
+
+        var cvBtn = document.createElement('a');
+        cvBtn.href = '/Yitzy_Rosenberg_Resume.docx';
+        cvBtn.download = true;
+        cvBtn.className = 'bg-red-600 text-white text-lg px-8 py-4 rounded-full font-bold hover:bg-red-700 transition-all flex items-center justify-center gap-2 cursor-none';
+        cvBtn.innerHTML = icons.download + ' Download CV';
+        rows[1].appendChild(cvBtn);
+      }, 200);
+    })();
+    </script>
+
+    <script>
+    // Add Longboard card to Off The Clock gallery
+    (function(){
+      var poll = setInterval(function(){
+        var gallery = document.getElementById('off_the_clock');
+        if (!gallery) return;
+        var grid = gallery.querySelector('.grid');
+        if (!grid || grid.children.length < 4) return;
+        clearInterval(poll);
+
+        // Create the longboard card matching the existing Js component style
+        var card = document.createElement('div');
+        card.style.cssText = 'transition:transform 0.3s';
+        card.onmouseenter = function(){ this.style.transform='translateY(-10px)'; };
+        card.onmouseleave = function(){ this.style.transform='translateY(0)'; };
+        card.className = 'group bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden hover:border-gray-600 transition-all h-full flex flex-col';
+        card.innerHTML =
+          '<div class="h-64 overflow-hidden relative">' +
+            '<div class="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors z-10"></div>' +
+            '<img src="/photos/longboard.jpg" alt="Longboard" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">' +
+          '</div>' +
+          '<div style="padding:2rem;flex:1;display:flex;flex-direction:column">' +
+            '<div class="text-red-500 text-xs font-bold uppercase tracking-widest" style="margin-bottom:0.5rem">Professional Longboarder</div>' +
+            '<h3 class="text-2xl font-bold" style="margin-bottom:1rem">Board Meeting</h3>' +
+            '<p class="text-gray-400 text-sm leading-relaxed" style="flex:1">Rode with the Polaroid Action team. Gravity is just another system to work with. Read the hill, commit to the line, and stay low through the turns.</p>' +
+          '</div>';
+        grid.appendChild(card);
+
+        // Adjust grid: 5 cards — 3 on top, 2 centered on bottom (large screens)
+        // Use flexbox instead of grid so we can center the bottom row
+        grid.style.cssText = 'display:flex;flex-wrap:wrap;gap:2rem;justify-content:center';
+        var cards = grid.children;
+        var updateCards = function(){
+          var w = window.innerWidth;
+          for (var i = 0; i < cards.length; i++) {
+            if (w >= 1024) {
+              cards[i].style.width = 'calc(33.333% - 1.34rem)';
+            } else if (w >= 768) {
+              cards[i].style.width = 'calc(50% - 1rem)';
+            } else {
+              cards[i].style.width = '100%';
+            }
+          }
+        };
+        window.addEventListener('resize', updateCards);
+        updateCards();
+      }, 200);
+    })();
+    </script>
+
+    <script>
+    // Shift travel image up to show handstand
+    (function(){
+      var poll = setInterval(function(){
+        var img = document.querySelector('img[src="/photos/travel.jpg"]');
+        if (!img) return;
+        clearInterval(poll);
+        img.style.objectPosition = 'center 20%';
+      }, 200);
+    })();
+    </script>
+
+    <script>
+    // Community section: 3 photo cards with content overlays and buttons
+    (function(){
+      var poll = setInterval(function(){
+        var community = document.getElementById('community');
+        if (!community) return;
+        var container = community.firstElementChild;
+        if (!container || container.children.length < 3) return;
+        clearInterval(poll);
+        rebuildCommunity(container);
+      }, 200);
+
+      function rebuildCommunity(container) {
+        // 1. Remove the icon from the header
+        var header = container.children[0];
+        var iconDiv = header.querySelector('.rounded-full');
+        if (iconDiv) iconDiv.remove();
+
+        // 2. Remove old photo grid and text block
+        var photoGrid = container.children[1];
+        var textBlock = container.children[2];
+        if (photoGrid) photoGrid.remove();
+        if (textBlock) textBlock.remove();
+
+        // 3. Create new card grid
+        var grid = document.createElement('div');
+        grid.style.cssText = 'display:grid;grid-template-columns:1fr;gap:2rem';
+        var mq = window.matchMedia('(min-width: 768px)');
+        function updateCols() { grid.style.gridTemplateColumns = mq.matches ? 'repeat(3, 1fr)' : '1fr'; }
+        mq.addListener(updateCols);
+        updateCols();
+
+        // --- Card builder helper ---
+        function makeCard(opts) {
+          var card = document.createElement('div');
+          card.className = 'group rounded-2xl overflow-hidden';
+          card.style.cssText = 'position:relative;display:flex;flex-direction:column;border:1px solid #27272a;transition:border-color 0.3s;background:#18181b';
+          card.onmouseenter = function(){ card.style.borderColor='#71717a'; };
+          card.onmouseleave = function(){ card.style.borderColor='#27272a'; };
+
+          // Photo area with gradient overlay and button
+          var photoWrap = document.createElement('div');
+          photoWrap.style.cssText = 'position:relative;height:14rem;overflow:hidden';
+
+          var img = document.createElement('img');
+          img.src = opts.image;
+          img.alt = opts.title;
+          img.style.cssText = 'width:100%;height:100%;object-fit:cover;transition:transform 0.7s';
+          card.onmouseenter = function(){ img.style.transform='scale(1.05)'; card.style.borderColor='#71717a'; };
+          card.onmouseleave = function(){ img.style.transform='scale(1)'; card.style.borderColor='#27272a'; };
+
+          // Dark gradient at bottom of photo for readability
+          var gradient = document.createElement('div');
+          gradient.style.cssText = 'position:absolute;bottom:0;left:0;right:0;height:50%;background:linear-gradient(transparent,rgba(0,0,0,0.7));z-index:1;pointer-events:none';
+
+          // Button in lower-left of photo
+          var btn = document.createElement('div');
+          btn.style.cssText = 'position:absolute;bottom:0.75rem;left:0.75rem;z-index:2;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);padding:0.35rem 0.85rem;border-radius:0.5rem;display:flex;align-items:center;gap:0.4rem';
+          btn.innerHTML = '<span style="color:white;font-size:0.8rem;font-weight:700">' + opts.title + '</span>';
+
+          // Badge (optional, for AguaClara)
+          if (opts.badge) {
+            var badge = document.createElement('a');
+            badge.href = opts.badgeLink || '#';
+            badge.target = '_blank';
+            badge.rel = 'noopener noreferrer';
+            badge.style.cssText = 'position:absolute;top:0.75rem;right:0.75rem;z-index:2;background:#dc2626;color:white;font-size:0.65rem;font-weight:700;padding:0.25rem 0.6rem;border-radius:9999px;text-decoration:none;letter-spacing:0.05em;text-transform:uppercase';
+            badge.textContent = opts.badge;
+            photoWrap.appendChild(badge);
+          }
+
+          photoWrap.appendChild(img);
+          photoWrap.appendChild(gradient);
+          photoWrap.appendChild(btn);
+          card.appendChild(photoWrap);
+
+          // Content area below photo
+          var content = document.createElement('div');
+          content.style.cssText = 'padding:1.5rem;flex:1;display:flex;flex-direction:column';
+          content.innerHTML = '<p style="color:#d4d4d8;font-size:0.9rem;line-height:1.7">' + opts.text + '</p>';
+          card.appendChild(content);
+
+          return card;
+        }
+
+        // --- Build the 3 cards ---
+
+        // 1. Friday Night Dinners
+        grid.appendChild(makeCard({
+          image: '/photos/community.jpg',
+          title: 'Friday Night Dinners',
+          text: 'Over the last few years, I\u2019ve hosted nearly 100 Friday Night Dinners, often squeezing 30 strangers into my living room. The only rule? <strong style="color:white">Bring someone who thinks differently than you do.</strong> The strongest networks aren\u2019t built around transactions. They\u2019re built around tables.'
+        }));
+
+        // 2. Local Volunteering
+        grid.appendChild(makeCard({
+          image: '/photos/volunteering.jpg',
+          title: 'Local Volunteering',
+          text: 'As the son of a rabbi, I\u2019ve seen firsthand how a strong local community can transform lives. I believe it\u2019s essential to contribute where you live. Show up, roll up your sleeves, and invest in the people and places right around you. That\u2019s where change starts.'
+        }));
+
+        // 3. AguaClara Reach
+        grid.appendChild(makeCard({
+          image: '/photos/aguaclara.jpg',
+          title: 'AguaClara Reach',
+          badge: 'Link',
+          badgeLink: 'https://www.aguaclarareach.org/',
+          text: 'A global focus matters just as much as a local one. Safe water is the most fundamental resource, and AguaClara has been able to provide it for over <strong style="color:white">100,000 people</strong> across Honduras, India, and Nicaragua. We\u2019re still growing, because the need doesn\u2019t stop.'
+        }));
+
+        container.appendChild(grid);
+      }
+    })();
+    </script>
+
+    <script>
+    // Reduce and unify section spacing
+    (function(){
+      var poll = setInterval(function(){
+        var sections = document.querySelectorAll('section.py-32');
+        if (sections.length < 2) return;
+        clearInterval(poll);
+        for (var i = 0; i < sections.length; i++) {
+          sections[i].style.paddingTop = '5rem';
+          sections[i].style.paddingBottom = '5rem';
+        }
+        // Also fix the injected current_work section
+        var proj = document.getElementById('current_work');
+        if (proj) {
+          proj.style.paddingTop = '5rem';
+          proj.style.paddingBottom = '5rem';
+        }
+      }, 300);
+    })();
+    </script>
+
+
+    <script>
+    // Spider interaction instructions (desktop only)
+    (function(){
+      if ('ontouchstart' in window || navigator.maxTouchPoints) return;
+      var poll = setInterval(function(){
+        var hero = document.querySelector('[id] h1');
+        if (!hero) return;
+        var tagline = hero.parentElement && hero.parentElement.querySelector('.font-mono');
+        if (!tagline) return;
+        clearInterval(poll);
+        var hint = document.createElement('p');
+        hint.className = 'font-mono text-xs';
+        hint.style.cssText = 'color:rgba(255,255,255,0.25);margin-top:0.75rem;letter-spacing:0.05em';
+        hint.textContent = 'Move your cursor to guide the spider. Catch the bugs.';
+        tagline.parentNode.insertBefore(hint, tagline.nextSibling);
+      }, 200);
+    })();
+    </script>
+
+    <script>
+    // Make BITZYSPIDER.COM logo scroll to top
+    (function(){
+      var poll = setInterval(function(){
+        var logo = document.querySelector('nav .text-2xl.font-bold');
+        if (!logo) return;
+        clearInterval(poll);
+        logo.style.cursor = 'pointer';
+        logo.addEventListener('click', function() {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+      }, 200);
+    })();
+    </script>
+
+    <script>
+    // Desktop nav: inject Skills and Education links
+    (function(){
+      var poll = setInterval(function(){
+        var desktopNav = document.querySelector('nav .hidden.md\\:flex');
+        if (!desktopNav) return;
+        var work = null;
+        desktopNav.querySelectorAll('a').forEach(function(a) {
+          if (a.textContent.trim() === 'Work') work = a;
+        });
+        if (!work) return;
+        clearInterval(poll);
+
+        function makeLink(text, href) {
+          var a = document.createElement('a');
+          a.href = href;
+          a.textContent = text;
+          a.className = 'hover:text-white transition-colors cursor-none';
+          a.style.color = '#9ca3af';
+          return a;
+        }
+
+        // Insert Skills then Education after Work (before Community)
+        var skillsLink = makeLink('Skills', '#skills');
+        var eduLink = makeLink('Education', '#education');
+        desktopNav.insertBefore(skillsLink, work.nextSibling);
+        desktopNav.insertBefore(eduLink, skillsLink.nextSibling);
+      }, 200);
+    })();
+    </script>
+
+    <script>
+    // Mobile nav: replace "Say Hello" with hamburger that opens a slide-up menu
+    (function(){
+      if (!('ontouchstart' in window) && !navigator.maxTouchPoints) return;
+
+      var poll = setInterval(function(){
+        // Find the Say Hello button in the nav
+        var navLinks = document.querySelectorAll('nav a');
+        var sayHello = null;
+        navLinks.forEach(function(a) {
+          if (a.textContent.trim() === 'Say Hello') sayHello = a;
+        });
+        if (!sayHello) return;
+        clearInterval(poll);
+
+        // Hide Say Hello
+        sayHello.style.display = 'none';
+
+        var nav = sayHello.parentElement;
+
+        // Create hamburger button
+        var burger = document.createElement('button');
+        burger.setAttribute('aria-label', 'Open navigation menu');
+        burger.style.cssText = 'background:none;border:none;padding:0.5rem;cursor:pointer;z-index:100;position:relative';
+        burger.innerHTML =
+          '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round">' +
+            '<line x1="3" y1="6" x2="21" y2="6"/>' +
+            '<line x1="3" y1="12" x2="21" y2="12"/>' +
+            '<line x1="3" y1="18" x2="21" y2="18"/>' +
+          '</svg>';
+        nav.appendChild(burger);
+
+        // Create overlay backdrop
+        var overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:998;opacity:0;pointer-events:none;transition:opacity 0.3s';
+        document.body.appendChild(overlay);
+
+        // Create slide-up menu
+        var menu = document.createElement('div');
+        menu.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:999;background:#18181b;border-top:1px solid #27272a;border-radius:1.5rem 1.5rem 0 0;padding:1.5rem 1.5rem 2.5rem;transform:translateY(100%);transition:transform 0.35s cubic-bezier(0.32,0.72,0,1);display:flex;flex-direction:column;gap:0.25rem';
+
+        // Drag handle
+        menu.innerHTML = '<div style="width:3rem;height:0.25rem;background:#52525b;border-radius:9999px;margin:0 auto 1rem"></div>';
+
+        var sections = [
+          { label: 'About', href: '#about' },
+          { label: 'What I\u2019m Building', href: '#current_work' },
+          { label: 'My Track Record', href: '#track_record' },
+          { label: 'Skills', href: '#skills' },
+          { label: 'Education', href: '#education' },
+          { label: 'Community', href: '#community' },
+          { label: 'Off the Clock', href: '#off_the_clock' },
+          { label: 'Get in Touch', href: '#contact' }
+        ];
+
+        sections.forEach(function(s) {
+          var a = document.createElement('a');
+          a.href = s.href;
+          a.textContent = s.label;
+          a.style.cssText = 'color:#d4d4d8;text-decoration:none;font-size:1.1rem;font-weight:600;padding:0.9rem 1rem;border-radius:0.75rem;transition:background 0.2s';
+          a.ontouchstart = function(){ a.style.background='rgba(255,255,255,0.08)'; };
+          a.ontouchend = function(){ setTimeout(function(){ a.style.background='none'; }, 150); };
+          a.addEventListener('click', function(){ closeMenu(); });
+          menu.appendChild(a);
+        });
+
+        document.body.appendChild(menu);
+
+        var isOpen = false;
+
+        function openMenu() {
+          isOpen = true;
+          menu.style.transform = 'translateY(0)';
+          overlay.style.opacity = '1';
+          overlay.style.pointerEvents = 'auto';
+          burger.innerHTML =
+            '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round">' +
+              '<line x1="6" y1="6" x2="18" y2="18"/>' +
+              '<line x1="6" y1="18" x2="18" y2="6"/>' +
+            '</svg>';
+        }
+
+        function closeMenu() {
+          isOpen = false;
+          menu.style.transform = 'translateY(100%)';
+          overlay.style.opacity = '0';
+          overlay.style.pointerEvents = 'none';
+          burger.innerHTML =
+            '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round">' +
+              '<line x1="3" y1="6" x2="21" y2="6"/>' +
+              '<line x1="3" y1="12" x2="21" y2="12"/>' +
+              '<line x1="3" y1="18" x2="21" y2="18"/>' +
+            '</svg>';
+        }
+
+        burger.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (isOpen) closeMenu(); else openMenu();
+        });
+
+        overlay.addEventListener('click', closeMenu);
+
+        // Swipe down to dismiss
+        var startY = 0;
+        menu.addEventListener('touchstart', function(e) {
+          startY = e.touches[0].clientY;
+        }, { passive: true });
+        menu.addEventListener('touchmove', function(e) {
+          var dy = e.touches[0].clientY - startY;
+          if (dy > 0) {
+            menu.style.transition = 'none';
+            menu.style.transform = 'translateY(' + dy + 'px)';
+          }
+        }, { passive: true });
+        menu.addEventListener('touchend', function(e) {
+          menu.style.transition = 'transform 0.35s cubic-bezier(0.32,0.72,0,1)';
+          var dy = e.changedTouches[0].clientY - startY;
+          if (dy > 80) { closeMenu(); } else { menu.style.transform = isOpen ? 'translateY(0)' : 'translateY(100%)'; }
+        });
+
+      }, 200);
+    })();
+    </script>
+
+    <script>
+    // Bug Hunt game link: fixed pill (all devices) + hero line (desktop)
+    (function(){
+      // fixed pill, bottom-right, styled like the bugs-debugged counter
+      var poll = setInterval(function(){
+        if (!document.body) return;
+        clearInterval(poll);
+        var isTouch = ('ontouchstart' in window || navigator.maxTouchPoints);
+        var a = document.createElement('a');
+        a.href = '/game.html';
+        a.id = 'bughunt-link';
+        // on mobile the bottom-left "BUGS DEBUGGED" counter and this pill share the
+        // bottom edge — use a shorter label + tighter sizing so they never collide
+        a.innerHTML = (isTouch ? '' : 'WANT MORE BUGS? ') +
+          '<span style="color:#dc2626;font-weight:700">PLAY BUG HUNT &rarr;</span>';
+        a.style.cssText = 'position:fixed;bottom:1rem;right:1rem;z-index:55;' +
+          'font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:0.06em;' +
+          'font-size:' + (isTouch ? '10px' : '11px') + ';' +
+          'color:rgba(255,255,255,0.55);text-decoration:none;background:rgba(0,0,0,0.6);' +
+          'border:1px solid #27272a;border-radius:9999px;cursor:none;' +
+          'padding:' + (isTouch ? '6px 11px' : '8px 14px') + ';' +
+          'transition:border-color 0.2s,color 0.2s';
+        a.addEventListener('mouseenter', function(){ a.style.borderColor = 'rgba(220,38,38,0.5)'; a.style.color = '#fff'; });
+        a.addEventListener('mouseleave', function(){ a.style.borderColor = '#27272a'; a.style.color = 'rgba(255,255,255,0.55)'; });
+        document.body.appendChild(a);
+      }, 200);
+
+      // desktop: a "play the full game" line under the spider hint in the hero
+      if (!('ontouchstart' in window || navigator.maxTouchPoints)) {
+        var tries = 0;
+        var poll2 = setInterval(function(){
+          tries++;
+          var hero = document.querySelector('[id] h1');
+          var tagline = hero && hero.parentElement && hero.parentElement.querySelector('.font-mono');
+          if (!tagline) return;
+          // wait briefly for the spider-hint line to inject first so we land under it
+          var hint = null;
+          var sib = tagline.nextElementSibling;
+          if (sib && /guide the spider/.test(sib.textContent)) hint = sib;
+          if (!hint && tries < 15) return;
+          clearInterval(poll2);
+          var p = document.createElement('p');
+          p.className = 'font-mono text-xs';
+          p.style.cssText = 'color:rgba(255,255,255,0.25);margin-top:0.4rem;letter-spacing:0.05em';
+          p.innerHTML = 'Caught them all? <a href="/game.html" style="color:rgba(220,38,38,0.85);text-decoration:underline;cursor:none">Play the full game &rarr;</a>';
+          var anchor = hint || tagline;
+          anchor.parentNode.insertBefore(p, anchor.nextSibling);
+        }, 200);
+      }
+    })();
+    </script>
+  </body>
+</html>

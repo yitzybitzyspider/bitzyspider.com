@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 400" role="img" aria-label="UC Berkeley Haas placeholder banner">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#001d3d"/>
+      <stop offset="0.65" stop-color="#003262"/>
+      <stop offset="1" stop-color="#00457f"/>
+    </linearGradient>
+    <linearGradient id="goldfade" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#FDB515" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#FDB515" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#FDB515" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="400" fill="url(#sky)"/>
+
+  <!-- faint hill line -->
+  <path d="M0 340 Q 400 300 830 330 T 1600 320 L 1600 400 L 0 400 Z" fill="#002a52"/>
+
+  <!-- Campanile silhouette -->
+  <g fill="#FDB515">
+    <!-- spire -->
+    <polygon points="1180,96 1210,44 1240,96"/>
+    <rect x="1184" y="94" width="52" height="12"/>
+    <!-- belfry with arches -->
+    <rect x="1186" y="106" width="48" height="46"/>
+    <g fill="#003262">
+      <rect x="1193" y="113" width="8" height="32" rx="4"/>
+      <rect x="1206" y="113" width="8" height="32" rx="4"/>
+      <rect x="1219" y="113" width="8" height="32" rx="4"/>
+    </g>
+    <!-- clock band -->
+    <rect x="1188" y="152" width="44" height="9"/>
+    <!-- shaft -->
+    <rect x="1192" y="161" width="36" height="185"/>
+    <!-- clock face -->
+    <circle cx="1210" cy="177" r="9" fill="#003262"/>
+    <circle cx="1210" cy="177" r="6.5" fill="#FDB515"/>
+    <line x1="1210" y1="177" x2="1210" y2="172.5" stroke="#003262" stroke-width="1.4"/>
+    <line x1="1210" y1="177" x2="1213.5" y2="178.5" stroke="#003262" stroke-width="1.4"/>
+    <!-- base -->
+    <rect x="1184" y="342" width="52" height="14"/>
+  </g>
+
+  <!-- wordmark -->
+  <g font-family="Georgia, 'Times New Roman', serif" text-anchor="start">
+    <text x="150" y="185" fill="#ffffff" font-size="58" font-weight="bold" letter-spacing="2">BERKELEY</text>
+    <text x="150" y="248" fill="#FDB515" font-size="58" font-weight="bold" letter-spacing="9">HAAS</text>
+  </g>
+  <rect x="150" y="272" width="300" height="3" fill="url(#goldfade)"/>
+  <text x="150" y="308" fill="#cbd5e1" font-family="ui-monospace, Menlo, monospace" font-size="19" letter-spacing="3">MBA + M.ENG &#183; CLASS OF 2028</text>
+</svg>
