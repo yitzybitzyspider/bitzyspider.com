@@ -493,6 +493,7 @@
                 <h4 class="study-degree">MBA &amp; Master of Engineering (Dual Degree)</h4>
                 <p class="study-detail">Industrial Engineering &amp; Operations Research &nbsp;&middot;&nbsp; <span class="gold">Expected: 2028</span></p>
               </div>
+              <img src="photos/berkeley-logo-placeholder.svg" alt="Cal" style="flex-shrink:0;width:52px;height:52px" />
             </div>
             <details>
               <summary>Fellowships &amp; Scholarships (4)<span class="plus" style="color:#FDB515">+</span></summary>
@@ -571,7 +572,7 @@
                 <div class="edu-text">
                   <p class="edu-school" style="color:#3b82f6">Technion &ndash; Israel Institute of Technology</p>
                   <h4 class="edu-degree">Engineering for Developing Communities</h4>
-                  <p class="edu-detail">Study abroad &middot; Haifa, Israel</p>
+                  <p class="edu-detail">Haifa, Israel</p>
                   <p class="edu-gpa"><b>Grade: 96/100</b><span> &nbsp;&middot;&nbsp; 2018</span></p>
                 </div>
                 <div class="edu-logo"><div style="background-image:url('photos/Technion_logo.svg.png')"></div></div>
@@ -587,6 +588,7 @@
                   <p class="edu-detail">Chemical Engineering &middot; Highest Honors</p>
                   <p class="edu-gpa"><b>GPA: 3.92</b><span> &nbsp;&middot;&nbsp; 2017</span></p>
                 </div>
+                <div class="edu-logo" style="border-radius:50%;background:#fff"><div style="background-image:url('photos/BrowardCollegeLogo.svg');background-size:78%"></div></div>
               </div>
               <div class="edu-lead">
                 <details>
@@ -760,20 +762,30 @@
           <script>
             // Add film frames here: each entry is a photo path (optionally with a CSS
             // background-position after a |, e.g. 'photos/foo.jpg|center 30%').
-            var FILM_FRAMES = [
-              'photos/film-collage.jpg',
-              'photos/film-headshot.jpg'
-            ];
-            var EMPTY_SLOTS = 3; // dashed "coming soon" tiles shown after the real frames
+            var FILM_FRAMES = [];
+            for (var fi = 1; fi <= 45; fi++) FILM_FRAMES.push('photos/film/film-' + (fi < 10 ? '0' : '') + fi + '.jpg');
+            var EMPTY_SLOTS = 0; // dashed "coming soon" tiles shown after the real frames
             (function () {
               var track = document.getElementById('film-track');
-              FILM_FRAMES.forEach(function (f) {
+              function load(d) {
+                if (d.dataset.loaded) return;
+                d.dataset.loaded = '1';
+                d.style.backgroundImage = "url('" + d.dataset.src + "')";
+                if (d.dataset.pos) d.style.backgroundPosition = d.dataset.pos;
+              }
+              var io = 'IntersectionObserver' in window
+                ? new IntersectionObserver(function (entries) {
+                    entries.forEach(function (en) { if (en.isIntersecting) { load(en.target); io.unobserve(en.target); } });
+                  }, { root: track, rootMargin: '0px 600px 0px 600px' })
+                : null;
+              FILM_FRAMES.forEach(function (f, i) {
                 var parts = f.split('|');
                 var d = document.createElement('div');
                 d.className = 'film-frame';
-                d.style.backgroundImage = "url('" + parts[0] + "')";
-                if (parts[1]) d.style.backgroundPosition = parts[1];
+                d.dataset.src = parts[0];
+                if (parts[1]) d.dataset.pos = parts[1];
                 track.appendChild(d);
+                if (!io || i < 4) load(d); else io.observe(d);
               });
               for (var i = 0; i < EMPTY_SLOTS; i++) {
                 var e = document.createElement('div');

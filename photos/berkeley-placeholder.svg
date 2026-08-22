@@ -16,27 +16,36 @@
   <!-- faint hill line -->
   <path d="M0 340 Q 400 300 830 330 T 1600 320 L 1600 400 L 0 400 Z" fill="#002a52"/>
 
-  <!-- Campanile silhouette -->
+  <!-- Sather Tower (the Campanile) silhouette -->
   <g fill="#FDB515">
-    <!-- spire -->
-    <polygon points="1180,96 1210,44 1240,96"/>
-    <rect x="1184" y="94" width="52" height="12"/>
-    <!-- belfry with arches -->
-    <rect x="1186" y="106" width="48" height="46"/>
+    <!-- lantern finial at the apex -->
+    <rect x="1208" y="30" width="4" height="10"/>
+    <circle cx="1210" cy="29" r="3"/>
+    <!-- steep pyramidal roof -->
+    <polygon points="1182,100 1210,38 1238,100"/>
+    <!-- cornice above the belfry -->
+    <rect x="1180" y="98" width="60" height="8"/>
+    <!-- open colonnaded belfry: four tall narrow arched openings -->
+    <rect x="1184" y="106" width="52" height="54"/>
     <g fill="#003262">
-      <rect x="1193" y="113" width="8" height="32" rx="4"/>
-      <rect x="1206" y="113" width="8" height="32" rx="4"/>
-      <rect x="1219" y="113" width="8" height="32" rx="4"/>
+      <rect x="1189" y="112" width="7.5" height="42" rx="3.75"/>
+      <rect x="1200" y="112" width="7.5" height="42" rx="3.75"/>
+      <rect x="1211" y="112" width="7.5" height="42" rx="3.75"/>
+      <rect x="1222" y="112" width="7.5" height="42" rx="3.75"/>
     </g>
-    <!-- clock band -->
-    <rect x="1188" y="152" width="44" height="9"/>
-    <!-- shaft -->
-    <rect x="1192" y="161" width="36" height="185"/>
-    <!-- clock face -->
-    <circle cx="1210" cy="177" r="9" fill="#003262"/>
-    <circle cx="1210" cy="177" r="6.5" fill="#FDB515"/>
-    <line x1="1210" y1="177" x2="1210" y2="172.5" stroke="#003262" stroke-width="1.4"/>
-    <line x1="1210" y1="177" x2="1213.5" y2="178.5" stroke="#003262" stroke-width="1.4"/>
+    <!-- ledge between belfry and clock stage -->
+    <rect x="1182" y="160" width="56" height="7"/>
+    <!-- shaft with corner piers -->
+    <rect x="1190" y="167" width="40" height="175"/>
+    <g fill="#003262" opacity="0.35">
+      <rect x="1196.5" y="196" width="2.5" height="146"/>
+      <rect x="1221" y="196" width="2.5" height="146"/>
+    </g>
+    <!-- clock face below the belfry, on the shaft -->
+    <circle cx="1210" cy="181" r="10" fill="#003262"/>
+    <circle cx="1210" cy="181" r="7" fill="#FDB515"/>
+    <line x1="1210" y1="181" x2="1210" y2="176" stroke="#003262" stroke-width="1.5"/>
+    <line x1="1210" y1="181" x2="1214" y2="182.5" stroke="#003262" stroke-width="1.5"/>
     <!-- base -->
     <rect x="1184" y="342" width="52" height="14"/>
   </g>
