@@ -183,8 +183,9 @@
       .strip-row .label { font-family: var(--mono); font-size: 0.68rem; color: var(--red); text-transform: uppercase; letter-spacing: 0.18em; }
       .chips { display: flex; flex-wrap: wrap; gap: 0.5rem; }
       .chips span { font-size: 0.78rem; color: #d4d4d8; padding: 0.3rem 0.8rem; border: 1px solid #3f3f46; border-radius: 9999px; }
-      .chips.red span { color: #ef4444; border-color: rgba(220, 38, 38, 0.45); }
-      .chips.blue span { color: #60a5fa; border-color: rgba(59, 130, 246, 0.45); }
+      .chips.red span { color: #fff; border-color: rgba(220, 38, 38, 0.55); }
+      .chips.blue span { color: #fff; border-color: rgba(59, 130, 246, 0.55); }
+      .edu-honors { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.06em; color: #8f8f98; margin-top: 0.3rem; }
       .strip-card details { border-top: 1px solid var(--card-line); }
       .strip-card summary { cursor: pointer; user-select: none; }
       .strip-count { display: flex; align-items: center; gap: 0.5rem; font-family: var(--mono); font-size: 0.75rem; color: #8f8f98; }
@@ -299,8 +300,8 @@
           BITZYSPIDER<span style="color:#ef4444">.COM</span>
         </a>
         <div class="nav-links">
-          <a href="#track_record">Work</a>
           <a href="#about">About</a>
+          <a href="#track_record">Work</a>
           <a href="#skills">Skills</a>
           <a href="#education">Education</a>
           <a href="#community">Community</a>
@@ -336,11 +337,42 @@
         </div>
       </section>
 
+      <!-- ================= ABOUT ================= -->
+      <section id="about" class="tinted">
+        <div class="wrap-md about-grid">
+          <div class="about-photo">
+            <div class="halo"></div>
+            <img src="photos/professional-headshot.jpg" alt="Yitzy Rosenberg" />
+            <p class="about-quote">Hi, I&rsquo;m Yitzy. Thanks for checking out my little corner of the web.</p>
+          </div>
+          <div>
+            <div class="sec-head" style="margin-bottom:2rem">
+              <span class="sec-num">01</span>
+              <h2>My Non-Linear Path</h2>
+            </div>
+            <div class="about-body">
+              <p>I don&rsquo;t fit in boxes. I usually break them to see how they&rsquo;re made.</p>
+              <p>My education didn&rsquo;t happen in a typical classroom. I left an insular community at 15 to find my own way, teaching myself high school to get a GED on public library Wi-Fi. After work as a teacher I would then cycle 20 plus miles to get to night classes at community college. There I learned about chemistry, fell in love with water, and finished my degrees at Cornell University on a full scholarship.</p>
+              <div class="about-why">
+                <h3>Why does this matter to you?</h3>
+                <p>Because I don&rsquo;t panic when the blueprint is missing. I&rsquo;m a self-starter and gritty problem solver.</p>
+              </div>
+              <p>Spiders are the original systems engineers. They build complex, resilient structures seemingly out of nothing. That is how I approach my work. Whether I&rsquo;m managing a $350M water infrastructure portfolio, building and running a high-growth startup, or optimizing a commercial real estate firm, I treat every challenge the same way:</p>
+              <ul class="about-method">
+                <li>&mdash; <span class="verb">Assess</span> the resources</li>
+                <li>&mdash; <span class="verb">Hack</span> the system</li>
+                <li>&mdash; <span class="verb">Build</span> a path where there wasn't one</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- ================= TRACK RECORD ================= -->
       <section id="track_record">
         <div class="wrap">
           <div class="sec-head" style="margin-bottom:3rem">
-            <span class="sec-num">01</span>
+            <span class="sec-num">02</span>
             <h2>My Track Record</h2>
             <p class="sec-sub">Solving problems across industries.</p>
           </div>
@@ -430,37 +462,6 @@
         </div>
       </section>
 
-      <!-- ================= ABOUT ================= -->
-      <section id="about" class="tinted">
-        <div class="wrap-md about-grid">
-          <div class="about-photo">
-            <div class="halo"></div>
-            <img src="photos/professional-headshot.jpg" alt="Yitzy Rosenberg" />
-            <p class="about-quote">Hi, I&rsquo;m Yitzy. Thanks for checking out my little corner of the web.</p>
-          </div>
-          <div>
-            <div class="sec-head" style="margin-bottom:2rem">
-              <span class="sec-num">02</span>
-              <h2>My Non-Linear Path</h2>
-            </div>
-            <div class="about-body">
-              <p>I don&rsquo;t fit in boxes. I usually break them to see how they&rsquo;re made.</p>
-              <p>My education didn&rsquo;t happen in a typical classroom. I left an insular community at 15 to find my own way, teaching myself high school to get a GED on public library Wi-Fi. After work as a teacher I would then cycle 20 plus miles to get to night classes at community college. There I learned about chemistry, fell in love with water, and finished my degrees at Cornell University on a full scholarship.</p>
-              <div class="about-why">
-                <h3>Why does this matter to you?</h3>
-                <p>Because I don&rsquo;t panic when the blueprint is missing. I&rsquo;m a self-starter and gritty problem solver.</p>
-              </div>
-              <p>Spiders are the original systems engineers. They build complex, resilient structures seemingly out of nothing. That is how I approach my work. Whether I&rsquo;m managing a $350M water infrastructure portfolio, building and running a high-growth startup, or optimizing a commercial real estate firm, I treat every challenge the same way:</p>
-              <ul class="about-method">
-                <li>&mdash; <span class="verb">Assess</span> the resources</li>
-                <li>&mdash; <span class="verb">Hack</span> the system</li>
-                <li>&mdash; <span class="verb">Build</span> a path where there wasn't one</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </section>
-
       <!-- ================= SKILLS ================= -->
       <section id="skills">
         <div class="wrap-md">
@@ -542,7 +543,8 @@
                   <p class="edu-school" style="color:#dc2626">Cornell University</p>
                   <h4 class="edu-degree">Bachelors of Environmental Engineering</h4>
                   <p class="edu-detail">Entrepreneurship</p>
-                  <p class="edu-gpa"><b>GPA: 3.7</b><span> &nbsp;&middot;&nbsp; 2020 &nbsp;&middot;&nbsp; Cum Laude</span></p>
+                  <p class="edu-gpa"><b>GPA: 3.7</b><span> &nbsp;&middot;&nbsp; 2020</span></p>
+                  <p class="edu-honors">Cum Laude</p>
                 </div>
                 <div class="edu-logo" style="border-radius:50%;background:#fff"><div style="background-image:url('photos/Cornell_University_Logo.png')"></div></div>
               </div>
@@ -587,7 +589,8 @@
                   <p class="edu-school" style="color:#3b82f6">Broward College</p>
                   <h4 class="edu-degree">Associates in Arts</h4>
                   <p class="edu-detail">Chemical Engineering</p>
-                  <p class="edu-gpa"><b>GPA: 3.92</b><span> &nbsp;&middot;&nbsp; 2017 &nbsp;&middot;&nbsp; Highest Honors</span></p>
+                  <p class="edu-gpa"><b>GPA: 3.92</b><span> &nbsp;&middot;&nbsp; 2017</span></p>
+                  <p class="edu-honors">Highest Honors</p>
                 </div>
                 <div class="edu-logo" style="border-radius:50%;background:#fff"><div style="background-image:url('photos/BrowardCollegeLogo.svg');background-size:78%"></div></div>
               </div>
