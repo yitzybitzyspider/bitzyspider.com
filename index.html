@@ -148,10 +148,12 @@
       .study-degree { font-size: 1.35rem; font-weight: 800; color: #fff; margin-bottom: 0.5rem; letter-spacing: -0.02em; }
       .study-detail { font-size: 0.95rem; color: #a1a1aa; }
       .study-detail .gold { color: var(--gold); font-weight: 600; }
-      .study-card summary { cursor: pointer; user-select: none; display: flex; align-items: center; gap: 0.6rem; padding: 1.25rem 2rem;
-        font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold); }
-      .study-card details { border-top: 1px solid #1f2937; }
-      .study-honors { padding: 0 2rem 1.5rem; display: flex; flex-wrap: wrap; gap: 0.5rem; }
+      .study-progress { display: inline-flex; align-items: center; gap: 0.4rem; margin-left: 0.6rem; padding: 0.22rem 0.7rem;
+        border: 1px solid rgba(253,181,21,0.5); border-radius: 9999px; color: var(--gold); font-size: 0.62rem;
+        letter-spacing: 0.14em; text-transform: uppercase; vertical-align: middle; }
+      .study-progress .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--gold); animation: pulse 2s ease-in-out infinite; }
+      @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+      .study-honors { display: flex; flex-wrap: wrap; gap: 0.5rem; }
       .study-honors span { font-size: 0.78rem; color: #e4e4e7; padding: 0.3rem 0.8rem; border: 1px solid rgba(253,181,21,0.45); border-radius: 9999px; background: rgba(0,50,98,0.35); }
       .plus { margin-left: auto; font-size: 0.9rem; }
 
@@ -489,21 +491,18 @@
             <img class="study-banner" src="photos/berkeley-placeholder.svg" alt="Berkeley Haas - MBA + M.Eng, Class of 2028" />
             <div class="study-body">
               <div style="flex:1;min-width:16rem">
-                <p class="study-school">UC Berkeley &middot; Haas School of Business</p>
+                <p class="study-school">UC Berkeley &middot; Haas School of Business <span class="study-progress"><span class="dot"></span>In Progress</span></p>
                 <h4 class="study-degree">MBA &amp; Master of Engineering (Dual Degree)</h4>
                 <p class="study-detail">Industrial Engineering &amp; Operations Research &nbsp;&middot;&nbsp; <span class="gold">Expected: 2028</span></p>
+                <div class="study-honors" style="padding:0.9rem 0 0">
+                  <span>The Consortium</span>
+                  <span>Mark Ross Fellow</span>
+                  <span>Craig Engineering Scholarship</span>
+                  <span>Merit Scholarship</span>
+                </div>
               </div>
               <img src="photos/berkeley-logo-placeholder.svg" alt="Cal" style="flex-shrink:0;width:52px;height:52px" />
             </div>
-            <details>
-              <summary>Fellowships &amp; Scholarships (4)<span class="plus" style="color:#FDB515">+</span></summary>
-              <div class="study-honors">
-                <span>The Consortium</span>
-                <span>Mark Ross Fellow</span>
-                <span>Craig Engineering Scholarship</span>
-                <span>Merit Scholarship</span>
-              </div>
-            </details>
           </div>
 
           <div class="edu-grid">
