@@ -100,24 +100,24 @@
 
       /* ---- track record ---- */
       .exp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(26rem, 1fr)); gap: 1.5rem; }
-      .exp-card { padding: 2rem; border-radius: 1rem; position: relative; display: flex; flex-direction: column; height: 100%;
+      .exp-card { padding: 1.4rem 1.5rem 1.1rem; border-radius: 1rem; position: relative; display: flex; flex-direction: column; height: 100%;
         background: var(--card-bg); border: 1px solid var(--card-line); transition: border-color 0.3s; }
       .exp-card:hover { border-color: #3f3f46; }
-      .exp-badge { position: absolute; top: 1.35rem; right: 1.35rem; z-index: 2; font-family: var(--mono); background: transparent;
+      .exp-badge { position: absolute; top: 1.2rem; right: 1.2rem; z-index: 2; font-family: var(--mono); background: transparent;
         font-size: 0.6rem; font-weight: 700; padding: 0.35rem 0.75rem; border: 1px solid currentColor; border-radius: 9999px;
         letter-spacing: 0.12em; text-transform: uppercase; transition: all 0.25s; }
       .exp-badge.red { color: var(--red); }
       .exp-badge.red:hover { background: var(--red); color: #fff; border-color: var(--red); }
       .exp-badge.blue { color: #3b82f6; }
       .exp-badge.blue:hover { background: #3b82f6; color: #fff; border-color: #3b82f6; }
-      .exp-card h3 { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.025em; margin-bottom: 0.6rem; color: #fff; line-height: 1.1; padding-right: 9rem; }
-      .exp-meta { font-family: var(--mono); font-size: 0.7rem; margin-bottom: 1.75rem; color: #52525b; letter-spacing: 0.08em; line-height: 1.7; }
-      .exp-meta .role { display: block; color: #71717a; }
+      .exp-card h3 { font-size: 1.3rem; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 0.4rem; color: #fff; line-height: 1.15; padding-right: 7rem; }
+      .exp-meta { font-family: var(--mono); font-size: 0.68rem; margin-bottom: 1rem; color: #52525b; letter-spacing: 0.06em; line-height: 1.7; }
+      .exp-meta .role { color: #71717a; }
       .exp-problem { font-size: 1.05rem; line-height: 1.55; padding-left: 1.1rem; margin-bottom: 1.25rem; color: #e4e4e7; border-left: 2px solid var(--red); }
       .exp-card.blue .exp-problem { border-left-color: #3b82f6; }
       .exp-fix { font-size: 0.85rem; margin-bottom: 1.25rem; color: #a1a1aa; font-style: italic; }
-      .exp-card .exp-chips { margin-bottom: 1.2rem; }
-      .exp-lede { font-size: 0.95rem; line-height: 1.6; color: #c4c4cc; margin-bottom: 1.1rem; }
+      .exp-card .exp-chips { margin-bottom: 1rem; }
+      .exp-lede { font-size: 0.95rem; line-height: 1.6; color: #e4e4e7; margin-bottom: 1rem; }
       .exp-chips span { font-size: 0.72rem; font-family: var(--mono); letter-spacing: 0.03em; }
       .exp-more { margin-top: auto; border-top: 1px solid var(--card-line); padding-top: 0.2rem; }
       .exp-more summary { cursor: pointer; user-select: none; display: flex; align-items: center; gap: 0.5rem;
@@ -392,12 +392,12 @@
             <div class="exp-card" data-eq-card>
               <a href="https://yyrconsulting.com" target="_blank" rel="noopener noreferrer" class="exp-badge red">Visit Site</a>
               <h3>The Consulting Practice</h3>
-              <p class="exp-meta"><span class="role">Founder, Consultant</span><span>YYR Consulting &middot; 2026 &ndash; Present</span></p>
-              <p class="exp-lede">Operations consulting that ships production software instead of slide decks.</p>
+              <p class="exp-meta"><span class="role">Founder, Consultant</span> &middot; YYR Consulting &middot; 2026 &ndash; Present</p>
               <div class="chips red exp-chips"><span>$10M inventory, one platform</span><span>Errors: 100+ &rarr; 3-4 per bay</span><span>~$1M recovered</span></div>
               <details class="exp-more">
                 <summary>The full story<span class="plus" style="color:#ef4444">+</span></summary>
                 <div class="exp-body">
+                  <p class="exp-lede">Operations consulting that ships production software instead of slide decks.</p>
                   <p class="exp-problem">Startups outgrow their operations long before they can afford an operations team to build them properly.</p>
                   <p class="exp-fix">Startup operations consulting. First client: Gearsupply, from diagnosis to handoff in under two months.</p>
                   <div class="exp-bullets">
@@ -413,12 +413,12 @@
             <div class="exp-card blue" data-eq-card>
               <a href="https://www.youtube.com/watch?v=DjVovCBWpB8" target="_blank" rel="noopener noreferrer" class="exp-badge blue">Video Demo</a>
               <h3>The Health Tech Build</h3>
-              <p class="exp-meta"><span class="role">Co-Founder</span><span>Astrid &middot; Dec 2025 &ndash; Jun 2026</span></p>
-              <p class="exp-lede">A diagnostic bridge that automates the behavioral tracking a PMDD diagnosis requires.</p>
+              <p class="exp-meta"><span class="role">Co-Founder</span> &middot; Astrid &middot; Dec 2025 &ndash; Jun 2026</p>
               <div class="chips blue exp-chips"><span>Months of tracking, automated</span><span>Cycle-aware pattern mapping</span></div>
               <details class="exp-more">
                 <summary>The full story<span class="plus" style="color:#60a5fa">+</span></summary>
                 <div class="exp-body">
+                  <p class="exp-lede">A diagnostic bridge that automates the behavioral tracking a PMDD diagnosis requires.</p>
                   <p class="exp-problem">PMDD is a moving target where biology and circumstance are so intertwined that diagnosis stays invisible to modern medicine.</p>
                   <p class="exp-fix">Built a diagnostic bridge to automate behavioral tracking and eliminate the misdiagnosis loop.</p>
                   <div class="exp-bullets">
@@ -433,12 +433,12 @@
             <div class="exp-card" data-eq-card>
               <a href="/LEASE_Formula.pdf" target="_blank" rel="noopener noreferrer" class="exp-badge red">Work Sample</a>
               <h3>The Real Estate Turnaround</h3>
-              <p class="exp-meta"><span class="role">Head of Special Projects, Asset and Product Manager</span><span>Woolbright Development &middot; 2024 &ndash; 2025</span></p>
-              <p class="exp-lede">Data-driven leasing, research, and AI tooling for a $1B+ retail portfolio.</p>
+              <p class="exp-meta"><span class="role">Head of Special Projects, Asset and Product Manager</span> &middot; Woolbright Development &middot; 2024 &ndash; 2025</p>
               <div class="chips red exp-chips"><span>$14M portfolio value</span><span>10x deal review capacity</span><span>$10M+ redevelopment</span></div>
               <details class="exp-more">
                 <summary>The full story<span class="plus" style="color:#ef4444">+</span></summary>
                 <div class="exp-body">
+                  <p class="exp-lede">Data-driven leasing, research, and AI tooling for a $1B+ retail portfolio.</p>
                   <p class="exp-problem">Dragging a legacy, intuition-based industry into the future by replacing manual processes with high-velocity, data-driven systems.</p>
                   <p class="exp-fix">Private equity. Southeast-focused retail real estate developer specializing in shopping centers. $1B+ portfolio.</p>
                   <div class="exp-bullets">
@@ -454,12 +454,12 @@
             <div class="exp-card blue" data-eq-card>
               <a href="https://gearsupply.com/" target="_blank" rel="noopener noreferrer" class="exp-badge blue">Visit Site</a>
               <h3>The Startup Scale Up</h3>
-              <p class="exp-meta"><span class="role">Director of Operations</span><span>Gearsupply &middot; 2023 &ndash; 2024</span></p>
-              <p class="exp-lede">Rebuilt a near-shutdown startup&rsquo;s operations and scaled the team that took sales past $15M.</p>
+              <p class="exp-meta"><span class="role">Director of Operations</span> &middot; Gearsupply &middot; 2023 &ndash; 2024</p>
               <div class="chips blue exp-chips"><span>Team: 3 &rarr; 20 in a year</span><span>$15M+ sales enabled</span><span>Fulfillment under 24h</span></div>
               <details class="exp-more">
                 <summary>The full story<span class="plus" style="color:#60a5fa">+</span></summary>
                 <div class="exp-body">
+                  <p class="exp-lede">Rebuilt a near-shutdown startup&rsquo;s operations and scaled the team that took sales past $15M.</p>
                   <p class="exp-problem">Building a company&rsquo;s internal nervous system from scratch while it&rsquo;s already running at full speed.</p>
                   <p class="exp-fix">Series A startup. Largest online marketplace and direct inventory retailer for professional video, audio, and production equipment.</p>
                   <div class="exp-bullets">
@@ -475,12 +475,12 @@
             <div class="exp-card" data-eq-card>
               <a href="/2023_SFWMD_SLRFRP.pdf" target="_blank" rel="noopener noreferrer" class="exp-badge red">Work Sample</a>
               <h3>The 100 Year Infrastructure</h3>
-              <p class="exp-meta"><span class="role">District Resiliency Project Manager</span><span>South Florida Water Management District &middot; 2021 &ndash; 2023</span></p>
-              <p class="exp-lede">Resiliency planning and a zero-to-one innovation program for the largest water agency in the US.</p>
+              <p class="exp-meta"><span class="role">District Resiliency Project Manager</span> &middot; South Florida Water Management District &middot; 2021 &ndash; 2023</p>
               <div class="chips red exp-chips"><span>$350M+ portfolio</span><span>$100M+ funding secured</span><span>Adopted into regulation</span></div>
               <details class="exp-more">
                 <summary>The full story<span class="plus" style="color:#ef4444">+</span></summary>
                 <div class="exp-body">
+                  <p class="exp-lede">Resiliency planning and a zero-to-one innovation program for the largest water agency in the US.</p>
                   <p class="exp-problem">Balancing the immediate engineering needs of 10 million people against the long-term, existential threat of sea-level rise and a shifting climate.</p>
                   <p class="exp-fix">Federal government. Largest water management agency in the US, managing flood control, water supply, and ecosystem restoration.</p>
                   <div class="exp-bullets">
@@ -495,12 +495,12 @@
             <div class="exp-card blue" data-eq-card>
               <a href="https://chloecapital.com/" target="_blank" rel="noopener noreferrer" class="exp-badge blue">Visit Site</a>
               <h3>The Venture Capital Lens</h3>
-              <p class="exp-meta"><span class="role">Venture Capital Analyst and Kessler Fellow</span><span>Chloe Capital &middot; 2020 &ndash; 2021</span></p>
-              <p class="exp-lede">Data automation and deep diligence across an early-stage venture pipeline.</p>
+              <p class="exp-meta"><span class="role">Venture Capital Analyst and Kessler Fellow</span> &middot; Chloe Capital &middot; 2020 &ndash; 2021</p>
               <div class="chips blue exp-chips"><span>$50M inaugural fund</span><span>50+ diligences</span><span>Widely cited white paper</span></div>
               <details class="exp-more">
                 <summary>The full story<span class="plus" style="color:#60a5fa">+</span></summary>
                 <div class="exp-body">
+                  <p class="exp-lede">Data automation and deep diligence across an early-stage venture pipeline.</p>
                   <p class="exp-problem">Identifying the signal in the noise of early-stage tech to separate high-impact investment opportunities from the hype of a pitch deck.</p>
                   <p class="exp-fix">Venture capital. Early-stage fund investing in gender-diverse founding teams across technology and consumer sectors.</p>
                   <div class="exp-bullets">
