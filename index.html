@@ -116,7 +116,18 @@
       .exp-problem { font-size: 1.05rem; line-height: 1.55; padding-left: 1.1rem; margin-bottom: 1.25rem; color: #e4e4e7; border-left: 2px solid var(--red); }
       .exp-card.blue .exp-problem { border-left-color: #3b82f6; }
       .exp-fix { font-size: 0.85rem; margin-bottom: 1.25rem; color: #a1a1aa; font-style: italic; }
-      .exp-bullets { display: flex; flex-direction: column; gap: 0.7rem; flex: 1; }
+      .exp-card .exp-chips { margin-bottom: 1.2rem; }
+      .exp-lede { font-size: 0.95rem; line-height: 1.6; color: #c4c4cc; margin-bottom: 1.1rem; }
+      .exp-chips span { font-size: 0.72rem; font-family: var(--mono); letter-spacing: 0.03em; }
+      .exp-more { margin-top: auto; border-top: 1px solid var(--card-line); padding-top: 0.2rem; }
+      .exp-more summary { cursor: pointer; user-select: none; display: flex; align-items: center; gap: 0.5rem;
+        padding: 0.8rem 0 0.3rem; font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.16em;
+        text-transform: uppercase; color: #71717a; transition: color 0.2s; }
+      .exp-more summary:hover { color: #d4d4d8; }
+      .exp-more[open] summary .plus { transform: rotate(45deg); }
+      .exp-more .plus { transition: transform 0.25s; display: inline-block; margin-left: auto; }
+      .exp-body { padding: 0.9rem 0 0.4rem; }
+      .exp-bullets { display: flex; flex-direction: column; gap: 0.7rem; }
       .exp-bullets p { font-size: 0.85rem; line-height: 1.65; color: #8f8f98; }
       .exp-bullets b { font-weight: 600; color: #e4e4e7; }
 
@@ -382,80 +393,122 @@
               <a href="https://yyrconsulting.com" target="_blank" rel="noopener noreferrer" class="exp-badge red">Visit Site</a>
               <h3>The Consulting Practice</h3>
               <p class="exp-meta"><span class="role">Founder, Consultant</span><span>YYR Consulting &middot; 2026 &ndash; Present</span></p>
-              <p class="exp-problem">Startups outgrow their operations long before they can afford an operations team to build them properly.</p>
-              <p class="exp-fix">Startup operations consulting. First client: Gearsupply, from diagnosis to handoff in under two months.</p>
-              <div class="exp-bullets">
-                <p><b>Gearsupply Hub.</b> Architected and shipped a custom AI-coded internal platform, replacing triple-counted spreadsheets with a single source of truth across $10M in inventory.</p>
-                <p><b>End-to-end workflows.</b> Designed and integrated operational workflows across serial tracking, receiving, testing, and fulfillment within Odoo, reducing inventory error rates from 100+ to 3-4 per bay across the warehouse.</p>
-                <p><b>Asset recovery.</b> Built a KPI dashboard system and end-to-end disposition and asset recovery process, establishing real-time operational visibility and driving approximately $1M in expected recovery across previously untracked inventory.</p>
-                <p><b>The handoff.</b> Delivered a full operational technology stack and onboarded a non-technical Director of Operations to independently manage all systems.</p>
-              </div>
+              <p class="exp-lede">Operations consulting that ships production software instead of slide decks.</p>
+              <div class="chips red exp-chips"><span>$10M inventory, one platform</span><span>Errors: 100+ &rarr; 3-4 per bay</span><span>~$1M recovered</span></div>
+              <details class="exp-more">
+                <summary>The full story<span class="plus" style="color:#ef4444">+</span></summary>
+                <div class="exp-body">
+                  <p class="exp-problem">Startups outgrow their operations long before they can afford an operations team to build them properly.</p>
+                  <p class="exp-fix">Startup operations consulting. First client: Gearsupply, from diagnosis to handoff in under two months.</p>
+                  <div class="exp-bullets">
+                    <p><b>Gearsupply Hub.</b> Architected and shipped a custom AI-coded internal platform, replacing triple-counted spreadsheets with a single source of truth across $10M in inventory.</p>
+                    <p><b>End-to-end workflows.</b> Designed and integrated operational workflows across serial tracking, receiving, testing, and fulfillment within Odoo, reducing inventory error rates from 100+ to 3-4 per bay across the warehouse.</p>
+                    <p><b>Asset recovery.</b> Built a KPI dashboard system and end-to-end disposition and asset recovery process, establishing real-time operational visibility and driving approximately $1M in expected recovery across previously untracked inventory.</p>
+                    <p><b>The handoff.</b> Delivered a full operational technology stack and onboarded a non-technical Director of Operations to independently manage all systems.</p>
+                  </div>
+                </div>
+              </details>
             </div>
 
             <div class="exp-card blue" data-eq-card>
               <a href="https://www.youtube.com/watch?v=DjVovCBWpB8" target="_blank" rel="noopener noreferrer" class="exp-badge blue">Video Demo</a>
               <h3>The Health Tech Build</h3>
               <p class="exp-meta"><span class="role">Co-Founder</span><span>Astrid &middot; Dec 2025 &ndash; Jun 2026</span></p>
-              <p class="exp-problem">PMDD is a moving target where biology and circumstance are so intertwined that diagnosis stays invisible to modern medicine.</p>
-              <p class="exp-fix">Built a diagnostic bridge to automate behavioral tracking and eliminate the misdiagnosis loop.</p>
-              <div class="exp-bullets">
-                <p><b>The Diagnostic Bridge.</b> Automating the months of behavioral tracking required for formal diagnosis to eliminate the &ldquo;data fatigue&rdquo; barrier.</p>
-                <p><b>Pattern Recognition.</b> Moving beyond &ldquo;one-size-fits-all&rdquo; medicine by mapping how the condition interacts with neurodivergence and external stress.</p>
-                <p><b>Ending the Misdiagnosis Loop.</b> Providing objective, cyclical data that prevents the incorrect long-term prescriptions that often mask the root cause.</p>
-              </div>
+              <p class="exp-lede">A diagnostic bridge that automates the behavioral tracking a PMDD diagnosis requires.</p>
+              <div class="chips blue exp-chips"><span>Months of tracking, automated</span><span>Cycle-aware pattern mapping</span></div>
+              <details class="exp-more">
+                <summary>The full story<span class="plus" style="color:#60a5fa">+</span></summary>
+                <div class="exp-body">
+                  <p class="exp-problem">PMDD is a moving target where biology and circumstance are so intertwined that diagnosis stays invisible to modern medicine.</p>
+                  <p class="exp-fix">Built a diagnostic bridge to automate behavioral tracking and eliminate the misdiagnosis loop.</p>
+                  <div class="exp-bullets">
+                    <p><b>The Diagnostic Bridge.</b> Automating the months of behavioral tracking required for formal diagnosis to eliminate the &ldquo;data fatigue&rdquo; barrier.</p>
+                    <p><b>Pattern Recognition.</b> Moving beyond &ldquo;one-size-fits-all&rdquo; medicine by mapping how the condition interacts with neurodivergence and external stress.</p>
+                    <p><b>Ending the Misdiagnosis Loop.</b> Providing objective, cyclical data that prevents the incorrect long-term prescriptions that often mask the root cause.</p>
+                  </div>
+                </div>
+              </details>
             </div>
 
             <div class="exp-card" data-eq-card>
               <a href="/LEASE_Formula.pdf" target="_blank" rel="noopener noreferrer" class="exp-badge red">Work Sample</a>
               <h3>The Real Estate Turnaround</h3>
               <p class="exp-meta"><span class="role">Head of Special Projects, Asset and Product Manager</span><span>Woolbright Development &middot; 2024 &ndash; 2025</span></p>
-              <p class="exp-problem">Dragging a legacy, intuition-based industry into the future by replacing manual processes with high-velocity, data-driven systems.</p>
-              <p class="exp-fix">Private equity. Southeast-focused retail real estate developer specializing in shopping centers. $1B+ portfolio.</p>
-              <div class="exp-bullets">
-                <p><b>The leasing framework.</b> Built and launched a proprietary leasing framework and full CRM product modeling pipeline throughput, asset attractiveness, and execution friction, generating $14M in portfolio value at distressed properties where prior agents had failed.</p>
-                <p><b>User research.</b> Conducted structured user research across 3 departments, diagnosing operational gaps and redesigning core workflows to deliver measurable performance visibility to the CEO and leadership team for the first time.</p>
-                <p><b>The acquisitions tool.</b> Defined requirements, built, and shipped an AI-assisted acquisition tool automating OM parsing, ownership research, and risk categorization, scaling the team&rsquo;s weekly deal review capacity 10x.</p>
-                <p><b>The heavy lift.</b> Led cross-functional delivery of a $10M+ retail redevelopment across bidding, permitting, and construction workstreams, coordinating a multi-disciplinary team from kickoff to on-time completion.</p>
-              </div>
+              <p class="exp-lede">Data-driven leasing, research, and AI tooling for a $1B+ retail portfolio.</p>
+              <div class="chips red exp-chips"><span>$14M portfolio value</span><span>10x deal review capacity</span><span>$10M+ redevelopment</span></div>
+              <details class="exp-more">
+                <summary>The full story<span class="plus" style="color:#ef4444">+</span></summary>
+                <div class="exp-body">
+                  <p class="exp-problem">Dragging a legacy, intuition-based industry into the future by replacing manual processes with high-velocity, data-driven systems.</p>
+                  <p class="exp-fix">Private equity. Southeast-focused retail real estate developer specializing in shopping centers. $1B+ portfolio.</p>
+                  <div class="exp-bullets">
+                    <p><b>The leasing framework.</b> Built and launched a proprietary leasing framework and full CRM product modeling pipeline throughput, asset attractiveness, and execution friction, generating $14M in portfolio value at distressed properties where prior agents had failed.</p>
+                    <p><b>User research.</b> Conducted structured user research across 3 departments, diagnosing operational gaps and redesigning core workflows to deliver measurable performance visibility to the CEO and leadership team for the first time.</p>
+                    <p><b>The acquisitions tool.</b> Defined requirements, built, and shipped an AI-assisted acquisition tool automating OM parsing, ownership research, and risk categorization, scaling the team&rsquo;s weekly deal review capacity 10x.</p>
+                    <p><b>The heavy lift.</b> Led cross-functional delivery of a $10M+ retail redevelopment across bidding, permitting, and construction workstreams, coordinating a multi-disciplinary team from kickoff to on-time completion.</p>
+                  </div>
+                </div>
+              </details>
             </div>
 
             <div class="exp-card blue" data-eq-card>
               <a href="https://gearsupply.com/" target="_blank" rel="noopener noreferrer" class="exp-badge blue">Visit Site</a>
               <h3>The Startup Scale Up</h3>
               <p class="exp-meta"><span class="role">Director of Operations</span><span>Gearsupply &middot; 2023 &ndash; 2024</span></p>
-              <p class="exp-problem">Building a company&rsquo;s internal nervous system from scratch while it&rsquo;s already running at full speed.</p>
-              <p class="exp-fix">Series A startup. Largest online marketplace and direct inventory retailer for professional video, audio, and production equipment.</p>
-              <div class="exp-bullets">
-                <p><b>The triage.</b> Diagnosed and resolved critical operational failures across warehouse leases, insurance, and logistics within weeks of joining a near-shutdown operation, restoring full business continuity across three locations.</p>
-                <p><b>The platform.</b> Built and shipped the company&rsquo;s first integrated inventory and CRM platform connecting accounting, sales, purchasing, and warehouse operations, eliminating the complexity that had driven the entire sales team to resign.</p>
-                <p><b>Fulfillment.</b> Owned and shipped fulfillment, product testing, and customer service workflow products, reducing fulfillment time to under 24 hours, driving error rates to near zero, and enabling the sales team to scale to $15M+.</p>
-                <p><b>The scale.</b> Scaled operations from 3 to 20 people in under a year while leading international expansion into Mexico, building customs workflows, cross-border logistics infrastructure, and metric-based performance systems.</p>
-              </div>
+              <p class="exp-lede">Rebuilt a near-shutdown startup&rsquo;s operations and scaled the team that took sales past $15M.</p>
+              <div class="chips blue exp-chips"><span>Team: 3 &rarr; 20 in a year</span><span>$15M+ sales enabled</span><span>Fulfillment under 24h</span></div>
+              <details class="exp-more">
+                <summary>The full story<span class="plus" style="color:#60a5fa">+</span></summary>
+                <div class="exp-body">
+                  <p class="exp-problem">Building a company&rsquo;s internal nervous system from scratch while it&rsquo;s already running at full speed.</p>
+                  <p class="exp-fix">Series A startup. Largest online marketplace and direct inventory retailer for professional video, audio, and production equipment.</p>
+                  <div class="exp-bullets">
+                    <p><b>The triage.</b> Diagnosed and resolved critical operational failures across warehouse leases, insurance, and logistics within weeks of joining a near-shutdown operation, restoring full business continuity across three locations.</p>
+                    <p><b>The platform.</b> Built and shipped the company&rsquo;s first integrated inventory and CRM platform connecting accounting, sales, purchasing, and warehouse operations, eliminating the complexity that had driven the entire sales team to resign.</p>
+                    <p><b>Fulfillment.</b> Owned and shipped fulfillment, product testing, and customer service workflow products, reducing fulfillment time to under 24 hours, driving error rates to near zero, and enabling the sales team to scale to $15M+.</p>
+                    <p><b>The scale.</b> Scaled operations from 3 to 20 people in under a year while leading international expansion into Mexico, building customs workflows, cross-border logistics infrastructure, and metric-based performance systems.</p>
+                  </div>
+                </div>
+              </details>
             </div>
 
             <div class="exp-card" data-eq-card>
               <a href="/2023_SFWMD_SLRFRP.pdf" target="_blank" rel="noopener noreferrer" class="exp-badge red">Work Sample</a>
               <h3>The 100 Year Infrastructure</h3>
               <p class="exp-meta"><span class="role">District Resiliency Project Manager</span><span>South Florida Water Management District &middot; 2021 &ndash; 2023</span></p>
-              <p class="exp-problem">Balancing the immediate engineering needs of 10 million people against the long-term, existential threat of sea-level rise and a shifting climate.</p>
-              <p class="exp-fix">Federal government. Largest water management agency in the US, managing flood control, water supply, and ecosystem restoration.</p>
-              <div class="exp-bullets">
-                <p><b>The innovation program.</b> Built a zero-to-one water innovation program from idea to funded reality in six months, securing millions in grants and private partnerships to pilot three nutrient runoff technologies, with the program still active today.</p>
-                <p><b>The planning process.</b> Drove cross-functional alignment across 20+ subject matter experts to design and ship a water supply planning process now formally adopted into the Lower East Coast regional regulatory framework.</p>
-                <p><b>The portfolio.</b> Joined as a founding member of the district&rsquo;s first resiliency team, securing $100M+ in flood protection funding through grant writing and executive presentations while managing a $350M+ infrastructure portfolio.</p>
-              </div>
+              <p class="exp-lede">Resiliency planning and a zero-to-one innovation program for the largest water agency in the US.</p>
+              <div class="chips red exp-chips"><span>$350M+ portfolio</span><span>$100M+ funding secured</span><span>Adopted into regulation</span></div>
+              <details class="exp-more">
+                <summary>The full story<span class="plus" style="color:#ef4444">+</span></summary>
+                <div class="exp-body">
+                  <p class="exp-problem">Balancing the immediate engineering needs of 10 million people against the long-term, existential threat of sea-level rise and a shifting climate.</p>
+                  <p class="exp-fix">Federal government. Largest water management agency in the US, managing flood control, water supply, and ecosystem restoration.</p>
+                  <div class="exp-bullets">
+                    <p><b>The innovation program.</b> Built a zero-to-one water innovation program from idea to funded reality in six months, securing millions in grants and private partnerships to pilot three nutrient runoff technologies, with the program still active today.</p>
+                    <p><b>The planning process.</b> Drove cross-functional alignment across 20+ subject matter experts to design and ship a water supply planning process now formally adopted into the Lower East Coast regional regulatory framework.</p>
+                    <p><b>The portfolio.</b> Joined as a founding member of the district&rsquo;s first resiliency team, securing $100M+ in flood protection funding through grant writing and executive presentations while managing a $350M+ infrastructure portfolio.</p>
+                  </div>
+                </div>
+              </details>
             </div>
 
             <div class="exp-card blue" data-eq-card>
               <a href="https://chloecapital.com/" target="_blank" rel="noopener noreferrer" class="exp-badge blue">Visit Site</a>
               <h3>The Venture Capital Lens</h3>
               <p class="exp-meta"><span class="role">Venture Capital Analyst and Kessler Fellow</span><span>Chloe Capital &middot; 2020 &ndash; 2021</span></p>
-              <p class="exp-problem">Identifying the signal in the noise of early-stage tech to separate high-impact investment opportunities from the hype of a pitch deck.</p>
-              <p class="exp-fix">Venture capital. Early-stage fund investing in gender-diverse founding teams across technology and consumer sectors.</p>
-              <div class="exp-bullets">
-                <p><b>Capital sourcing.</b> Built one of the earliest automated investor scraping and outreach systems before the tooling was ubiquitous, generating LP connections that directly contributed to the firm&rsquo;s inaugural $50M fund raise.</p>
-                <p><b>Diligence at scale.</b> Built the firm&rsquo;s first CRM and portfolio monitoring system tracking performance across 20 companies, while conducting full investment diligence across 50+ companies and publishing a widely cited white paper on gender lens investing.</p>
-              </div>
+              <p class="exp-lede">Data automation and deep diligence across an early-stage venture pipeline.</p>
+              <div class="chips blue exp-chips"><span>$50M inaugural fund</span><span>50+ diligences</span><span>Widely cited white paper</span></div>
+              <details class="exp-more">
+                <summary>The full story<span class="plus" style="color:#60a5fa">+</span></summary>
+                <div class="exp-body">
+                  <p class="exp-problem">Identifying the signal in the noise of early-stage tech to separate high-impact investment opportunities from the hype of a pitch deck.</p>
+                  <p class="exp-fix">Venture capital. Early-stage fund investing in gender-diverse founding teams across technology and consumer sectors.</p>
+                  <div class="exp-bullets">
+                    <p><b>Capital sourcing.</b> Built one of the earliest automated investor scraping and outreach systems before the tooling was ubiquitous, generating LP connections that directly contributed to the firm&rsquo;s inaugural $50M fund raise.</p>
+                    <p><b>Diligence at scale.</b> Built the firm&rsquo;s first CRM and portfolio monitoring system tracking performance across 20 companies, while conducting full investment diligence across 50+ companies and publishing a widely cited white paper on gender lens investing.</p>
+                  </div>
+                </div>
+              </details>
             </div>
 
           </div>
