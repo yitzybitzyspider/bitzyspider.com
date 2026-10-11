@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<meta name="referrer" content="no-referrer">
+<title>Locked · bitzyspider</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<style>
+/* Lock screen for the private /learn/ section. The real page is AES-GCM ciphertext below; it only renders after the passphrase derives the right key. */
+:root{--bg:#09090b;--card:#141417;--line:#1f1f23;--fg:#f4f4f5;--muted:#a1a1aa;--red:#dc2626;--red-bright:#ef4444;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;--sans:ui-sans-serif,system-ui,sans-serif;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--fg);font:16px/1.5 var(--sans);display:grid;place-items:center;padding:16px}
+.card{width:100%;max-width:380px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:28px 24px}
+.top{display:flex;align-items:center;gap:10px;margin-bottom:18px}
+.top img{width:28px;height:28px}
+.label{font:600 .72rem var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--red-bright)}
+h1{font-size:1.4rem;margin:0 0 4px}
+p{margin:0 0 18px;color:var(--muted);font-size:.95rem}
+input[type=password]{width:100%;font:inherit;font-size:16px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:11px 12px}
+input[type=password]:focus{outline:2px solid var(--red);outline-offset:1px;border-color:transparent}
+.row{display:flex;align-items:center;gap:8px;margin:12px 0 16px;color:var(--muted);font-size:.9rem}
+.row input{accent-color:var(--red);width:16px;height:16px}
+button{width:100%;font:600 .95rem var(--sans);color:#fff;background:var(--red);border:0;border-radius:8px;padding:11px;cursor:pointer}
+button:hover{background:var(--red-bright)}
+button:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+button[disabled]{opacity:.6;cursor:wait}
+.msg{min-height:1.4em;margin:12px 0 0;font:500 .85rem var(--mono);color:var(--muted)}
+.msg.err{color:var(--red-bright)}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<main class="card" id="gate">
+  <div class="top"><img src="/favicon.svg" alt=""><span class="label">bitzyspider / learn</span></div>
+  <h1>Private notes</h1>
+  <p>Enter the passphrase to open this page.</p>
+  <form id="f" autocomplete="on">
+    <input type="text" name="username" value="bitzyspider-learn" autocomplete="username" class="hidden" aria-hidden="true" tabindex="-1">
+    <input type="password" id="pw" name="password" autocomplete="current-password" placeholder="Passphrase" aria-label="Passphrase" required>
+    <label class="row"><input type="checkbox" id="rem" checked> Remember on this device</label>
+    <button id="go" type="submit">Unlock</button>
+  </form>
+  <div class="msg" id="msg" role="status" aria-live="polite"></div>
+</main>
+<script>
+const P = {"v":1,"kid":"05a70824557d","salt":"QRFJSVkzkNzeWQ6160XSJA==","iter":600000,"iv":"uGFYqrEPZHU13Rg+","data":"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"};
+const SLOT = 'bz-learn-key';
+const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+const enc = u => btoa(String.fromCharCode(...new Uint8Array(u)));
+const msg = (t, err) => { const m = document.getElementById('msg'); m.textContent = t; m.className = 'msg' + (err ? ' err' : ''); };
+const norm = s => s.trim().toLowerCase().split(/[\s\-_.,]+/).filter(Boolean).join('-');
+const store = {
+  get() { try { return JSON.parse(localStorage.getItem(SLOT) || sessionStorage.getItem(SLOT) || 'null'); } catch (e) { return null; } },
+  set(v, keep) { try { (keep ? localStorage : sessionStorage).setItem(SLOT, JSON.stringify(v)); } catch (e) {} },
+  clear() { try { localStorage.removeItem(SLOT); sessionStorage.removeItem(SLOT); } catch (e) {} }
+};
+async function render(raw) {
+  const key = await crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['decrypt']);
+  const zipped = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64(P.iv) }, key, b64(P.data));
+  const html = await new Response(new Blob([zipped]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+  document.open(); document.write(html); document.close();
+}
+async function derive(pass) {
+  const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(norm(pass)), 'PBKDF2', false, ['deriveBits']);
+  return crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: b64(P.salt), iterations: P.iter }, base, 256);
+}
+(async () => {
+  if (!window.crypto || !crypto.subtle || !window.DecompressionStream) { msg('This browser is too old to open locked pages.', true); return; }
+  if (new URLSearchParams(location.search).has('lock')) { store.clear(); msg('Locked on this device.'); return; }
+  const saved = store.get();
+  if (saved && saved.kid === P.kid) {
+    try { await render(b64(saved.k)); return; } catch (e) { store.clear(); }
+  }
+  document.getElementById('pw').focus();
+})();
+document.getElementById('f').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const go = document.getElementById('go');
+  go.disabled = true; msg('Unlocking...');
+  const keep = document.getElementById('rem').checked;
+  try {
+    const raw = await derive(document.getElementById('pw').value);
+    await render(raw);
+    store.set({ kid: P.kid, k: enc(raw) }, keep);
+  } catch (e) {
+    go.disabled = false; msg('That passphrase did not open this page.', true);
+  }
+});
+</script>
+</body>
+</html>
