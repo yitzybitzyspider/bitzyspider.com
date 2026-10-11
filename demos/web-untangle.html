@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Web Untangle</title>
+<style>
+  :root {
+    --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    --math: "STIX Two Math", "Cambria Math", "Latin Modern Math", Georgia, serif;
+    --red: #dc2626;
+    --red-bright: #ef4444;
+    --dim: #71717a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #000; color: #fff; overflow: hidden;
+    font-family: ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  p { margin: 0; }
+  canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; touch-action: none; cursor: grab; }
+  canvas.grabbing { cursor: grabbing; }
+
+  .hud { position: fixed; inset: 0; pointer-events: none; z-index: 2; text-shadow: 0 0 14px #000, 0 0 3px #000; }
+  .info { position: absolute; top: 2rem; left: 2.5rem; max-width: 30rem; }
+  .eyebrow { font-family: var(--mono); font-size: .68rem; letter-spacing: .26em; text-transform: uppercase; color: var(--red-bright); margin-bottom: 1rem; }
+  .formula { font-family: var(--math); font-style: italic; font-size: 1.75rem; line-height: 1.2; margin-bottom: .85rem; }
+  .formula sub, .formula sup { font-size: .55em; }
+  .desc { font-size: .9rem; line-height: 1.6; color: #a1a1aa; }
+  .cite { font-family: var(--mono); font-size: .6rem; letter-spacing: .12em; color: #52525b; margin-top: .8rem; text-transform: uppercase; }
+
+  .stats { position: absolute; left: 2.5rem; bottom: 2rem; }
+  .label { font-family: var(--mono); font-size: .62rem; letter-spacing: .26em; text-transform: uppercase; color: var(--dim); }
+  .count { font-family: var(--mono); font-weight: 800; font-size: clamp(2.4rem, 5vw, 3.6rem); letter-spacing: -.04em; line-height: 1;
+    margin: .35rem 0 .45rem; font-variant-numeric: tabular-nums; color: var(--red-bright); transition: color .4s; }
+  .count.zero { color: #fff; }
+  .sub { font-family: var(--mono); font-size: .7rem; letter-spacing: .08em; color: rgba(255,255,255,.45); }
+
+  .controls { position: absolute; right: 2.5rem; bottom: 2rem; display: flex; flex-direction: column; align-items: flex-end; gap: .8rem; }
+  .modes { display: flex; gap: .5rem; flex-wrap: wrap; justify-content: flex-end; pointer-events: auto; }
+  button { font-family: var(--mono); font-size: .66rem; letter-spacing: .14em; text-transform: uppercase; font-weight: 700;
+    color: #fca5a5; background: rgba(0,0,0,.6); border: 1px solid rgba(220,38,38,.5); padding: .6rem 1rem;
+    border-radius: 999px; cursor: pointer; transition: all .25s; }
+  button:hover { border-color: var(--red); color: #fff; }
+  button.on { background: var(--red); border-color: var(--red); color: #fff; }
+  button.again { background: #fff; color: #000; border-color: #fff; }
+  button.again:hover { background: var(--red-bright); border-color: var(--red-bright); color: #fff; }
+  .hint { font-family: var(--mono); font-size: .66rem; letter-spacing: .05em; color: rgba(255,255,255,.32); text-align: right; line-height: 1.7; max-width: 27rem; }
+  .hint a { color: #fca5a5; pointer-events: auto; }
+
+  @media (max-width: 700px) {
+    .info { top: 1rem; left: 1rem; right: 1rem; }
+    .formula { font-size: 1.35rem; margin-bottom: .5rem; }
+    .desc { font-size: .76rem; }
+    .cite { display: none; }
+    .stats { left: 1rem; bottom: 6.8rem; }
+    .controls { left: 1rem; right: 1rem; bottom: 1rem; align-items: stretch; }
+    .modes { justify-content: flex-start; }
+    .hint { display: none; }
+  }
+</style>
+</head>
+<body>
+<canvas id="web" aria-label="A tangled spider web untangling itself"></canvas>
+
+<div class="hud">
+  <div class="info">
+    <p class="eyebrow" id="eyebrow"></p>
+    <p class="formula" id="formula"></p>
+    <p class="desc" id="desc"></p>
+    <p class="cite" id="cite"></p>
+  </div>
+  <div class="stats">
+    <p class="label">Crossings</p>
+    <p class="count" id="count">0</p>
+    <p class="sub" id="sub"></p>
+  </div>
+  <div class="controls">
+    <div class="modes">
+      <button data-mode="0">01 Tutte</button>
+      <button data-mode="1">02 Curvature</button>
+      <button data-mode="2">03 Isotopy</button>
+      <button class="again" id="again">Tangle again</button>
+    </div>
+    <p class="hint">Grab any junction and drag it across the web, then let go.<br>Space re-tangles &middot; 1 2 3 switch the math &middot; C toggles crossing dots<br><a href="/">&larr; bitzyspider.com</a></p>
+  </div>
+</div>
+
+<script src="../untangle.js"></script>
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const cvs = $('web'), countEl = $('count'), subEl = $('sub');
+
+  const start = Math.min(2, Math.max(0, +new URLSearchParams(location.search).get('mode') || 0)); // ?mode= from the hero
+  const web = UntangleWeb(cvs, {
+    mode: start,
+    onGrab: on => cvs.classList.toggle('grabbing', on),
+    onUpdate(s) {
+      countEl.textContent = s.crossings.toLocaleString();
+      countEl.classList.toggle('zero', s.crossings === 0);
+      subEl.textContent =
+        s.dragging ? (s.crossings ? 'now let go' : 'drag it across a few threads')
+        : s.phase === 'tangle' ? `untangling · ${s.T.toFixed(1)} s`
+        : s.phase === 'release' ? 'untangling'
+        : s.doneHow === 'tangle' ? `untangled in ${s.doneIn.toFixed(2)} s`
+        : s.doneHow === 'release' ? `fixed itself in ${s.doneIn.toFixed(2)} s`
+        : s.doneHow === 'nodrag' ? 'drag it further across the web'
+        : 'press Tangle again';
+    },
+  });
+
+  function show(m) { web.start(m); label(m); }
+  function label(m) {
+    const M = UntangleWeb.MODES[m];
+    $('eyebrow').textContent = M.name;
+    $('formula').innerHTML = M.formula;
+    $('desc').textContent = M.desc;
+    $('cite').textContent = M.cite;
+    document.querySelectorAll('[data-mode]').forEach(b => b.classList.toggle('on', +b.dataset.mode === m));
+  }
+  label(start);
+
+  document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => { show(+b.dataset.mode); b.blur(); }));
+  $('again').addEventListener('click', e => { show(web.mode); e.currentTarget.blur(); });
+  addEventListener('keydown', e => {
+    if (e.key === ' ') { e.preventDefault(); show(web.mode); }
+    else if (e.key >= '1' && e.key <= '3') show(+e.key - 1);
+    else if (e.key === 'c' || e.key === 'C') web.toggleDots();
+  });
+
+  window.__untangle = web.debug; // test hooks
+})();
+</script>
+</body>
+</html>

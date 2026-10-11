@@ -68,6 +68,59 @@ spider.js               The interactive spider, ported VERBATIM from the old
                         DEBUGGED counter into #bug-count-slot in the hero.
                         Do not retune the feel — the original speed is the
                         speed Yitzy wants.
+                        Page hooks (Oct 2026, feel unchanged): she exposes
+                        window.__spiderPos (read-only; the finished hero web
+                        sways like a breeze wherever she walks), and when idle
+                        she walks to window.__spiderGoal() instead of the fly
+                        if the page returns a point. The hero uses it to rest
+                        her at the hub for 12s after the web is combed out.
+                        She never untangles the web herself.
+
+untangle.js             The self-untangling orb web behind the hero. Defines
+                        window.UntangleWeb(canvas, opts). The web is a planar
+                        graph whose edges are strings; three modes tangle it
+                        and a different piece of math undoes it: 0 Tutte
+                        embedding (yarn ball blooms into the web; junctions
+                        slide to a mean-value-weighted average of neighbors,
+                        Tutte/Floater guarantee zero crossings at rest),
+                        1 curve-shortening flow (scribbled threads iron out),
+                        2 ambient isotopy (3D vortex stir played backwards).
+                        Live crossing counter (grid-bucketed segment pairs on
+                        a time budget), over/under rendering by depth bucket,
+                        spiral sag via a constant pull on strand points.
+                        Hero uses comb:true: NOTHING untangles on its own
+                        (Yitzy's call). Pointer/finger sweeps warm the silk
+                        under them; only warm silk relaxes and each point's
+                        untangle clock only runs while warm, so stopping the
+                        mouse stops the untangle. Knots pulled in after it's
+                        done also wait to be combed. Breeze (breezeFrom: the
+                        spider): her movement over the finished web gives the
+                        silk a small, uniform push that springs back (4-7px).
+                        Keep it uniform for junctions and threads, fade it at
+                        the hub, and give finely divided strands extra passes
+                        (SETTLED): each of those was needed to keep the breeze
+                        at zero crossings. grabTouch:false (touch
+                        scrolls/steers). Dragging is disabled until the first
+                        comb-out finishes. HARD
+                        RULE: never add a force that pulls many junctions
+                        toward one point (it acts like a non-planar extra
+                        vertex and creates crossings; a "spider tugs the silk"
+                        pull did exactly that and was removed). Each page
+                        exposes test hooks (window.__heroWeb /
+                        window.__untangle: start, advance, timeline, bench,
+                        node, sweep) to step the sim without rAF.
+
+                        Hero layout (Oct 2026, Yitzy's call): the current
+                        mode's formula sits top-right with a TANGLE AGAIN
+                        pill (cycles the three modes) and a SEE THE MATH link
+                        under it (to the lab, ?mode=N). No crossing counter or
+                        instructions in the hero; the hero-foot is just BUGS
+                        DEBUGGED stacked above the Play Bug Hunt card.
+
+demos/web-untangle.html Full-screen lab for the same engine: mode buttons,
+                        formula + citation per mode, big crossing counter.
+                        Plays on its own (no comb). Accepts ?mode=0|1|2.
+                        Linked from the hero ("See the math").
 
 Yitzy_Rosenberg_Resume.docx  Current resume (Aug 2026, "Operations PM"
                         version — Berkeley + YYR). Linked from the contact

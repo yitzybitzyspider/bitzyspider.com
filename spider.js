@@ -42,6 +42,7 @@
       let caught = 0;
       const target = { x: innerWidth / 2, y: innerHeight / 2 };
       const pos = { x: innerWidth / 2, y: innerHeight / 2 };
+      window.__spiderPos = pos; // read-only: the hero web sways where she walks
       let angle = 0;
       const legs = []; for (let i = 0; i < LEG_COUNT; i++) legs.push(new Leg(i, { x: innerWidth / 2, y: innerHeight / 2 }));
       let web = [];
@@ -67,7 +68,11 @@
         const c = canvas, ctx = c.getContext('2d'), now = Date.now();
         ctx.clearRect(0, 0, c.width, c.height);
         const idle = now - lastMove > IDLE_MS;
-        if (idle && !eating) { target.x = bug.x; target.y = bug.y; }
+        if (idle && !eating) {
+          // An idle errand the page can set (the hero web: rest at the hub once it's combed out).
+          const goal = window.__spiderGoal && window.__spiderGoal();
+          target.x = goal ? goal.x : bug.x; target.y = goal ? goal.y : bug.y;
+        }
 
         if (!eating) {
           bugVel.x += (Math.random() - 0.5) * BUG_ACCEL;
