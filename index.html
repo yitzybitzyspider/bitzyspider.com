@@ -97,8 +97,9 @@
       .hero-eyebrow { font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.28em; text-transform: uppercase; color: var(--red); margin-bottom: 1.75rem; }
       .hero h1 { font-size: clamp(3rem, 8.5vw, 7.5rem); font-weight: 900; letter-spacing: -0.055em; line-height: 0.93; max-width: 18ch; }
       .hero h1 .grad { color: transparent; background-clip: text; -webkit-background-clip: text; background-image: linear-gradient(to right, #ef4444, #991b1b); }
-      .hero-berkeley { font-family: var(--mono); font-size: 0.9rem; letter-spacing: 0.14em; text-transform: uppercase; color: #fff; margin: 2.5rem 0 0.6rem; }
-      .hero-tagline { font-family: var(--mono); font-size: 0.78rem; letter-spacing: 0.18em; text-transform: uppercase; color: #71717a; }
+      /* Both stacks share one line pitch (1.44rem) so the five lines read as a single column. */
+      .hero-berkeley { font-family: var(--mono); font-size: 0.9rem; line-height: 1.6; letter-spacing: 0.14em; text-transform: uppercase; color: #fff; margin: 2.5rem 0 0.75rem; }
+      .hero-tagline { font-family: var(--mono); font-size: 0.78rem; line-height: 1.85; letter-spacing: 0.18em; text-transform: uppercase; color: #71717a; }
       .hero-foot { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 2rem; border-top: 1px solid #1c1c20; padding-top: 1.5rem; }
       .hero-game { display: flex; align-items: center; gap: 1.25rem; border: 1px solid rgba(220,38,38,0.45); border-radius: 1rem;
         padding: 1rem 1.5rem; background: rgba(220,38,38,0.06); transition: all 0.3s; }
@@ -358,7 +359,7 @@
           <p class="hero-eyebrow">Yitzy Rosenberg</p>
           <h1>I <span class="grad">UNTANGLE</span><br />WICKED<br />PROBLEMS.</h1>
           <p class="hero-berkeley">MBA + MEng IEOR Candidate<br /><span style="color:#5b8fc7">UC Berkeley</span> <span style="color:#FDB515">2028</span></p>
-          <p class="hero-tagline">Systems Engineer &nbsp;&middot;&nbsp; 3x Founder &nbsp;&middot;&nbsp; Growth and Operations Executioner</p>
+          <p class="hero-tagline">Systems Engineer<br />3x Founder<br />Growth and Operations Executioner</p>
         </div>
         <div class="hero-foot">
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.75rem;margin-left:auto">
