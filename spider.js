@@ -74,17 +74,24 @@
           target.x = goal ? goal.x : bug.x; target.y = goal ? goal.y : bug.y;
         }
 
+        let held = null;
         if (!eating) {
-          bugVel.x += (Math.random() - 0.5) * BUG_ACCEL;
-          bugVel.y += (Math.random() - 0.5) * BUG_ACCEL;
-          const sp = Math.hypot(bugVel.x, bugVel.y);
-          if (sp > BUG_MAX_SPEED) { bugVel.x = bugVel.x / sp * BUG_MAX_SPEED; bugVel.y = bugVel.y / sp * BUG_MAX_SPEED; }
-          bug.x += bugVel.x; bug.y += bugVel.y;
-          if (bug.x < 0) { bug.x = 0; bugVel.x *= -1; }
-          if (bug.x > c.width) { bug.x = c.width; bugVel.x *= -1; }
-          if (bug.y < 0) { bug.y = 0; bugVel.y *= -1; }
-          if (bug.y > c.height) { bug.y = c.height; bugVel.y *= -1; }
-          bugAngle = Math.atan2(bugVel.y, bugVel.x);
+          // Page hook: the hero web can snag the fly. While it returns a pose the fly is
+          // stuck there writhing; it may also set bugVel to fling the fly free.
+          held = window.__bugTrap ? window.__bugTrap(bug, bugVel) : null;
+          if (held) { bug.x = held.x; bug.y = held.y; bugAngle = held.angle; }
+          else {
+            bugVel.x += (Math.random() - 0.5) * BUG_ACCEL;
+            bugVel.y += (Math.random() - 0.5) * BUG_ACCEL;
+            const sp = Math.hypot(bugVel.x, bugVel.y);
+            if (sp > BUG_MAX_SPEED) { bugVel.x = bugVel.x / sp * BUG_MAX_SPEED; bugVel.y = bugVel.y / sp * BUG_MAX_SPEED; }
+            bug.x += bugVel.x; bug.y += bugVel.y;
+            if (bug.x < 0) { bug.x = 0; bugVel.x *= -1; }
+            if (bug.x > c.width) { bug.x = c.width; bugVel.x *= -1; }
+            if (bug.y < 0) { bug.y = 0; bugVel.y *= -1; }
+            if (bug.y > c.height) { bug.y = c.height; bugVel.y *= -1; }
+            bugAngle = Math.atan2(bugVel.y, bugVel.x);
+          }
           const mx = pos.x + 15 * Math.cos(angle), my = pos.y + 15 * Math.sin(angle);
           if (Math.hypot(mx - bug.x, my - bug.y) < 30) {
             eating = true; caught += 1; countSpan.textContent = String(caught);
@@ -94,7 +101,7 @@
 
         if (!eating) {
           ctx.save(); ctx.translate(bug.x, bug.y); ctx.rotate(bugAngle);
-          const flap = Math.sin(frame * 0.5);
+          const flap = Math.sin(frame * (held ? 1.7 : 0.5)); // a snagged fly buzzes frantically
           ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
           ctx.save(); ctx.scale(1, flap);
           ctx.beginPath(); ctx.ellipse(-2, -6, 4, 8, 0.5, 0, Math.PI * 2); ctx.fill();

@@ -931,9 +931,47 @@
             return { cx: w * 0.68, cy: h * 0.5, rx: Math.min(w * 0.3, ry * 1.45), ry: ry };
           }
         });
-        // Once the visitor has combed the web out, the idle spider crawls to the hub
-        // and rests there like an orb weaver before going back to the fly.
+        // The fly can get snagged in the finished web: it writhes in fits, shaking the silk
+        // around it, then tears free (and can't be caught again for a few seconds). Local
+        // coords keep it stuck to the web while the page scrolls.
+        var trap = { stuck: false, lx: 0, ly: 0, hx: 0, hy: 0, a: 0, until: 0, free: 0, kx: 0, ky: 0, kdir: 0, kick: 0 };
+        function kick(lx, ly, dir, frames) { trap.kx = lx; trap.ky = ly; trap.kdir = dir; trap.kick = frames; }
+        window.__bugTrap = function (bug, vel) {
+          var now = performance.now(), o = web.origin();
+          if (trap.kick > 0) { // impact or recoil: a short, steady shove of the silk
+            trap.kick--;
+            web.tug(o.x + trap.kx, o.y + trap.ky, Math.cos(trap.kdir), Math.sin(trap.kdir), 0.3);
+          }
+          if (trap.stuck) {
+            if (Math.hypot(bug.x - trap.hx, bug.y - trap.hy) > 30) { trap.stuck = false; trap.free = now + 4000; return null; } // eaten
+            var x = o.x + trap.lx, y = o.y + trap.ly;
+            if (now > trap.until) { // tears free and the silk springs back
+              var esc = Math.random() * Math.PI * 2;
+              vel.x = Math.cos(esc) * 7; vel.y = Math.sin(esc) * 7;
+              kick(trap.lx, trap.ly, esc, 10);
+              trap.stuck = false; trap.free = now + 6000;
+              return null;
+            }
+            var t = now / 1000, fit = Math.max(0, Math.sin(t * 4.1) * Math.sin(t * 1.7 + 1));
+            web.tug(x, y, Math.cos(trap.a + 2.6 * Math.sin(t * 6.3)), Math.sin(trap.a + 2.6 * Math.sin(t * 6.3)), 0.06 + 0.3 * fit);
+            var j = 0.6 + 2.6 * fit;
+            trap.hx = x + Math.sin(t * 37) * j; trap.hy = y + Math.cos(t * 29) * j;
+            return { x: trap.hx, y: trap.hy, angle: trap.a + Math.sin(t * 19) * (0.15 + 0.6 * fit) };
+          }
+          if (now > trap.free && web.onSilk(bug.x, bug.y)) {
+            trap.stuck = true; trap.lx = bug.x - o.x; trap.ly = bug.y - o.y; trap.hx = bug.x; trap.hy = bug.y;
+            trap.a = Math.atan2(vel.y, vel.x); trap.until = now + 2500 + Math.random() * 2500;
+            kick(trap.lx, trap.ly, trap.a, 8); // the silk gives where it hit
+            return { x: bug.x, y: bug.y, angle: trap.a };
+          }
+          return null;
+        };
+
+        // A snagged fly brings the idle spider running (she hunts the fly by default).
+        // Otherwise, once the web is combed out she crawls to the hub and rests there
+        // like an orb weaver before going back to the fly.
         window.__spiderGoal = function () {
+          if (trap.stuck) return null;
           var f = web.focus();
           if (f.y < 0 || f.y > innerHeight) return null;
           return f.sinceDone >= 0 && f.sinceDone < 12 ? { x: f.x, y: f.y } : null;

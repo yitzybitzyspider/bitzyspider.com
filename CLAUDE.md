@@ -72,7 +72,15 @@ spider.js               The interactive spider, ported VERBATIM from the old
                         window.__spiderPos (read-only; the finished hero web
                         sways like a breeze wherever she walks), and when idle
                         she walks to window.__spiderGoal() instead of the fly
-                        if the page returns a point. The hero uses it to rest
+                        if the page returns a point. A third hook,
+                        window.__bugTrap(bug, bugVel), lets the page hold the
+                        fly: the hero snags it when it flies into the finished
+                        web (web.onSilk), it writhes in fits for 2.5-5s while
+                        web.tug shakes the silk around it (frantic wing buzz),
+                        then tears free with a recoil and a 6s cooldown. The
+                        idle spider rushes a snagged fly (goal returns null so
+                        she targets the bug); if she gets there first it's
+                        eaten and the trap resets. The hero uses it to rest
                         her at the hub for 12s after the web is combed out.
                         She never untangles the web herself.
 

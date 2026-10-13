@@ -897,6 +897,27 @@
       next() { start((mode + 1) % MODES.length); return api; },
       get mode() { return mode; },
       info,
+      origin() { const r = cvs.getBoundingClientRect(); return { x: r.left, y: r.top }; },
+      // For snagging the fly: is this client point on the finished web's capture silk
+      // (inside the frame, outside the hub)?
+      onSilk(x, y) {
+        if (!X || phase !== 'done') return false;
+        const r = cvs.getBoundingClientRect(), lx = x - r.left, ly = y - r.top;
+        if (Math.hypot((lx - hub.x) / Rx, (ly - hub.y) / Ry) < 0.2) return false;
+        let inside = false;
+        for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+          const [xi, yi] = poly[i], [xj, yj] = poly[j];
+          if ((yi > ly) !== (yj > ly) && lx < (xj - xi) * (ly - yi) / (yj - yi) + xi) inside = !inside;
+        }
+        return inside;
+      },
+      // Shake the silk around a client point (a snagged fly struggling). Same smooth,
+      // uniform push as the breeze, so it trembles without threads ever crossing.
+      tug(x, y, ux, uy, g) {
+        if (!X || phase !== 'done') return;
+        const r = cvs.getBoundingClientRect();
+        touchAt(x - r.left, y - r.top, Math.max(60, Rm * 0.3), ux, uy, g, false);
+      },
       // where the web is on screen, for a page that wants the spider to visit it
       focus() {
         const r = cvs.getBoundingClientRect();
@@ -909,6 +930,7 @@
         state: () => ({ mode, T: +T.toFixed(2), crossings, phase, N, nEdges }),
         start: m => { start(m); render(); countCrossings(); updateStatus(); return api.debug.state(); },
         advance(sec) { for (let i = 0; i < Math.round(sec * 60); i++) tick(); render(); countCrossings(); updateStatus(); return api.debug.state(); },
+        settle: () => { settle(); render(); countCrossings(); updateStatus(); return api.debug.state(); },
         sweep: (x, y) => combTo(x, y),
         breeze: (x, y) => breezeTo(x, y),
         dots() { const r = cvs.getBoundingClientRect(), out = []; for (let i = 0; i < nCross; i++) out.push([Math.round(r.left + crossPts[2 * i]), Math.round(r.top + crossPts[2 * i + 1])]); return out; },
