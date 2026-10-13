@@ -188,6 +188,13 @@ page in the browser. `?lock` on any learn URL forgets the key on that device.
   fails if any title leaks), then commit `learn/` and push. Unchanged sources are
   skipped, so re-running is cheap and produces no diff.
 - Test builds go to a scratch dir: `node publish.mjs --site <dir> --secret <file>`.
+- **Offline items (Oct 2026):** a catalog item with `"offline": true` also gets
+  `sw.js`, `manifest.webmanifest` and two icons in its folder, and its locked page
+  registers the service worker. On an iPad: open it once online, Add to Home
+  Screen, unlock once inside the home-screen app, and it then opens with no
+  signal (the key is remembered per device). Only ciphertext is cached; the
+  manifest uses the neutral name "Learn". First offline item: MBA 202
+  Financial Accounting final review (`/learn/financial-accounting/final-review/`).
 
 ## Bug Hunt game (game.html)
 
