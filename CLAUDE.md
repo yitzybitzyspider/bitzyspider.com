@@ -56,7 +56,7 @@ index.html              The entire site: one static HTML page. Contains a single
                         - film strip renderer (FILM_FRAMES array — add film
                           photos here; EMPTY_SLOTS dashed placeholders follow)
                         - Track Record card-height equalizer (data-eq-card)
-                        Section ids: top, track_record, about, skills, education,
+                        Section ids: top, track_record, about, education,
                         community, off_the_clock, contact.
 
 spider.js               The interactive spider, ported VERBATIM from the old
