@@ -168,6 +168,16 @@ SUPABASE_SETUP.md       Optional global leaderboard setup for Bug Hunt.
   `content.js` data, notes) is not committed — the page IS the artifact.
 - Test locally: any static server from the repo root; the spider needs no build.
 
+## Analytics (Microsoft Clarity)
+
+Project `z822wwzxrs` records clicks, heatmaps and sessions. The tag sits just before
+`</head>` in `index.html`, `game.html`, `booksiveread/index.html` and
+`demos/web-untangle.html`. Any new public page gets the same tag.
+
+- **Never add it to `learn/`.** Those pages decrypt in the browser, so a recording
+  could capture plaintext course material. `lock.html` in the publisher stays untagged too.
+- `legacy/index-legacy.html` is retired and stays untagged.
+
 ## Learning Library (/learn/, private)
 
 `learn/` is Yitzy's private library of things he is learning and building (study
