@@ -155,6 +155,8 @@ CNAME / .nojekyll       GitHub Pages plumbing (domain: bitzyspider.com)
 game.html               "Bug Hunt" — standalone arcade game, untouched by the
                         redesign. Linked from the nav pill and the hero card.
 SUPABASE_SETUP.md       Optional global leaderboard setup for Bug Hunt.
+privacy.html            Privacy notice and the Clarity opt-out switch. Linked from
+                        the homepage footer. See "Analytics" below.
 ```
 
 ### Editing tips (current architecture)
@@ -172,11 +174,18 @@ SUPABASE_SETUP.md       Optional global leaderboard setup for Bug Hunt.
 
 Project `z822wwzxrs` records clicks, heatmaps and sessions. The tag sits just before
 `</head>` in `index.html`, `game.html`, `booksiveread/index.html` and
-`demos/web-untangle.html`. Any new public page gets the same tag.
+`demos/web-untangle.html`. Any new public page gets the same tag and goes in the
+`TAGGED` list in `tests/clarity.js`. Run `node tests/clarity.js` after touching any of this.
 
 - **Never add it to `learn/`.** Those pages decrypt in the browser, so a recording
   could capture plaintext course material. `lock.html` in the publisher stays untagged too.
 - `legacy/index-legacy.html` is retired and stays untagged.
+- `privacy.html` stays untagged, so nobody is recorded while reading the notice or opting out.
+- **Opt-out:** the switch on `privacy.html` sets localStorage `clarity` to `off`, and the
+  first line of each tag skips loading when it sees that. Keep that line if the tag is replaced.
+- **Keep `privacy.html` accurate.** Clarity's terms (section 4.4b) require the notice. Update
+  it whenever a third-party service or a tagged page is added or removed, and change its date.
+  Don't name `/learn/` there, since nothing public links to it.
 
 ## Learning Library (/learn/, private)
 

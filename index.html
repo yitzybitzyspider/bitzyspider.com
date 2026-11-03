@@ -272,6 +272,9 @@
 
       footer { padding: 2.5rem; border-top: 1px solid var(--line); background: #000; }
       .foot-inner { max-width: 80rem; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 2rem; flex-wrap: wrap; }
+      .foot-note { color: #a1a1aa; font-size: 0.75rem; }
+      .foot-note a { color: #fff; text-decoration: underline; text-underline-offset: 3px; transition: color 0.2s; }
+      .foot-note a:hover { color: var(--red-bright); }
 
       /* ---- responsive ---- */
       @media (max-width: 900px) {
@@ -299,9 +302,10 @@
         .btn-hello { font-size: 0.75rem; padding: 0.45rem 0.9rem; }
       }
     </style>
-    <!-- Microsoft Clarity -->
+    <!-- Microsoft Clarity. Visitors can turn it off on /privacy.html -->
     <script type="text/javascript">
         (function(c,l,a,r,i,t,y){
+            try{if(c.localStorage.getItem("clarity")==="off")return}catch(e){}
             c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
             t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
             y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
@@ -889,6 +893,7 @@
       <footer>
         <div class="foot-inner">
           <span class="mono" style="font-size:0.7rem;letter-spacing:0.14em;color:#3f3f46">BITZYSPIDER.COM</span>
+          <span class="foot-note">This site uses Microsoft Clarity to see how people use it. <a href="/privacy.html">Privacy</a></span>
           <span style="color:#3f3f46;font-size:0.75rem">&copy; 2026 Yitzy Rosenberg. All rights reserved.</span>
         </div>
       </footer>
