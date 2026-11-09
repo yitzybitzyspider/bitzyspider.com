@@ -55,3 +55,27 @@ Added `hq/index.html` (one Google button when signed out; checking, denied, erro
 Verified: `node tests/hq-auth.js` passes 22 checks (signed out never touches the database, stranger is denied and signed out even if a late sign-out event arrives, a truthy non-boolean owner answer is denied, owner check failure shows an error and never the deck, redirect target ignores the query string). `node tests/clarity.js` still passes. Loaded http://localhost:4319/hq/ in the preview: only the sign-in section is visible, button is 52px tall, no console errors.
 
 Not verified: a real Google sign-in. The provider is not enabled on the project yet (the authorize endpoint answers "provider is not enabled"); enabling it needs Yitzy's Google OAuth client, steps in the runbook. The 30-day session criterion rests on Supabase defaults and is unchecked until then.
+
+## 2026-11-09 #71 swipe deck  (author: Claude Code on Fable 5.2, refs: #71, D-004, D-022, D-025, D-028)
+
+Database: `supabase/migrations/0003_swipe.sql`, applied to `bitzy-hq`. `hq_swipe(card, dir, snooze_until, veto)` does a whole gesture in one transaction as the caller (security invoker): status change plus, when the card carries a proposed action, exactly one `actions` row with the batch veto list in its payload. A second swipe on the same card is refused, so a double tap or a retry can never file two actions. `hq_unswipe` puts back a dismissed, snoozed or done card, and refuses once an action exists.
+
+Front end: `hq/md.js` (escape-first Markdown; links limited to http, https, mailto), `hq/deck.js` (pure logic and an optimistic controller with rollback and undo), `hq/deck-ui.js` (card stack, pointer drag with approve, dismiss and snooze stamps, three buttons, arrow keys, Enter to expand, z to undo, batch rows with per-row veto, toast, empty state with cleared count and next expected collector run, reload on return to the tab), and `hq/demo.js` (fixture cards and an in-memory API that can only switch on from a local host with `?demo=1`).
+
+Verified: `supabase/tests/swipe.sql` returned `swipe ok` on the live project. `node tests/hq-deck.js` passes 57 checks, including 14 hostile Markdown inputs and the demo host gate. `tests/hq-auth.js`, `tests/clarity.js` and `tests/smoke.js` still pass. In the preview at 375x812 with the demo deck: drag right approved, drag up snoozed to 06:00 local next day, undo restored the card, the Dismiss and Approve buttons and the left arrow key worked, an action card showed no Undo, the batch card expanded on tap and carried the unchecked row as veto, the hostile card rendered as text with nothing executed, the empty state appeared with the cleared count, a failed write put the card back with an error toast, no console errors, no horizontal scroll, all tap targets 44px or taller.
+
+Not verified: the deck against real signed-in data, which waits on Google sign-in (#69), and real touch on a phone (the preview drives pointer events with a mouse).
+
+## 2026-11-09 Revise loop: send back with notes, edit in place, to-do cards, reviser agent  (author: Claude Code on Fable 5.2, refs: #101, #102, #103, D-034 to D-042)
+
+Yitzy tried the demo deck and changed the card model: cards arrive with the work done, a card an agent could not do is a to-do with the reason, and he can send any card back with a note for an agent to rewrite. 80/20 ranking parked (#103).
+
+Database, applied to `bitzy-hq`: `0004_revise.sql` (status `revising`, kind `todo`, append-only `revisions` table, `hq_revise`, `hq_swipe` with draft edits, `hq_unswipe` for a revising card, `hq_return_revised` and `hq_to_todo` for the service role, `hq_upsert_card` leaves a revising draft alone) and `0005_return_body.sql` (body-only returns for cards with no draft).
+
+Deck: the draft is shown as the artifact (To, Subject, body) with context below; Edit in place; a fourth action Revise (button, down-swipe, R key) opening a notes sheet; Revised badge with the note and what changed; to-do cards with the reason and a Done button; refresh when idle so returned cards appear. Demo mode simulates the reviser. Contract for collectors in `docs/hq/CARD-CONTRACT.md`, linked from seven collector issues.
+
+Reviser agent in `bitzy-hq-agents` (PR 1 there): one Claude call per revising card, strict JSON, returns the card or makes it a to-do.
+
+Verified: `supabase/tests/revise.sql` returned `revise ok` on the live project and the body-only cases returned ok; `swipe.sql` behavior is covered again inside it. `node tests/hq-deck.js` passes 72 checks. Preview at 375x812 with the demo deck: Revise button and down-drag open the sheet, Send is disabled until there is text, the card leaves and returns on top marked Revised with the note, Undo pulls it back, Edit changes the draft and the approval carries only the changed field, a to-do shows its reason and a Done button, a retried to-do returns as an approvable draft, hostile strings in draft fields and notes render as text, no console errors, no horizontal scroll. Reviser: 35 pytest cases with the real Anthropic SDK pointed at a local stand-in server, covering the request shape, refusal, cut-off answers, retries, rate limits, undo during a rewrite, and a card with no note.
+
+Not verified: a real Claude call and a real service-role write (no API key or service key exists in the agents repo yet), the database webhook that should wake the reviser (#87), and anything signed in (#69). Until the secrets and webhook exist, a card sent back in production waits in `revising`; Undo brings it back.

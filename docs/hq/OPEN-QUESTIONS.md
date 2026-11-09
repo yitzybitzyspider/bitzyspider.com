@@ -21,3 +21,9 @@ OQ-006 Should DEVLOG and FINDINGS become one file per entry so parallel agents n
 OQ-007 Is the inputs cap "5 visible at a time" (built: clear one and the next appears) or "5 per day, then inputs stop until tomorrow"? The second enforces 80/20 harder but can hide something urgent.
 
 OQ-008 With default weights an overdue input (2 x 3 = 6) outranks an undated startup card (5 x 1 = 5). Is that right, or should startup work always sit above inputs unless the input is pinned?
+
+## 2026-11-09  (author: Claude Code on Fable 5.2, refs: #101, #102)
+
+OQ-009 Should the warden turn a card stuck in `revising` (say 15 minutes) into an alert, or put it back in the deck with a "rewrite did not arrive" badge?
+
+OQ-010 Should the reviser learn Yitzy's standing preferences from past notes (for example "always shorter") and apply them to first drafts, so fewer cards come back?
