@@ -19,3 +19,7 @@ F-006 A naive "unresolved placeholder" check that looks for any "(" fails on ord
 ## 2026-11-09  (author: Claude Code on Fable 5.2, refs: #67)
 
 F-007 Parallel agents all append to the end of the same DEVLOG.md, so their PRs conflict with each other at the tail. `merge=union` in `.gitattributes` resolves this for local merges, but GitHub's merge button does not honor it. Rule for now: rebase onto main right before merge. If this bites more than twice, switch to one file per entry under `docs/hq/devlog/` (needs a decision; see OQ-006).
+
+## 2026-11-09  (author: Claude Code on Fable 5.2, refs: #69, #99, F-007)
+
+F-008 `merge=union` on the logs is worse than a conflict: it merges silently and can place the branch's entry before main's newer entry, which breaks the append-only rule and was caught only by the CI check. Rule: no union driver. After merging main into a branch, run `scripts/hq/rebase_logs.sh <branch-tip>`, which rebuilds each log as main's file plus this branch's additions.
