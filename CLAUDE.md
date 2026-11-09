@@ -314,3 +314,7 @@ facts worth keeping:
   to `spider.js`, which is a verbatim port of that code.
 - The desktop spider hides the system cursor; on touch devices it follows the
   finger with a 50px lift.
+
+## HQ (the /hq dashboard)
+
+Planning and logs for the 80/20 command center live in `docs/hq/`. Read `docs/hq/LOGS.md` before any HQ work: decisions, dev log, findings and open questions are append only and every PR appends to `DEVLOG.md`. Issues are indexed in `docs/hq/ISSUES.md`. Collector and executor code lives in the private repo `bitzy-hq-agents`, never here.
