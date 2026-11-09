@@ -145,3 +145,13 @@ In `bitzy-hq-agents`: `hq_heartbeat.run(source, expected_interval, runs_on)` and
 Verified: 47 pytest cases in the agents repo, including that the run row exists before work starts, a job's own error is never replaced by a bookkeeping failure, a success that cannot be recorded turns the job red, Ctrl-C is recorded, and a hostile file name cannot escape the data folder. The site's wiring suite now reads the shared client and checks every column it writes and every agent function it calls against the migrations.
 
 Not verified: a real run against the live project (no service key in the agents repo yet).
+
+## 2026-11-09 #77 hq command line and #78 protocol  (author: Claude Code on Fable 5.2, refs: #77, #78, D-012, D-016, D-046)
+
+In `bitzy-hq-agents`: the `hq` command (`add`, `list`, `approve`, `dismiss`, `export-md`) on the shared Supabase client, and the `hq-add` Claude skill that wraps `hq add`, linked into `~/.claude/skills`. Filing the same words twice updates one card (the key is a slug plus a short hash of the text). Due dates accept today, tomorrow, +Nd and ISO forms, and anything else is refused, not guessed.
+
+Here: `docs/hq/PROTOCOL.md` (claim, build, test, log, merge on green; when to bring Yitzy in; hard rules), an HQ issue template with a "For Yitzy's eyes" section, and a wizard step that writes the two Supabase values to the agents repo's gitignored `.env` so the command works on this Mac. The wiring suite now reads `cli/hq.py`: every function it calls, column it selects, bucket it offers and kind it files is checked against the migrations.
+
+Not done from #78's original list, on purpose: branch protection and a reviewer-agent workflow. D-046 replaced the human-merge rule with "merge on green", and requiring checks on main would block the direct pushes other sessions make to the public site. CI on every pull request is the gate.
+
+Verified: 71 pytest cases in the agents repo (24 for the command line); `scripts/hq/test.sh` passes with 248 checks. Not verified: the command against the live project, which needs the service key from the wizard.
