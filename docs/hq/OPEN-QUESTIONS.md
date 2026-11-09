@@ -15,3 +15,9 @@ OQ-005 Bucket weights for scoring (startup, hackathon, community, inputs, other)
 ## 2026-11-09  (author: Claude Code on Fable 5.2, refs: #67, F-007)
 
 OQ-006 Should DEVLOG and FINDINGS become one file per entry so parallel agents never conflict? Costs readability as a single scroll; the nightly export could concatenate them.
+
+## 2026-11-09  (author: Claude Code on Fable 5.2, refs: #72)
+
+OQ-007 Is the inputs cap "5 visible at a time" (built: clear one and the next appears) or "5 per day, then inputs stop until tomorrow"? The second enforces 80/20 harder but can hide something urgent.
+
+OQ-008 With default weights an overdue input (2 x 3 = 6) outranks an undated startup card (5 x 1 = 5). Is that right, or should startup work always sit above inputs unless the input is pinned?
