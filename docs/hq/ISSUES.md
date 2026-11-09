@@ -30,3 +30,6 @@ Generated 2026-11-09 from the planning session. Milestone, number, title, repo.
 - M3 [#92](https://github.com/yitzybitzyspider/bitzyspider.com/issues/92) Google Contacts write-back executor for approved enrichment rows (`bitzy-hq-agents`)
 - M3 [#93](https://github.com/yitzybitzyspider/bitzyspider.com/issues/93) Daily Claude reasoning pass over warden findings and open issues (`bitzy-hq-agents`)
 - M3 [#94](https://github.com/yitzybitzyspider/bitzyspider.com/issues/94) Second-confirmation flow for CMG registration and job submission (`bitzyspider.com`)
+- M0 [#101](https://github.com/yitzybitzyspider/bitzyspider.com/issues/101) Revise loop: send a card back with notes, edit a draft in place, to-do cards (`bitzyspider.com`)
+- M0 [#102](https://github.com/yitzybitzyspider/bitzyspider.com/issues/102) Reviser agent: rewrite drafts from Yitzy's notes and return the card (`bitzy-hq-agents`)
+- M3 [#103](https://github.com/yitzybitzyspider/bitzyspider.com/issues/103) 80/20 ranking rework, parked (`bitzyspider.com`)

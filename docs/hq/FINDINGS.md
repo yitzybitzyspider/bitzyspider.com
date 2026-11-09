@@ -23,3 +23,11 @@ F-007 Parallel agents all append to the end of the same DEVLOG.md, so their PRs 
 ## 2026-11-09  (author: Claude Code on Fable 5.2, refs: #69, #99, F-007)
 
 F-008 `merge=union` on the logs is worse than a conflict: it merges silently and can place the branch's entry before main's newer entry, which breaks the append-only rule and was caught only by the CI check. Rule: no union driver. After merging main into a branch, run `scripts/hq/rebase_logs.sh <branch-tip>`, which rebuilds each log as main's file plus this branch's additions.
+
+## 2026-11-09  (author: Claude Code on Fable 5.2, refs: #101, #102)
+
+F-009 `bitzy-hq-agents` is private, so GitHub-hosted workflow runs spend billed minutes. A five-minute cron alone would use about four times the free monthly allowance. Rule: hosted workflows are event-driven with a sparse backstop; anything frequent runs on the box's self-hosted runner.
+
+F-010 The first deck treated a card as a reminder plus an optional action. Yitzy's first real use showed the unit is the finished artifact and the three verbs are approve, send back with a note, dismiss. Rule: show the thing that will be sent, not a description of it, and always give a way to answer back.
+
+F-011 A test suite with a held promise that is never released makes node exit silently with no failure line. Rule: every test run must end by printing its own "all pass" line, and the runner checks for that line, not for the absence of FAIL.

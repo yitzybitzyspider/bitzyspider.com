@@ -15,6 +15,7 @@
     var ax = Math.abs(dx), ay = Math.abs(dy);
     if (ax >= w * 0.28 && ax >= ay) return dx > 0 ? "right" : "left";
     if (dy <= -h * 0.22 && ay > ax) return "up";
+    if (dy >= h * 0.22 && ay > ax) return "down";     // down opens the revise note, it is not a swipe
     return null;
   }
 
@@ -28,6 +29,32 @@
     if (dir === "up") return { status: "snoozed", label: "Snoozed until tomorrow", undoable: true };
     if (hasAction(card)) return { status: "approved", label: "Approved, sent to an agent", undoable: false };
     return { status: "done", label: "Done", undoable: true };
+  }
+
+  // The finished artifact an agent prepared (D-034): proposed_action.draft, string fields only.
+  var LABEL = { to: "To", cc: "Cc", from: "From", subject: "Subject", when: "When", where: "Where", title: "Title", text: "" };
+  function draftFields(card) {
+    var d = card && card.proposed_action && card.proposed_action.draft;
+    if (!d || typeof d !== "object" || Array.isArray(d)) return [];
+    var keys = Object.keys(d).filter(function (k) { return typeof d[k] === "string"; });
+    keys.sort(function (a, b) { return (a === "text") - (b === "text"); });      // body last
+    return keys.map(function (k) {
+      return { key: k, value: d[k], main: k === "text", label: LABEL[k] !== undefined ? LABEL[k] : k.charAt(0).toUpperCase() + k.slice(1).replace(/_/g, " ") };
+    });
+  }
+  // Only the fields Yitzy actually changed, so an untouched edit box is not an edit.
+  function editDiff(card, edits) {
+    var out = {}, any = false;
+    draftFields(card).forEach(function (f) {
+      if (edits && typeof edits[f.key] === "string" && edits[f.key] !== f.value) { out[f.key] = edits[f.key]; any = true; }
+    });
+    return any ? out : null;
+  }
+  function approveLabel(card) { return hasAction(card) ? "Approve" : "Done"; }
+  function revisedInfo(card) {
+    var r = (card && card.raw) || {};
+    if (!r.revision_count) return null;
+    return { count: r.revision_count, note: r.last_note || "", summary: r.revision_summary || "" };
   }
 
   function batchRows(card) {
@@ -90,7 +117,7 @@
     this.state.loading = false; this.emit();
   };
   Deck.prototype.top = function () { return this.state.cards[0] || null; };
-  Deck.prototype.swipe = async function (dir, veto) {
+  Deck.prototype.swipe = async function (dir, veto, edit) {
     var card = this.top();
     if (!card || this.busy[card.id]) return null;
     if (dir !== "right" && dir !== "left" && dir !== "up") return null;
@@ -98,9 +125,10 @@
     this.busy[card.id] = true;
     // Optimistic: the card leaves now; it comes back in place if the write fails.
     this.state.cards = this.state.cards.slice(1); this.state.cleared += dir === "up" ? 0 : 1;
-    this.state.toast = { text: out.label, undo: out.undoable ? card : null, kind: dir }; this.emit();
+    var diff = dir === "right" && hasAction(card) ? editDiff(card, edit) : null;
+    this.state.toast = { text: diff ? "Approved with your edits" : out.label, undo: out.undoable ? card : null, kind: dir }; this.emit();
     try {
-      await this.api.swipe(card.id, dir, dir === "up" ? snoozeUntil(this.now()).toISOString() : null, dir === "right" ? (veto || []) : []);
+      await this.api.swipe(card.id, dir, dir === "up" ? snoozeUntil(this.now()).toISOString() : null, dir === "right" ? (veto || []) : [], diff);
     } catch (e) {
       var cards = self.state.cards.slice(); cards.splice(index, 0, card);
       self.state.cards = cards; self.state.cleared -= dir === "up" ? 0 : 1;
@@ -108,6 +136,23 @@
     }
     delete this.busy[card.id]; this.emit();
     return out;
+  };
+  // Send the top card back with a note (D-036). It leaves the deck until an agent returns it.
+  Deck.prototype.revise = async function (note) {
+    var card = this.top(), text = String(note == null ? "" : note).trim();
+    if (!card || this.busy[card.id] || !text) return false;
+    this.busy[card.id] = true;
+    this.state.cards = this.state.cards.slice(1);
+    this.state.toast = { text: "Sent back for a rewrite", undo: card, kind: "up" }; this.emit();
+    var okay = true;
+    try { await this.api.revise(card.id, text); }
+    catch (e) {
+      okay = false;
+      this.state.cards = [card].concat(this.state.cards);
+      this.state.toast = { text: "Not sent: " + ((e && e.message) || e), undo: null, kind: "error", keepNote: text };
+    }
+    delete this.busy[card.id]; this.emit();
+    return okay;
   };
   Deck.prototype.undo = async function () {
     var t = this.state.toast, card = t && t.undo;
@@ -124,7 +169,7 @@
   Deck.prototype.dismissToast = function () { this.state.toast = null; this.emit(); };
 
   var api = { snoozeUntil: snoozeUntil, dirFromDrag: dirFromDrag, outcome: outcome, hasAction: hasAction,
-              batchRows: batchRows, dueLabel: dueLabel, intervalMs: intervalMs, nextRun: nextRun, Deck: Deck };
+              batchRows: batchRows, draftFields: draftFields, editDiff: editDiff, approveLabel: approveLabel, revisedInfo: revisedInfo, dueLabel: dueLabel, intervalMs: intervalMs, nextRun: nextRun, Deck: Deck };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.HQDeck = api;
 })(typeof window !== "undefined" ? window : globalThis);

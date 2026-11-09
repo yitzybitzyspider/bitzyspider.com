@@ -31,7 +31,18 @@ const ok = (name, cond, extra) => { console.log((cond ? "pass " : "FAIL ") + nam
   ok("short drag is nothing", D.dirFromDrag(60, -40, 360, 500) === null);
   ok("drag up", D.dirFromDrag(20, -140, 360, 500) === "up");
   ok("diagonal up-right resolves sideways, never snooze", D.dirFromDrag(150, -150, 360, 500) === "right");
-  ok("drag down is nothing", D.dirFromDrag(0, 300, 360, 500) === null);
+  ok("drag down asks to revise", D.dirFromDrag(0, 300, 360, 500) === "down" && D.dirFromDrag(10, 60, 360, 500) === null);
+  ok("diagonal down-left resolves sideways", D.dirFromDrag(-200, 200, 360, 500) === "left");
+
+  // ----- drafts, edits, to-dos (D-034 to D-037) -----
+  const mail = { id: 9, proposed_action: { type: "email_reply", thread_id: "T", draft: { text: "body", to: "a@b.c", subject: "S", n: 3, nested: {} } } };
+  const fs_ = D.draftFields(mail);
+  ok("draft shows string fields only, body last", fs_.map(f => f.key).join() === "to,subject,text" && fs_[2].main && fs_[0].label === "To");
+  ok("no draft means no fields", D.draftFields({ proposed_action: { type: "x" } }).length === 0 && D.draftFields({}).length === 0 && D.draftFields({ proposed_action: { draft: ["a"] } }).length === 0);
+  ok("untouched edit box is not an edit", D.editDiff(mail, { text: "body", to: "a@b.c" }) === null && D.editDiff(mail, {}) === null && D.editDiff(mail, null) === null);
+  ok("edit diff keeps only changed draft fields", JSON.stringify(D.editDiff(mail, { text: "new", to: "a@b.c", thread_id: "EVIL", bcc: "x" })) === '{"text":"new"}');
+  ok("approve label", D.approveLabel(mail) === "Approve" && D.approveLabel({ kind: "todo" }) === "Done");
+  ok("revised info", D.revisedInfo({ raw: { revision_count: 2, last_note: "n" } }).count === 2 && D.revisedInfo({ raw: {} }) === null && D.revisedInfo({}) === null);
 
   // ----- outcomes -----
   ok("approve with action", D.outcome({ proposed_action: { type: "reply" } }, "right").status === "approved");
@@ -63,7 +74,8 @@ const ok = (name, cond, extra) => { console.log((cond ? "pass " : "FAIL ") + nam
     const api = {
       deck: async () => [{ id: 1, title: "a", proposed_action: { type: "reply" } }, { id: 2, title: "b" }, { id: 3, title: "c" }],
       cleared: async () => 4, sources: async () => [],
-      swipe: (id, dir, until, veto) => { calls.push({ id, dir, until, veto }); if (opts.hold) return new Promise((res, rej) => { releases.push(opts.fail ? () => rej(new Error("offline")) : res); }); return opts.fail ? Promise.reject(new Error("offline")) : Promise.resolve(); },
+      revise: async (id, note) => { calls.push({ revise: id, note }); if (opts.fail) throw new Error("offline"); },
+      swipe: (id, dir, until, veto, edit) => { calls.push({ id, dir, until, veto, edit }); if (opts.hold) return new Promise((res, rej) => { releases.push(opts.fail ? () => rej(new Error("offline")) : res); }); return opts.fail ? Promise.reject(new Error("offline")) : Promise.resolve(); },
       unswipe: async (id) => { calls.push({ undo: id }); if (opts.undoFail) throw new Error("too late"); }
     };
     return { api, calls, release: () => releases.splice(0).forEach(r => r()) };
@@ -100,6 +112,24 @@ const ok = (name, cond, extra) => { console.log((cond ? "pass " : "FAIL ") + nam
   ok("load failure is an error state, not an empty deck", d.state.error === "401" && !d.state.loading);
   d = new D.Deck({ deck: async () => [], cleared: async () => 0, sources: async () => [] }); await d.load();
   ok("swipe on an empty deck does nothing", (await d.swipe("right")) === null);
+
+  // ----- revise and edit through the controller -----
+  f = fake({}); d = new D.Deck(f.api); await d.load();
+  d.state.cards[0].proposed_action.draft = { text: "v1", to: "x" };
+  ok("blank note is refused and nothing is sent", (await d.revise("   ")) === false && f.calls.length === 0 && d.top().id === 1);
+  ok("revise sends the trimmed note and removes the card", (await d.revise("  shorter ")) === true && f.calls[0].revise === 1 && f.calls[0].note === "shorter" && d.top().id === 2);
+  ok("revise does not count as cleared and offers undo", d.state.cleared === 4 && d.state.toast.undo.id === 1);
+  await d.undo();
+  ok("undo of a revise puts the card back", d.top().id === 1 && f.calls[1].undo === 1);
+  await d.swipe("right", [], { text: "v1", to: "x" });
+  ok("approve with untouched edits sends no edit", f.calls[2].edit === null && d.state.toast.text === "Approved, sent to an agent");
+  f = fake({}); d = new D.Deck(f.api); await d.load(); d.state.cards[0].proposed_action.draft = { text: "v1", to: "x" };
+  await d.swipe("right", [], { text: "mine", to: "x" });
+  ok("approve with a real edit sends only the changed field", JSON.stringify(f.calls[0].edit) === '{"text":"mine"}' && d.state.toast.text === "Approved with your edits");
+  await d.swipe("left", [], { text: "ignored" });
+  ok("edits are never sent with a dismiss", f.calls[1].edit === null);
+  f = fake({ fail: true }); d = new D.Deck(f.api); await d.load(); await d.revise("keep this note");
+  ok("failed revise puts the card back and keeps the note", d.top().id === 1 && /Not sent/.test(d.state.toast.text) && d.state.toast.keepNote === "keep this note");
 
   // ----- demo mode can only switch on from a local host -----
   const demoSrc = require("fs").readFileSync(path.join(__dirname, "..", "hq", "demo.js"), "utf8");

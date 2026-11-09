@@ -75,3 +75,25 @@ D-031 A swipe is one database call (`hq_swipe`), not a status update plus an act
 D-032 Undo exists for dismiss, snooze and done, and not for an approval that filed an action. Context: an executor may already hold the action. Consequence: the approve toast offers no Undo; stopping a sent action is a later, explicit feature.
 
 D-033 Snooze means tomorrow 06:00 in the phone's time zone, computed on the device and validated as a future time by the database.
+
+## 2026-11-09 Yitzy's feedback after trying the demo deck  (author: Yitzy + Claude Code on Fable 5.2, refs: #71)
+
+D-034 Every card arrives with the work already done. A card is the finished artifact shown as it will go out (the email with recipient, subject and body; the reply; the event), and approving means "send it as is". A collector may not file a bare reminder to do something an agent could have done. Supersedes the looser reading of D-004. Contract in docs/hq/CARD-CONTRACT.md.
+
+D-035 When an agent cannot do the work, the card is a to-do (`kind = 'todo'`) that says what was tried and why it stopped. Swiping right on a to-do means Yitzy did it himself.
+
+D-036 Third path besides approve and dismiss: revise. Yitzy types or dictates a note, the card leaves the deck (`status = 'revising'`), a reviser agent rewrites the draft from the note plus all earlier versions, and the card returns marked Revised. Repeat until approved. Works on to-dos too ("try again, here is what you were missing"). Every note and every draft version is kept in `revisions`.
+
+D-037 Small fixes skip the agent: Yitzy can edit the draft text on the card and approve his edited version. The edit is recorded as a revision and travels in the action payload. Chosen by default when Yitzy said go without picking; reversible by removing the Edit control.
+
+D-038 The 80/20 ranking is known-weak and parked at lower priority. Current scoring (D-007) stays until the rework issue is picked up. OQ-007 and OQ-008 move there.
+
+## 2026-11-09 Revise loop details  (author: Claude Code on Fable 5.2, refs: #101, #102)
+
+D-039 Cards with no draft (a plan, a to-do) are revised through their body: the reviser rewrites `body_md` and the card keeps its kind. A to-do stays a to-do with its reason unless an agent returns a real action.
+
+D-040 If Yitzy takes a card back while the reviser is working, his action wins: `hq_return_revised` only accepts a card still in `revising`, and the reviser treats the refusal as nothing to do.
+
+D-041 The reviser treats only Yitzy's notes as instructions. Card content (other people's messages, scraped pages) goes to the model as data in its own block, and routing fields such as thread ids are never shown to it. An in-place edit by Yitzy can change only string fields the draft already has.
+
+D-042 The reviser uses `claude-opus-5-5` at medium effort with a strict JSON schema built from the card's own draft fields, and the API's default refusal fallback. A refusal, a missing fact, or two broken answers in a row turn the card into a to-do with the reason; rate limits and server errors leave it waiting.
