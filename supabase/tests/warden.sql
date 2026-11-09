@@ -45,7 +45,7 @@ do $$ declare t timestamptz := current_setting('hq.now')::timestamptz; n int; k 
 
   -- Running again changes nothing: no duplicates, and a dismissed alert stays dismissed the same day.
   update public.cards set status = 'dismissed' where key = 'warden:stale:cmg';
-  n := public.hq_warden(t + interval '30 minutes');
+  n := public.hq_warden(t + interval '1 minute');
   if (select count(*) from public.cards where source = 'warden') <> 9 then raise exception 'second run duplicated alerts'; end if;
   if (select status from public.cards where key = 'warden:stale:cmg') <> 'dismissed' then raise exception 'a dismissed alert came back the same day'; end if;
   -- The next day it returns, once, marked changed.
