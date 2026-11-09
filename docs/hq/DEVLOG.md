@@ -40,13 +40,6 @@ Verified: `rls_core.sql` returned `rls_core ok` against the live project (anon d
 
 Left: Google sign-in is not configured (#69), so nobody can sign in yet. Scoring weights and the inputs cap are #72. The service key has not been copied into `bitzy-hq-agents` secrets; that is a manual step for Yitzy or the box wizard (#76).
 
-## 2026-11-09 #69 sign-in gate for /hq  (author: Claude Code on Fable 5.2, refs: #69, D-001, D-017, D-027)
-
-Added `hq/index.html` (one Google button when signed out; checking, denied, error and a placeholder deck view that shows the count from `today_deck`), `hq/auth.js` (the decision logic as a pure `route()` plus a thin `boot()`), `hq/config.js` (project URL and publishable key), a vendored pinned `supabase-js` 2.45.4 so the page loads no third-party script, `tests/hq-auth.js`, a `Disallow: /hq/` line in robots.txt, and `docs/hq/RUNBOOKS/google-signin.md`. The page carries no Clarity tag and is noindex.
-
-Verified: `node tests/hq-auth.js` passes 22 checks (signed out never touches the database, stranger is denied and signed out even if a late sign-out event arrives, a truthy non-boolean owner answer is denied, owner check failure shows an error and never the deck, redirect target ignores the query string). `node tests/clarity.js` still passes. Loaded http://localhost:4319/hq/ in the preview: only the sign-in section is visible, button is 52px tall, no console errors.
-
-Not verified: a real Google sign-in. The provider is not enabled on the project yet (the authorize endpoint answers "provider is not enabled"); enabling it needs Yitzy's Google OAuth client, steps in the runbook. The 30-day session criterion rests on Supabase defaults and is unchecked until then.
 ## 2026-11-09 #72 scoring, inputs cap, collector upsert  (author: Claude Code on Fable 5.2, refs: #72, D-007, D-024)
 
 Wrote and applied `supabase/migrations/0002_scoring.sql`: `hq_urgency` (overdue 3, within a day 2.5, three days 2, a week 1.5, otherwise 1), `hq_score` (bucket weight x urgency + the card's boost), default weights 5/4/3/2/1 and an inputs cap of 5 as rows in `hq_settings`, and the real `today_deck` view (alerts and plan pinned, then live score, inputs limited to the cap). Added `cards.fingerprint` and `hq_upsert_card(jsonb)`, the single write path for collectors: same fingerprint is a quiet refresh, a new fingerprint bumps `changed_at` and brings a cleared card back once with `changed = true`; snoozed cards stay snoozed. The upsert is executable by the service role only.
@@ -54,3 +47,11 @@ Wrote and applied `supabase/migrations/0002_scoring.sql`: `hq_urgency` (overdue 
 Verified: `supabase/tests/scoring.sql` returned `scoring ok` on the live project (pinning, order, cap of 5 keeping the urgent inputs, cap and weights read from settings, resurfacing rules, no duplicates, browser cannot call the upsert). It ran inside a rolled-back transaction.
 
 Left: the cap is "visible at once", not "per calendar day"; see OQ-007. The test deletes cards inside its transaction, so run it only where a brief lock on `cards` is fine.
+
+## 2026-11-09 #69 sign-in gate for /hq  (author: Claude Code on Fable 5.2, refs: #69, D-001, D-017, D-027)
+
+Added `hq/index.html` (one Google button when signed out; checking, denied, error and a placeholder deck view that shows the count from `today_deck`), `hq/auth.js` (the decision logic as a pure `route()` plus a thin `boot()`), `hq/config.js` (project URL and publishable key), a vendored pinned `supabase-js` 2.45.4 so the page loads no third-party script, `tests/hq-auth.js`, a `Disallow: /hq/` line in robots.txt, and `docs/hq/RUNBOOKS/google-signin.md`. The page carries no Clarity tag and is noindex.
+
+Verified: `node tests/hq-auth.js` passes 22 checks (signed out never touches the database, stranger is denied and signed out even if a late sign-out event arrives, a truthy non-boolean owner answer is denied, owner check failure shows an error and never the deck, redirect target ignores the query string). `node tests/clarity.js` still passes. Loaded http://localhost:4319/hq/ in the preview: only the sign-in section is visible, button is 52px tall, no console errors.
+
+Not verified: a real Google sign-in. The provider is not enabled on the project yet (the authorize endpoint answers "provider is not enabled"); enabling it needs Yitzy's Google OAuth client, steps in the runbook. The 30-day session criterion rests on Supabase defaults and is unchecked until then.
