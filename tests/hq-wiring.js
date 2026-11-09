@@ -104,13 +104,24 @@ ok("the validator rejects a placeholder draft", contractErrors({ key: "k", sourc
 
 // ----- 5. the agents repo agrees with the database (when it is checked out next door) -----
 const agents = path.join(repo, "..", "bitzy-hq-agents");
-function agentFile(rel) { for (const ref of ["heartbeat", "HEAD"]) { try { return cp.execSync("git show " + ref + ":" + rel, { cwd: agents, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }); } catch (e) {} } return null; }
+function agentFile(rel) { for (const ref of ["cli", "HEAD"]) { try { return cp.execSync("git show " + ref + ":" + rel, { cwd: agents, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }); } catch (e) {} } return null; }
 const store = fs.existsSync(agents) ? agentFile("reviser/store.py") : null, shared = fs.existsSync(agents) ? agentFile("hq_heartbeat/supabase.py") : null;
 if (!store || !shared) skip("agents repo calls match the SQL signatures", "bitzy-hq-agents with reviser/store.py and hq_heartbeat/supabase.py not found next to this repo");
 else {
-  const py = store + "\n" + shared;
+  const cli = agentFile("cli/hq.py") || "";
+  const py = store + "\n" + shared + "\n" + cli;
   const calls = [...py.matchAll(/"rpc\/(\w+)",\s*\{([^}]*)\}/g)].map(m => ({ name: m[1], keys: [...m[2].matchAll(/"(p_?\w*)"\s*:/g)].map(k => k[1]) }));
-  ok("the agents call exactly the three agent functions", calls.map(c => c.name).sort().join() === "hq_return_revised,hq_to_todo,hq_upsert_card", calls);
+  ok("the agents call only functions we know about", [...new Set(calls.map(c => c.name))].sort().join() === "hq_return_revised,hq_swipe,hq_to_todo,hq_upsert_card", calls);
+  ok("every function the agents call is open to the service role", calls.every(c => S.exec[c.name] && S.exec[c.name].has("service_role")), calls.filter(c => !(S.exec[c.name] && S.exec[c.name].has("service_role"))));
+  const deckCols = S.tables.cards.concat(["live_score", "pinned", "inputs_rank"]);
+  const cliSelects = [...cli.matchAll(/(today_deck|cards)\?[^"]*select=([\w,]+)|"select":\s*"([\w,]+)"/g)].map(m => (m[2] || m[3]).split(","));
+  ok("the hq command selects columns that exist (" + cliSelects.length + " queries)", cliSelects.length >= 3 && cliSelects.every(cols => cols.every(c => deckCols.includes(c))), cliSelects.map(cols => cols.filter(c => !deckCols.includes(c))));
+  const cliBuckets = /BUCKETS = \(([^)]*)\)/.exec(cli);
+  ok("the hq command offers exactly the database's buckets", !!cliBuckets && cliBuckets[1].match(/"(\w+)"/g).map(x => x.slice(1, -1)).sort().join() === S.checks["cards.bucket"].slice().sort().join());
+  const cliKinds = [...cli.matchAll(/"kind":\s*"(\w+)"/g)].map(m => m[1]);
+  ok("the kind the hq command files is a real kind", cliKinds.length > 0 && cliKinds.every(k => S.checks["cards.kind"].includes(k)), cliKinds);
+  const viewCols = /as live_score[\s\S]*?as pinned[\s\S]*?as inputs_rank/.test(S.files.map(f => read("supabase/migrations/" + f)).join("\n"));
+  ok("today_deck really exposes live_score, pinned and inputs_rank", viewCols);
   calls.forEach(c => { const sig = (S.functions[c.name] || []), names = sig.map(p => p.name);
     ok("agents " + c.name + ": arguments match the SQL signature", c.keys.length > 0 && c.keys.every(k => names.includes(k)) && sig.filter(p => !p.optional).every(p => c.keys.includes(p.name)), { sent: c.keys, sql: names }); });
   const sel = /"select":\s*"([^"]+)"/.exec(store)[1].split(",");

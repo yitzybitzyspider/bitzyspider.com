@@ -189,6 +189,7 @@ TOTAL_STAGES=8
 REF="rdtvwvylmkxpdbbnsmuu"
 SUPA_URL="https://${REF}.supabase.co"
 AGENTS_REPO="yitzybitzyspider/bitzy-hq-agents"
+AGENTS_DIR="$HOME/Documents/GitHub/bitzy-hq-agents"
 
 banner "HQ setup: sign-in and agent secrets"
 
@@ -244,6 +245,15 @@ export GH_REPO="$AGENTS_REPO"
 if [[ -n "${SUPABASE_SERVICE_KEY}" ]]; then
   set_secret SUPABASE_SERVICE_KEY "$SUPABASE_SERVICE_KEY"
   set_secret SUPABASE_URL "$SUPA_URL"
+  # The hq command line on this Mac reads the same two values from the agents repo's .env (gitignored, private repo).
+  if [[ -d "$AGENTS_DIR" ]]; then
+    ENV_FILE="$AGENTS_DIR/.env"
+    write_env SUPABASE_URL "$SUPA_URL"
+    write_env SUPABASE_SERVICE_KEY "$SUPABASE_SERVICE_KEY"
+    chmod 600 "$ENV_FILE"
+  else
+    SKIPPED+=("Local .env for the hq command: clone ${AGENTS_REPO} to ${AGENTS_DIR} and rerun")
+  fi
 else
   SKIPPED+=("GitHub secret SUPABASE_SERVICE_KEY on ${AGENTS_REPO}")
   warn "Nothing pasted; skipped."
