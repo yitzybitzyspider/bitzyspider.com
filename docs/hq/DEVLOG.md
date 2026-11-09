@@ -23,3 +23,11 @@ Claimed #67 and #68. Created the Supabase project `bitzy-hq` (ref `rdtvwvylmkxpd
 Added `scripts/hq/check_logs.sh` (old log content must be an exact prefix of the new; HQ paths `hq/`, `supabase/`, `scripts/hq/`, `docs/hq/` require a DEVLOG append), `scripts/hq/test_check_logs.sh` (seven fault-injection cases in a throwaway repo), the `HQ logs` workflow that runs both on every PR to main, and a PR template with the HQ checklist. Added `merge=union` for `docs/hq/*.md` in `.gitattributes`.
 
 Verified: self-test passes locally, all seven cases. Left: branch protection requiring this check is part of #78. The CLAUDE.md pointer was already committed with the planning docs.
+
+## 2026-11-09 Private agents repo scaffolded  (author: Claude Code, refs: #75, D-005, D-009, D-025)
+
+Created the private repo https://github.com/yitzybitzyspider/bitzy-hq-agents on the personal account and scaffolded it: README with the layout (hq_heartbeat/, collectors/, executors/, warden/, data/ as the gitignored Markdown store), the two workflow templates (`collector-on-box.yml` on `[self-hosted, box]`, `hosted-cron.yml` on ubuntu-latest), `docs/SECRETS.md` naming `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` and `HEALTHCHECKS_PING_URL` by name only, `.env.example`, a `docs/DEVLOG.md` that points back here as the primary log, a `pyproject.toml` with an empty `hq_heartbeat` package (implementation is #73), and a pytest smoke test.
+
+Verified: `gh repo view --json visibility` shows PRIVATE; `gh workflow list` shows both templates; `pytest` passes 3 tests. Not verified: no workflow has run, no runner labeled `box` is registered yet.
+
+Left for next session: #73 (heartbeat implementation) and registering the box runner.
