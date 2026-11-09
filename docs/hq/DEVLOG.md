@@ -155,3 +155,9 @@ Here: `docs/hq/PROTOCOL.md` (claim, build, test, log, merge on green; when to br
 Not done from #78's original list, on purpose: branch protection and a reviewer-agent workflow. D-046 replaced the human-merge rule with "merge on green", and requiring checks on main would block the direct pushes other sessions make to the public site. CI on every pull request is the gate.
 
 Verified: 71 pytest cases in the agents repo (24 for the command line); `scripts/hq/test.sh` passes with 248 checks. Not verified: the command against the live project, which needs the service key from the wizard.
+
+## 2026-11-09 Warden's first scheduled tick confirmed  (author: Claude Code on Fable 5.2, refs: #74, D-047)
+
+At 23:30:00 UTC pg_cron ran `hq-warden` on its own: `cron.job_run_details` shows `succeeded`, and `runs` has a second `warden` row (host `database`, zero findings) after the hand-run one at 23:11. The supervisor is live and independent of the box, GitHub and any secret. Appended a status snapshot to `ISSUES.md`: 11 issues done, 1 in progress, 5 blocked, 14 ready.
+
+What is left before real cards flow is on Yitzy's side and is one script: `scripts/hq/setup-wizard.sh` (Google sign-in, service key, Anthropic key, wake token). After it, the collectors in M1 can be built and verified against the live project.
