@@ -101,10 +101,11 @@
 
   // The controller. api: { deck(), swipe(id, dir, until, veto), unswipe(id), cleared(), sources() }
   // Each returns a promise. onChange(state) is called after every state change.
-  function Deck(api, onChange, clock) {
-    this.api = api; this.onChange = onChange || function () {};
+  // cache (optional): { put(cards, cleared, now), get(now) } for the last synced deck (see offline.js).
+  function Deck(api, onChange, clock, cache) {
+    this.api = api; this.onChange = onChange || function () {}; this.cache = cache || null;
     this.now = clock || function () { return new Date(); };
-    this.state = { loading: true, cards: [], cleared: 0, next: null, error: null, toast: null };
+    this.state = { loading: true, cards: [], cleared: 0, next: null, error: null, toast: null, stale: null };
     this.busy = {};
   }
   Deck.prototype.emit = function () { this.onChange(this.state); };
@@ -113,7 +114,14 @@
     try {
       var r = await Promise.all([this.api.deck(), this.api.cleared(), this.api.sources()]);
       this.state.cards = r[0] || []; this.state.cleared = r[1] || 0; this.state.next = nextRun(r[2], this.now());
-    } catch (e) { this.state.error = (e && e.message) || String(e); }
+      this.state.stale = null;
+      if (this.cache) this.cache.put(this.state.cards, this.state.cleared, this.now());
+    } catch (e) {
+      // No fresh deck. Show the last one we synced, clearly marked, instead of an empty screen.
+      var last = this.cache && this.cache.get(this.now());
+      if (last) { this.state.cards = last.cards; this.state.cleared = last.cleared || 0; this.state.next = null; this.state.stale = last.at; }
+      else this.state.error = (e && e.message) || String(e);
+    }
     this.state.loading = false; this.emit();
   };
   Deck.prototype.top = function () { return this.state.cards[0] || null; };

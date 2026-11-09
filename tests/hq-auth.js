@@ -74,6 +74,13 @@ const loc = { origin: "https://bitzyspider.com", href: "https://bitzyspider.com/
   ok("page loads no third-party script", !/<script[^>]+src="https?:/.test(html));
   ok("page has no Clarity tag", !/clarity/i.test(html));
   ok("no service key or JWT secret in hq/", !/service_role|sb_secret_/.test(html + fs.readFileSync(path.join(__dirname, "..", "hq", "config.js"), "utf8")));
+  const sw = fs.readFileSync(path.join(__dirname, "..", "hq", "sw.js"), "utf8");
+  const shell = JSON.parse(sw.match(/var SHELL = (\[[\s\S]*?\]);/)[1]);
+  ok("every file the service worker pre-caches exists", shell.every(f => f === "./" || fs.existsSync(path.join(__dirname, "..", "hq", f))));
+  ok("every script the page loads is pre-cached", [...html.matchAll(/<script src="([^"]+)"/g)].every(m => shell.includes(m[1])));
+  ok("service worker ignores other origins", /url\.origin !== self\.location\.origin/.test(sw) && !/supabase\.co/.test(sw));
+  const man = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "hq", "manifest.webmanifest"), "utf8"));
+  ok("manifest is installable", man.display === "standalone" && man.start_url === "/hq/" && man.scope === "/hq/" && man.icons.some(i => i.sizes === "192x192") && man.icons.some(i => i.sizes === "512x512") && man.icons.some(i => i.purpose === "maskable") && man.icons.every(i => fs.existsSync(path.join(__dirname, "..", "hq", i.src))));
   const robots = fs.readFileSync(path.join(__dirname, "..", "robots.txt"), "utf8");
   ok("robots.txt disallows /hq/", /Disallow: \/hq\//.test(robots));
 

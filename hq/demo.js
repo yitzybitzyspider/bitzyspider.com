@@ -28,10 +28,17 @@
       proposed_action: { type: "reply", draft: { to: "<img src=x onerror=window.__pwned=1>", text: "<script>window.__pwned=1</script>" } }, raw: { revision_count: 1, last_note: "<img src=x onerror=window.__pwned=1>", revision_summary: "<b>x</b>" } }
   ];
   var log = [];
+  var offline = /[?&]offline=1/.test(location.search), mem = {};
   root.HQ_DEMO = {
     log: log,
+    // Demo keeps its "last deck" in memory, never in real storage. ?offline=1 fails every load after the first.
+    cache: root.HQOffline.make({ getItem: function (k) { return mem[k] || null; }, setItem: function (k, v) { mem[k] = v; }, removeItem: function (k) { delete mem[k]; } }),
+    loads: 0,
     api: {
-      deck: async function () { return cards.filter(function (c) { return !c._gone; }); },
+      deck: async function () {
+        if (offline && root.HQ_DEMO.loads++ > 0) throw new Error("Failed to fetch");
+        return cards.filter(function (c) { return !c._gone; });
+      },
       cleared: async function () { return log.filter(function (l) { return l.dir && l.dir !== "up"; }).length; },
       sources: async function () { return [{ name: "canvas", enabled: true, last_ok_at: h(-0.2), expected_interval: "00:30:00" }]; },
       swipe: async function (id, dir, until, veto, edit) {
