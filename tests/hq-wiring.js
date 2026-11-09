@@ -104,19 +104,25 @@ ok("the validator rejects a placeholder draft", contractErrors({ key: "k", sourc
 
 // ----- 5. the agents repo agrees with the database (when it is checked out next door) -----
 const agents = path.join(repo, "..", "bitzy-hq-agents");
-function agentFile(rel) { for (const ref of ["HEAD", "reviser"]) { try { return cp.execSync("git show " + ref + ":" + rel, { cwd: agents, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }); } catch (e) {} } return null; }
-const store = fs.existsSync(agents) ? agentFile("reviser/store.py") : null;
-if (!store) skip("agents repo calls match the SQL signatures", "bitzy-hq-agents with reviser/store.py not found next to this repo");
+function agentFile(rel) { for (const ref of ["heartbeat", "HEAD"]) { try { return cp.execSync("git show " + ref + ":" + rel, { cwd: agents, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }); } catch (e) {} } return null; }
+const store = fs.existsSync(agents) ? agentFile("reviser/store.py") : null, shared = fs.existsSync(agents) ? agentFile("hq_heartbeat/supabase.py") : null;
+if (!store || !shared) skip("agents repo calls match the SQL signatures", "bitzy-hq-agents with reviser/store.py and hq_heartbeat/supabase.py not found next to this repo");
 else {
-  const calls = [...store.matchAll(/"rpc\/(\w+)",\s*\{([^}]*)\}/g)].map(m => ({ name: m[1], keys: [...m[2].matchAll(/"(p_\w+)"/g)].map(k => k[1]) }));
-  ok("the reviser calls the two agent functions", calls.map(c => c.name).sort().join() === "hq_return_revised,hq_to_todo", calls);
+  const py = store + "\n" + shared;
+  const calls = [...py.matchAll(/"rpc\/(\w+)",\s*\{([^}]*)\}/g)].map(m => ({ name: m[1], keys: [...m[2].matchAll(/"(p_?\w*)"\s*:/g)].map(k => k[1]) }));
+  ok("the agents call exactly the three agent functions", calls.map(c => c.name).sort().join() === "hq_return_revised,hq_to_todo,hq_upsert_card", calls);
   calls.forEach(c => { const sig = (S.functions[c.name] || []), names = sig.map(p => p.name);
-    ok("agents " + c.name + ": arguments match the SQL signature", c.keys.every(k => names.includes(k)) && sig.filter(p => !p.optional).every(p => c.keys.includes(p.name)), { sent: c.keys, sql: names }); });
+    ok("agents " + c.name + ": arguments match the SQL signature", c.keys.length > 0 && c.keys.every(k => names.includes(k)) && sig.filter(p => !p.optional).every(p => c.keys.includes(p.name)), { sent: c.keys, sql: names }); });
   const sel = /"select":\s*"([^"]+)"/.exec(store)[1].split(",");
   ok("the reviser selects card columns that exist", sel.every(c => S.tables.cards.includes(c)), sel.filter(c => !S.tables.cards.includes(c)));
   ok("the reviser filters on a status the database allows", /status": "eq\.(\w+)"/.exec(store) && S.checks["cards.status"].includes(/status": "eq\.(\w+)"/.exec(store)[1]));
-  const runCols = [...store.matchAll(/"runs",\s*\{([^}]*)\}/g)].flatMap(m => [...m[1].matchAll(/"(\w+)":/g)].map(k => k[1]));
-  ok("the reviser writes run columns that exist", runCols.length > 0 && runCols.every(c => S.tables.runs.includes(c)), runCols);
+  // Every JSON body the shared client sends to a table uses only that table's columns.
+  const writes = [...shared.matchAll(/_call\("(?:POST|PATCH)",\s*f?"(runs|sources)[^"]*",\s*\{([^}]*)\}/g)].map(m => ({ t: m[1], cols: [...m[2].matchAll(/"(\w+)"\s*:/g)].map(k => k[1]) }));
+  ok("the heartbeat writes to runs and sources (" + writes.length + " calls)", writes.length === 4 && writes.some(w => w.t === "runs") && writes.some(w => w.t === "sources"), writes);
+  writes.forEach(w => ok("heartbeat write to " + w.t + " uses columns that exist: " + w.cols.join(", "), w.cols.length > 0 && w.cols.every(c => S.tables[w.t].includes(c)), w.cols.filter(c => !S.tables[w.t].includes(c))));
+  ok("registering a source never sends the enabled flag", !/register_source[\s\S]{0,400}"enabled"\s*:/.test(shared.split("def start_run")[0].split("def register_source")[1].split("prefer=")[0]));
+  const usesOn = [...(agentFile("reviser/run.py") || "").matchAll(/runs_on="(\w+)"/g)].map(m => m[1]);
+  ok("runs_on values the agents use are allowed by the database", usesOn.length > 0 && usesOn.every(v => S.checks["sources.runs_on"].includes(v)), usesOn);
 }
 
 // ----- 6. migrations and their suites -----
