@@ -113,3 +113,11 @@ Yitzy approved and the reviser pull request in `bitzy-hq-agents` was merged with
 Added `supabase/migrations/0006_wake.sql`: a `wakes` log table, `hq_wake(event)`, and triggers on `revisions` (owner notes only) and `actions` (pending only) that send a GitHub `repository_dispatch` to the agents repo through pg_net, with the token read from Supabase Vault. A wake can never fail a swipe: missing extension, missing token and network errors are recorded in `wakes` and swallowed. Bursts inside 20 seconds are one wake. Added `supabase/tests/wake.sql`, which stands in for pg_net and the vault, and extended the wiring suite (wake functions callable by no role, the event name matches the reviser workflow, the token is never logged).
 
 Working agreement from Yitzy, same day: stop asking for go-aheads; build, merge on green, and bring him in only for visual checks and for secrets only he holds.
+
+## 2026-11-09 #87 applied live, wizard stage added  (author: Claude Code on Fable 5.2, refs: #87, D-045)
+
+Applied `0006_wake.sql` to `bitzy-hq`. Clean-database CI on the pull request: all five SQL suites pass including `wake` (no pg_net, no token, a correct dispatch, debounce, network down, visibility). Live check inside a rolled-back transaction: pg_net 0.20.4 and the vault are present, a note and a pending action each recorded `no_token` and sent nothing, and the browser role cannot call `hq_wake`. The three wake function fingerprints on the live project match the clean build.
+
+Added a wake stage to `scripts/hq/setup-wizard.sh` (create a one-repo token, the script tests it against GitHub and expects 204, then Yitzy stores it in Vault) and `docs/hq/RUNBOOKS/wake.md`.
+
+Not verified: a real dispatch from the live database, which needs the token in Vault. #87 stays open for that and for the executor workflow that will listen for `hq-action`.
