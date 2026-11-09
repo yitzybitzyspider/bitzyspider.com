@@ -33,3 +33,39 @@ Generated 2026-11-09 from the planning session. Milestone, number, title, repo.
 - M0 [#101](https://github.com/yitzybitzyspider/bitzyspider.com/issues/101) Revise loop: send a card back with notes, edit a draft in place, to-do cards (`bitzyspider.com`)
 - M0 [#102](https://github.com/yitzybitzyspider/bitzyspider.com/issues/102) Reviser agent: rewrite drafts from Yitzy's notes and return the card (`bitzy-hq-agents`)
 - M3 [#103](https://github.com/yitzybitzyspider/bitzyspider.com/issues/103) 80/20 ranking rework, parked (`bitzyspider.com`)
+
+## Status as of 2026-11-09 evening
+
+Regenerate with `gh issue list --state all`. This snapshot is appended, not edited.
+
+- #67 done: Append-only logs: decisions, devlog, findings, open questions
+- #68 done: Supabase project bitzy-hq and core schema migration
+- #69 blocked: Google sign-in gated /hq shell with single-email allowlist
+- #70 done: Installable PWA shell with offline last-synced deck
+- #71 done: Swipe deck component: gestures, expand, Markdown body, optimistic writes
+- #72 done: Scoring function, inputs cap, and today_deck view
+- #73 done: Heartbeat library: runs rows plus Healthchecks.io pings
+- #74 done: Warden v1: deterministic checks on GitHub Actions every 30 minutes
+- #75 done: Private repo bitzy-hq-agents scaffold
+- #76 ready: Box setup wizard: WSL2, Docker, self-hosted runner, Tailscale, remote desktop, browser profiles
+- #77 done: hq CLI and Claude skill: add, list, approve, export-md
+- #78 done: Agent protocol: issue template, labels, reviewer agent, auto-merge rules
+- #79 ready: Nightly Markdown export of the day into the Obsidian vault
+- #80 ready: haas-sync Supabase sink and manual card migration
+- #81 ready: Birthdays collector from Google Contacts and calendar feeds with drafted messages
+- #82 ready: Morning plan card: agent proposes today's top 3
+- #83 ready: Web push for plan-ready and warden-red, ntfy fallback
+- #84 ready: Research: Beeper API coverage for WhatsApp and Slack read and send
+- #85 blocked: Beeper collector: threads needing a reply become approve cards with drafts
+- #86 blocked: Beeper executor: send approved replies and write result cards
+- #87 in progress: Executor trigger: database webhook to repository_dispatch with polling backstop
+- #88 ready: CMG Bears repair: run the scout on the box behind a persistent 12twenty profile
+- #89 ready: Email triage collector replacing the switched-off Claude task
+- #90 ready: Job pipeline view, stages, and drafted materials
+- #91 ready: Facebook birthdays and relationship data via Muse, batched enrichment cards
+- #92 ready: Google Contacts write-back executor for approved enrichment rows
+- #93 ready: Daily Claude reasoning pass over warden findings and open issues
+- #94 blocked: Second-confirmation flow for CMG registration and job submission
+- #101 done: Revise loop: send a card back with notes, edit a draft in place, to-do cards
+- #102 ready: Reviser agent: rewrite drafts from Yitzy's notes and return the card
+- #103 blocked: 80/20 ranking rework, parked
