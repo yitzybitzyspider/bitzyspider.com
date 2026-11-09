@@ -121,3 +121,9 @@ Applied `0006_wake.sql` to `bitzy-hq`. Clean-database CI on the pull request: al
 Added a wake stage to `scripts/hq/setup-wizard.sh` (create a one-repo token, the script tests it against GitHub and expects 204, then Yitzy stores it in Vault) and `docs/hq/RUNBOOKS/wake.md`.
 
 Not verified: a real dispatch from the live database, which needs the token in Vault. #87 stays open for that and for the executor workflow that will listen for `hq-action`.
+
+## 2026-11-09 #74 warden as a scheduled database function  (author: Claude Code on Fable 5.2, refs: #74, D-015, D-047, OQ-009)
+
+Added `supabase/migrations/0007_warden.sql`: `hq_warden()` runs eight deterministic checks (stale source, registered but never reported, last run failed, run never finished, three runs with zero cards, a card flood, approved actions not carried out, cards stuck in revising, wake signals failing) and writes each finding as a pinned alert card. A dismissed alert stays quiet for the day and returns the next day if still true; an alert whose problem went away expires; one that recurs the same day comes back. Thresholds are a settings row. It is scheduled on pg_cron every 30 minutes and records its own runs. Added `supabase/tests/warden.sql` with a fixed clock.
+
+The check for stalled in-progress issues is not here: it needs the GitHub API and belongs to the daily reasoning pass (#93).

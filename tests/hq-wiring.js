@@ -37,7 +37,7 @@ allRpcs.forEach(r => {
   ok(r.name + ": page arguments match the SQL signature", unknown.length === 0 && missing.length === 0, { unknown, missing, sql: names });
   ok(r.name + ": the signed-in browser may run it, anonymous may not", S.exec[r.name].has("authenticated") && !S.exec[r.name].has("anon"), [...S.exec[r.name]]);
 });
-["hq_wake", "hq_wake_on_revision", "hq_wake_on_action"].forEach(f =>
+["hq_wake", "hq_wake_on_revision", "hq_wake_on_action", "hq_warden"].forEach(f =>
   ok(f + ": callable by no role at all (triggers only)", S.exec[f] && S.exec[f].size === 0, S.exec[f] && [...S.exec[f]]));
 const wakeSql = read("supabase/migrations/" + S.files.filter(f => /wake/.test(f))[0]);
 const agentsEvents = (() => { try { return cp.execSync("git show HEAD:.github/workflows/reviser.yml", { cwd: path.join(repo, "..", "bitzy-hq-agents"), encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }); } catch (e) { return null; } })();

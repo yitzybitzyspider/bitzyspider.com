@@ -111,3 +111,7 @@ D-044 Tests default to what code can check; visual inspection is Yitzy's for now
 D-045 The database wakes the agents itself: triggers call `hq_wake`, which posts a `repository_dispatch` through pg_net using a GitHub token kept in Supabase Vault. A wake is best effort and can never block or fail the write that caused it; every attempt is recorded in `wakes` for the warden. The token is fine-grained, scoped to the agents repo only.
 
 D-046 Working agreement: Claude builds without asking for go-aheads, merges its own pull requests once CI is green (schema and executors included; this replaces the human-merge rule in D-016 for work Claude does in session), and picks the next issue itself. Yitzy is brought in only to look at or feel something on a device, and for steps needing a secret or login only he has, which are batched into the setup wizard.
+
+## 2026-11-09 Where the warden runs  (author: Claude Code on Fable 5.2, refs: #74, F-009)
+
+D-047 The warden is a Postgres function on pg_cron inside the Supabase project, not a GitHub Actions job. Context: every check is a query over tables already in the database; a 30-minute hosted cron on the private repo would spend most of the free Actions minutes (F-009); and D-015 wants the warden independent of the box. In the database it needs no runner, no secret and no network, and a dead box or a GitHub outage shows up as stale sources. Supersedes the "GitHub Actions cron" wording in D-015. It also answers OQ-009: a card stuck in revising for 15 minutes raises an alert.
