@@ -97,3 +97,9 @@ Yitzy asked for tests that default to what code can check, leaving visual inspec
 Verified: `scripts/hq/test.sh` passes locally, 5 suites and 226 checks. Mutation checks: five deliberate breaks of `deck-ui.js` and six of the wiring were each caught, then restored. The clean-database job cannot run on this Mac (no Postgres or Docker); its result is whatever CI reports on this pull request.
 
 Not covered by code, by design: looks, feel, real devices, real accounts, live services. Listed in TESTING.md.
+
+## 2026-11-09 Clean-database job result and live fingerprint match  (author: Claude Code on Fable 5.2, refs: F-012)
+
+The `HQ tests` workflow ran on the tests pull request. Clean database: all five migrations applied to an empty Postgres 17, `rls_core`, `scoring`, `swipe` and `revise` passed, no rows left behind, every table has row security, anon holds nothing, agent-only functions closed to the browser. Code job: 5 suites pass (the agents cross-check is skipped in CI because that private repo is not checked out there; it runs locally).
+
+Compared the md5 of every function body from the clean build with the live `bitzy-hq` project: all ten match (`hq_is_owner`, `hq_return_revised`, `hq_revise`, `hq_score`, `hq_swipe`, `hq_to_todo`, `hq_touch`, `hq_unswipe`, `hq_upsert_card`, `hq_urgency`). The hand-applied migrations are the committed files.
