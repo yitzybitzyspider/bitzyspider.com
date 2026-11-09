@@ -107,3 +107,9 @@ Compared the md5 of every function body from the clean build with the live `bitz
 ## 2026-11-09 Reviser agent merged  (author: Claude Code on Fable 5.2, refs: #102)
 
 Yitzy approved and the reviser pull request in `bitzy-hq-agents` was merged with its pytest check green. The `reviser` workflow is now on the default branch: it runs on `hq-revise` dispatch, by hand, and every six hours, and exits quietly until the three secrets exist. Issue #102 stays open until a live rewrite is seen after the setup wizard and the webhook (#87).
+
+## 2026-11-09 #87 wake trigger (database side)  (author: Claude Code on Fable 5.2, refs: #87, #102, D-023, D-045)
+
+Added `supabase/migrations/0006_wake.sql`: a `wakes` log table, `hq_wake(event)`, and triggers on `revisions` (owner notes only) and `actions` (pending only) that send a GitHub `repository_dispatch` to the agents repo through pg_net, with the token read from Supabase Vault. A wake can never fail a swipe: missing extension, missing token and network errors are recorded in `wakes` and swallowed. Bursts inside 20 seconds are one wake. Added `supabase/tests/wake.sql`, which stands in for pg_net and the vault, and extended the wiring suite (wake functions callable by no role, the event name matches the reviser workflow, the token is never logged).
+
+Working agreement from Yitzy, same day: stop asking for go-aheads; build, merge on green, and bring him in only for visual checks and for secrets only he holds.

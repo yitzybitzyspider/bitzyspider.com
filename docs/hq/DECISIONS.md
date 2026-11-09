@@ -105,3 +105,9 @@ D-043 Offline, HQ is read-only: it shows the last synced deck under a banner and
 ## 2026-11-09 Testing  (author: Yitzy + Claude Code on Fable 5.2)
 
 D-044 Tests default to what code can check; visual inspection is Yitzy's for now. Every behavior that a script can assert gets a script, every suite must be shown able to fail by breaking the code once on purpose, and one command (`scripts/hq/test.sh`) gives one verdict locally and in CI. `docs/hq/TESTING.md` lists what is deliberately left for eyes.
+
+## 2026-11-09 Wake trigger and working agreement  (author: Yitzy + Claude Code on Fable 5.2, refs: #87)
+
+D-045 The database wakes the agents itself: triggers call `hq_wake`, which posts a `repository_dispatch` through pg_net using a GitHub token kept in Supabase Vault. A wake is best effort and can never block or fail the write that caused it; every attempt is recorded in `wakes` for the warden. The token is fine-grained, scoped to the agents repo only.
+
+D-046 Working agreement: Claude builds without asking for go-aheads, merges its own pull requests once CI is green (schema and executors included; this replaces the human-merge rule in D-016 for work Claude does in session), and picks the next issue itself. Yitzy is brought in only to look at or feel something on a device, and for steps needing a secret or login only he has, which are batched into the setup wizard.

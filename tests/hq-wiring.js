@@ -37,6 +37,13 @@ allRpcs.forEach(r => {
   ok(r.name + ": page arguments match the SQL signature", unknown.length === 0 && missing.length === 0, { unknown, missing, sql: names });
   ok(r.name + ": the signed-in browser may run it, anonymous may not", S.exec[r.name].has("authenticated") && !S.exec[r.name].has("anon"), [...S.exec[r.name]]);
 });
+["hq_wake", "hq_wake_on_revision", "hq_wake_on_action"].forEach(f =>
+  ok(f + ": callable by no role at all (triggers only)", S.exec[f] && S.exec[f].size === 0, S.exec[f] && [...S.exec[f]]));
+const wakeSql = read("supabase/migrations/" + S.files.filter(f => /wake/.test(f))[0]);
+const agentsEvents = (() => { try { return cp.execSync("git show HEAD:.github/workflows/reviser.yml", { cwd: path.join(repo, "..", "bitzy-hq-agents"), encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }); } catch (e) { return null; } })();
+if (!agentsEvents) skip("the event the database sends is one the reviser workflow listens for", "bitzy-hq-agents not found next to this repo");
+else ok("the event the database sends is one the reviser workflow listens for", /types:\s*\[hq-revise\]/.test(agentsEvents) && /'hq-revise'/.test(wakeSql));
+ok("the wake function never logs or returns the token", !/detail\s*:=[^;]*token/.test(wakeSql) && !/return\s+token/.test(wakeSql) && !/values \([^)]*token/.test(wakeSql));
 ["hq_upsert_card", "hq_return_revised", "hq_to_todo"].forEach(f =>
   ok(f + ": agents only, closed to every browser role", S.exec[f] && S.exec[f].has("service_role") && !S.exec[f].has("authenticated") && !S.exec[f].has("anon"), S.exec[f] && [...S.exec[f]]));
 const froms = [...inline.matchAll(/sb\.from\("(\w+)"\)\.select\("([^"]*)"/g)].map(m => ({ t: m[1], cols: m[2] }));
