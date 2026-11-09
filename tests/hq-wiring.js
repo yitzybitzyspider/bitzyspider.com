@@ -37,9 +37,12 @@ allRpcs.forEach(r => {
   ok(r.name + ": page arguments match the SQL signature", unknown.length === 0 && missing.length === 0, { unknown, missing, sql: names });
   ok(r.name + ": the signed-in browser may run it, anonymous may not", S.exec[r.name].has("authenticated") && !S.exec[r.name].has("anon"), [...S.exec[r.name]]);
 });
-["hq_wake", "hq_wake_on_revision", "hq_wake_on_action"].forEach(f =>
+["hq_wake", "hq_wake_on_revision", "hq_wake_on_action", "hq_warden", "hq_schedule_warden", "hq_has_function"].forEach(f =>
   ok(f + ": callable by no role at all (triggers only)", S.exec[f] && S.exec[f].size === 0, S.exec[f] && [...S.exec[f]]));
 const wakeSql = read("supabase/migrations/" + S.files.filter(f => /wake/.test(f))[0]);
+const allSql = S.files.map(f => read("supabase/migrations/" + f).replace(/--.*$/gm, "")).join("\n");
+const lastDef = name => { const all = [...allSql.matchAll(new RegExp("create (?:or replace )?function public\\." + name + "\\b[\\s\\S]*?\\$\\$[\\s\\S]*?\\$\\$;", "g"))]; return all.length ? all[all.length - 1][0] : ""; };
+ok("no live function guards on to_regproc, which is blind to overloaded names (F-013)", Object.keys(S.functions).every(f => !/to_regproc\(/.test(lastDef(f))), Object.keys(S.functions).filter(f => /to_regproc\(/.test(lastDef(f))));
 const agentsEvents = (() => { try { return cp.execSync("git show HEAD:.github/workflows/reviser.yml", { cwd: path.join(repo, "..", "bitzy-hq-agents"), encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }); } catch (e) { return null; } })();
 if (!agentsEvents) skip("the event the database sends is one the reviser workflow listens for", "bitzy-hq-agents not found next to this repo");
 else ok("the event the database sends is one the reviser workflow listens for", /types:\s*\[hq-revise\]/.test(agentsEvents) && /'hq-revise'/.test(wakeSql));

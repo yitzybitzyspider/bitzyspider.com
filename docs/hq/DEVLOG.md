@@ -121,3 +121,19 @@ Applied `0006_wake.sql` to `bitzy-hq`. Clean-database CI on the pull request: al
 Added a wake stage to `scripts/hq/setup-wizard.sh` (create a one-repo token, the script tests it against GitHub and expects 204, then Yitzy stores it in Vault) and `docs/hq/RUNBOOKS/wake.md`.
 
 Not verified: a real dispatch from the live database, which needs the token in Vault. #87 stays open for that and for the executor workflow that will listen for `hq-action`.
+
+## 2026-11-09 #74 warden as a scheduled database function  (author: Claude Code on Fable 5.2, refs: #74, D-015, D-047, OQ-009)
+
+Added `supabase/migrations/0007_warden.sql`: `hq_warden()` runs eight deterministic checks (stale source, registered but never reported, last run failed, run never finished, three runs with zero cards, a card flood, approved actions not carried out, cards stuck in revising, wake signals failing) and writes each finding as a pinned alert card. A dismissed alert stays quiet for the day and returns the next day if still true; an alert whose problem went away expires; one that recurs the same day comes back. Thresholds are a settings row. It is scheduled on pg_cron every 30 minutes and records its own runs. Added `supabase/tests/warden.sql` with a fixed clock.
+
+The check for stalled in-progress issues is not here: it needs the GitHub API and belongs to the daily reasoning pass (#93).
+
+## 2026-11-09 Warden applied live, then fixed forward  (author: Claude Code on Fable 5.2, refs: #74, #87, F-013)
+
+Applied `0007_warden.sql` to `bitzy-hq`; `hq_warden()` ran and found nothing, and its fingerprint matches the clean build. The post-apply check showed no job in `cron.job`: the pg_cron guard used `to_regproc`, which is null for overloaded names. Added `0008_guards.sql`: `hq_has_function` (catalog lookup), `hq_wake` re-created to use it, and `hq_schedule_warden()` so scheduling is a function that can be tested and re-run. The wake and warden suites now include overloaded stand-ins, and the wiring suite rejects `to_regproc` in any live function.
+
+## 2026-11-09 Guards fix applied live; warden scheduled  (author: Claude Code on Fable 5.2, refs: #74, F-013)
+
+Applied `0008_guards.sql` to `bitzy-hq`. Verified on the live project: `cron.job` holds `hq-warden` on `*/30 * * * *`, active; the guard now sees both pg_net and pg_cron; the warden has one run on record with zero findings; `hq_wake`, `hq_has_function` and `hq_schedule_warden` fingerprints match the clean build. CI: `wake` and `warden` suites pass with overloaded stand-ins.
+
+Not verified: a scheduled (not hand-run) warden tick. The first one lands at the next half hour and will show as a second `warden` row in `runs`.
