@@ -137,3 +137,11 @@ Applied `0007_warden.sql` to `bitzy-hq`; `hq_warden()` ran and found nothing, an
 Applied `0008_guards.sql` to `bitzy-hq`. Verified on the live project: `cron.job` holds `hq-warden` on `*/30 * * * *`, active; the guard now sees both pg_net and pg_cron; the warden has one run on record with zero findings; `hq_wake`, `hq_has_function` and `hq_schedule_warden` fingerprints match the clean build. CI: `wake` and `warden` suites pass with overloaded stand-ins.
 
 Not verified: a scheduled (not hand-run) warden tick. The first one lands at the next half hour and will show as a second `warden` row in `runs`.
+
+## 2026-11-09 #73 heartbeat library  (author: Claude Code on Fable 5.2, refs: #73, #74, D-015, D-025)
+
+In `bitzy-hq-agents`: `hq_heartbeat.run(source, expected_interval, runs_on)` and the shared `Supabase` client. A job wrapped in it registers its source, opens a `runs` row before doing any work, closes it with the card count or the error, moves `last_ok_at` only on success, pings Healthchecks.io when a URL is set, and skips itself when the source is disabled in the database. These are exactly the rows the warden reads. The reviser now runs inside it. `r.upsert_card` is the one write path for cards; `r.save_md` keeps raw pulls as Markdown inside the data folder.
+
+Verified: 47 pytest cases in the agents repo, including that the run row exists before work starts, a job's own error is never replaced by a bookkeeping failure, a success that cannot be recorded turns the job red, Ctrl-C is recorded, and a hostile file name cannot escape the data folder. The site's wiring suite now reads the shared client and checks every column it writes and every agent function it calls against the migrations.
+
+Not verified: a real run against the live project (no service key in the agents repo yet).
