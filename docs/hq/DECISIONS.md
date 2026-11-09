@@ -101,3 +101,7 @@ D-042 The reviser uses `claude-opus-5-5` at medium effort with a strict JSON sch
 ## 2026-11-09 Offline behavior  (author: Claude Code on Fable 5.2, refs: #70)
 
 D-043 Offline, HQ is read-only: it shows the last synced deck under a banner and refuses swipes with a message, rather than queueing them. Context: a queued approval could send an email hours later against a card that has since changed. Consequence: no background sync; the service worker caches only the app's own files and the last deck lives in localStorage for at most a week, cleared on sign-out.
+
+## 2026-11-09 Testing  (author: Yitzy + Claude Code on Fable 5.2)
+
+D-044 Tests default to what code can check; visual inspection is Yitzy's for now. Every behavior that a script can assert gets a script, every suite must be shown able to fail by breaking the code once on purpose, and one command (`scripts/hq/test.sh`) gives one verdict locally and in CI. `docs/hq/TESTING.md` lists what is deliberately left for eyes.

@@ -89,3 +89,11 @@ Wizard: `scripts/hq/setup-wizard.sh`, built from the wizard template, walks the 
 Verified: `node tests/hq-deck.js` passes 82 checks (offline fallback, stale mark cleared on reconnect, week-old deck dropped, corrupt or refused storage tolerated). `node tests/hq-auth.js` passes, including that every file the service worker pre-caches exists, every script the page loads is pre-cached, and the manifest's icons exist. In the preview: the service worker activated with scope /hq/, cached all 14 shell files, and with the demo's load failing the deck showed the stored cards under the offline banner with no console errors. The demo keeps its stored deck in memory, so real storage stayed empty. The wizard passes `bash -n`, and the three secret names it sets match the three the reviser workflow reads. https://bitzyspider.com/hq/ answers 200 with the sign-in page.
 
 Not verified: Add to Home Screen on a real iPhone or Android phone, a Lighthouse run, and the wizard end to end (it opens browsers and waits for a person, so it was traced, not run).
+
+## 2026-11-09 Code-first test layers and CI  (author: Claude Code on Fable 5.2, refs: D-044, F-011, F-012)
+
+Yitzy asked for tests that default to what code can check, leaving visual inspection to him. Added: `tests/hq-ui.js` (the real deck UI driven in a fake DOM, `tests/lib/fakedom.js`), `tests/hq-wiring.js` with `tests/lib/schema.js` (page, migrations, card contract and agents repo checked against each other by reading the sources), `scripts/hq/test-db.sh` with `supabase/tests/bootstrap.sql` (empty Postgres, all migrations, all SQL suites, privilege audits), `scripts/hq/test.sh` (one command, one verdict), the `HQ tests` workflow (code job and clean-database job on every pull request), and `docs/hq/TESTING.md` (what each layer proves, how to add to it, and the list left for eyes).
+
+Verified: `scripts/hq/test.sh` passes locally, 5 suites and 226 checks. Mutation checks: five deliberate breaks of `deck-ui.js` and six of the wiring were each caught, then restored. The clean-database job cannot run on this Mac (no Postgres or Docker); its result is whatever CI reports on this pull request.
+
+Not covered by code, by design: looks, feel, real devices, real accounts, live services. Listed in TESTING.md.
