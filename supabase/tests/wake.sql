@@ -28,6 +28,8 @@ create function net.http_post(url text, body jsonb default '{}', params jsonb de
 returns bigint language plpgsql as $$ declare i bigint; begin
   if current_setting('hq.net_down', true) = '1' then raise exception 'network is down'; end if;
   insert into net.calls(url, body, headers) values (url, body, headers) returning id into i; return i; end $$;
+-- A second overload, as a real extension might grow: the guard must still see pg_net (F-013).
+create function net.http_post(url text, body text) returns bigint language sql as $$ select 0::bigint $$;
 create schema vault;
 create table vault.decrypted_secrets (name text, decrypted_secret text);
 

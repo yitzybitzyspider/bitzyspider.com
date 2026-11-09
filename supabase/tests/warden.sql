@@ -75,6 +75,26 @@ do $$ declare t timestamptz := current_setting('hq.now')::timestamptz; n int; k 
   if (select title from public.cards where key = 'warden:revising:stuck') <> '2 cards are still waiting for a rewrite' then raise exception 'revising threshold is not read from settings'; end if;
 end $$;
 
+-- Scheduling: without pg_cron it says so; with it (two overloads, like the real one) it schedules once.
+do $$ begin
+  if public.hq_has_function('cron', 'schedule') then raise exception 'this suite expects a database without pg_cron'; end if;
+  if public.hq_schedule_warden() <> 'no_pg_cron' then raise exception 'missing pg_cron not reported'; end if;
+end $$;
+create schema cron;
+create table cron.job (jobname text primary key, schedule text, command text);
+create function cron.schedule(job_name text, schedule text, command text) returns bigint language sql as
+  $$ insert into cron.job values (job_name, schedule, command) on conflict (jobname) do update set schedule = excluded.schedule, command = excluded.command returning 1::bigint $$;
+create function cron.schedule(schedule text, command text) returns bigint language sql as $$ select 0::bigint $$;
+do $$ declare j record; begin
+  if public.hq_schedule_warden() <> 'scheduled' or public.hq_schedule_warden() <> 'scheduled' then raise exception 'scheduling failed with an overloaded cron.schedule'; end if;
+  if (select count(*) from cron.job) <> 1 then raise exception 'scheduling twice made % jobs', (select count(*) from cron.job); end if;
+  select * into j from cron.job;
+  if j.jobname <> 'hq-warden' or j.schedule <> '*/30 * * * *' or j.command <> 'select public.hq_warden()' then raise exception 'wrong job: %', row_to_json(j); end if;
+end $$;
+drop function cron.schedule(text, text, text);
+create function cron.schedule(job_name text, schedule text, command text) returns bigint language plpgsql as $$ begin raise exception 'cron is broken'; end $$;
+do $$ begin if public.hq_schedule_warden() not like 'error:%' then raise exception 'a scheduling failure was not reported'; end if; end $$;
+
 set local role authenticated;
 select set_config('request.jwt.claims', '{"email":"owner@test.invalid","role":"authenticated"}', true);
 do $$ begin begin perform public.hq_warden(); raise exception 'the browser could run the warden'; exception when insufficient_privilege then null; end; end $$;

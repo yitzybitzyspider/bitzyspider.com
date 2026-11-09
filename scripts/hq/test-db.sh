@@ -18,7 +18,7 @@ for t in rls_core scoring swipe revise wake warden; do
 done
 
 # Every suite rolls back: the database must be exactly as the migrations left it.
-left="$(psql -X -q -At -c "select (select count(*) from public.cards) + (select count(*) from public.actions) + (select count(*) from public.revisions) + (select count(*) from public.wakes) + (select count(*) from public.runs) + (select count(*) from public.sources) + (select count(*) from pg_namespace where nspname in ('net','vault'))")"
+left="$(psql -X -q -At -c "select (select count(*) from public.cards) + (select count(*) from public.actions) + (select count(*) from public.revisions) + (select count(*) from public.wakes) + (select count(*) from public.runs) + (select count(*) from public.sources) + (select count(*) from pg_namespace where nspname in ('net','vault','cron'))")"
 if [ "$left" = "0" ]; then echo "pass suites leave no rows behind"; else echo "FAIL suites left $left rows"; fail=1; fi
 
 # Anything in public without row security is a hole.
@@ -31,7 +31,7 @@ anon_f="$(psql -X -q -At -c "select string_agg(p.proname, ', ') from pg_proc p w
 if [ -z "$anon_t" ] && [ -z "$anon_f" ]; then echo "pass anon holds nothing"; else echo "FAIL anon can reach: tables [$anon_t] functions [$anon_f]"; fail=1; fi
 
 # The browser role must not be able to run agent-only functions.
-agent_only="$(psql -X -q -At -c "select string_agg(p.proname, ', ') from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname in ('hq_upsert_card','hq_return_revised','hq_to_todo','hq_wake','hq_wake_on_revision','hq_wake_on_action','hq_warden') and has_function_privilege('authenticated', p.oid, 'execute')")"
+agent_only="$(psql -X -q -At -c "select string_agg(p.proname, ', ') from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname in ('hq_upsert_card','hq_return_revised','hq_to_todo','hq_wake','hq_wake_on_revision','hq_wake_on_action','hq_warden','hq_schedule_warden','hq_has_function') and has_function_privilege('authenticated', p.oid, 'execute')")"
 if [ -z "$agent_only" ]; then echo "pass agent-only functions are closed to the browser"; else echo "FAIL browser can run: $agent_only"; fail=1; fi
 
 # Fingerprint of every function body, for comparing a clean build with the live project by hand.

@@ -35,3 +35,7 @@ F-011 A test suite with a held promise that is never released makes node exit si
 ## 2026-11-09  (author: Claude Code on Fable 5.2)
 
 F-012 Migrations were applied to the live project by pasting SQL into a tool call, so nothing proved the committed files matched what ran. Rule: the clean-database CI job builds from the files alone and prints a fingerprint of every function body; after any hand-applied migration, compare it with the live project.
+
+## 2026-11-09  (author: Claude Code on Fable 5.2, refs: #74, #87)
+
+F-013 `to_regproc('schema.name')` returns null when the name has more than one overload. The guard "is pg_cron here?" used it, `cron.schedule` has two overloads, and so the warden applied cleanly on the live project and was never scheduled. Nothing failed; a check after applying ("is the job in cron.job?") is what caught it. Rules: guard on the catalog (`hq_has_function`), never on `to_regproc`; the wiring suite now rejects `to_regproc` in any live function; test stand-ins for extensions carry a second overload; and after applying any migration, verify its effect on the live project, not just that it ran.
