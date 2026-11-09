@@ -39,3 +39,11 @@ Wrote and applied `supabase/migrations/0001_core.sql` to `bitzy-hq`: `cards`, `a
 Verified: `rls_core.sql` returned `rls_core ok` against the live project (anon denied, a signed-in stranger sees zero rows and cannot write, the owner can swipe and file a pending action but cannot retitle a card, insert a card, forge a finished action, or change the owner). Six REST probes with only the publishable key all returned 401. Security advisor shows one notice, the intended `hq_is_owner` definer function. Tables are empty.
 
 Left: Google sign-in is not configured (#69), so nobody can sign in yet. Scoring weights and the inputs cap are #72. The service key has not been copied into `bitzy-hq-agents` secrets; that is a manual step for Yitzy or the box wizard (#76).
+
+## 2026-11-09 #69 sign-in gate for /hq  (author: Claude Code on Fable 5.2, refs: #69, D-001, D-017, D-027)
+
+Added `hq/index.html` (one Google button when signed out; checking, denied, error and a placeholder deck view that shows the count from `today_deck`), `hq/auth.js` (the decision logic as a pure `route()` plus a thin `boot()`), `hq/config.js` (project URL and publishable key), a vendored pinned `supabase-js` 2.45.4 so the page loads no third-party script, `tests/hq-auth.js`, a `Disallow: /hq/` line in robots.txt, and `docs/hq/RUNBOOKS/google-signin.md`. The page carries no Clarity tag and is noindex.
+
+Verified: `node tests/hq-auth.js` passes 22 checks (signed out never touches the database, stranger is denied and signed out even if a late sign-out event arrives, a truthy non-boolean owner answer is denied, owner check failure shows an error and never the deck, redirect target ignores the query string). `node tests/clarity.js` still passes. Loaded http://localhost:4319/hq/ in the preview: only the sign-in section is visible, button is 52px tall, no console errors.
+
+Not verified: a real Google sign-in. The provider is not enabled on the project yet (the authorize endpoint answers "provider is not enabled"); enabling it needs Yitzy's Google OAuth client, steps in the runbook. The 30-day session criterion rests on Supabase defaults and is unchecked until then.

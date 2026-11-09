@@ -61,3 +61,9 @@ D-026 Four append-only logs (decisions, devlog, findings, open questions) are th
 D-027 The owner email is stored as a row in `hq_settings`, not hardcoded in a policy. Context: the repo is public and policies are in migrations. Options: literal email in the policy, or a lookup. Chosen: lookup through a definer function `hq_is_owner()`. Consequence: one accepted advisor notice; changing the owner is a service-role operation only.
 
 D-028 The browser gets column-level update on cards (`status`, `snoozed_until`, `changed`) and nothing else. Context: D-004 says a swipe changes state; it never needs to edit content. Consequence: a stolen session cannot rewrite card bodies or forge executed actions; all content comes from collectors using the service role.
+
+## 2026-11-09 Sign-in details  (author: Claude Code on Fable 5.2, refs: #69)
+
+D-029 `supabase-js` is vendored at a pinned version under `hq/vendor/` instead of loaded from a CDN. Context: the rest of the site has no dependencies and uses plain fetch, but OAuth with PKCE and token refresh is not worth hand-rolling. Consequence: /hq loads no third-party script; upgrades are a deliberate file swap.
+
+D-030 Three independent gates on /hq: Google consent screen kept in Testing with one test user, the page signing out non-owners, and RLS. Any one failing alone leaks nothing.
