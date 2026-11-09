@@ -185,7 +185,7 @@ finish() {
 # straight from hidden input into GitHub Actions secrets on the private agents repo.
 # ══════════════════════════════════════════════════════════════════════════
 
-TOTAL_STAGES=7
+TOTAL_STAGES=8
 REF="rdtvwvylmkxpdbbnsmuu"
 SUPA_URL="https://${REF}.supabase.co"
 AGENTS_REPO="yitzybitzyspider/bitzy-hq-agents"
@@ -264,6 +264,43 @@ else
   warn "Nothing pasted; skipped."
 fi
 unset ANTHROPIC_API_KEY
+pause
+
+stage "GitHub token so the database can wake the agents"
+say "When you send a card back, the database pings GitHub and the reviser starts within a minute."
+say "It needs a token that can do exactly one thing: start workflows on ${AGENTS_REPO}."
+open_url "https://github.com/settings/personal-access-tokens/new"
+step "Token name: bitzy-hq-wake. Expiration: one year."
+step "Repository access: Only select repositories, then pick bitzy-hq-agents."
+step "Permissions, Repository permissions, Contents: Read and write. Nothing else."
+note "Contents write is what GitHub requires for a repository_dispatch. The token cannot reach any other repo."
+step "Generate token and copy it."
+ask_secret HQ_WAKE_TOKEN "Paste the token to test it (input hidden; it is not saved by this script):"
+if [[ -n "${HQ_WAKE_TOKEN}" ]]; then
+  code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "https://api.github.com/repos/${AGENTS_REPO}/dispatches" \
+    -H "Authorization: Bearer ${HQ_WAKE_TOKEN}" -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" \
+    -d '{"event_type":"hq-revise"}' || true)
+  if [[ "$code" == "204" ]]; then
+    say "GitHub accepted it (204). A reviser run was just started by that ping."
+    say "Now store the same token where the database reads it: Supabase Vault."
+    open_url "https://supabase.com/dashboard/project/${REF}/integrations/vault/secrets"
+    step "Add a new secret. Name, exactly: hq_github_dispatch_token   Value: the token."
+    note "If that page is not where Vault lives in your dashboard, open the SQL editor instead and run:"
+    note "  select vault.create_secret('PASTE_TOKEN_HERE', 'hq_github_dispatch_token');"
+    if confirm "Is the secret saved in Vault under that exact name?"; then
+      say "From now on a note you send back wakes the reviser by itself."
+    else
+      SKIPPED+=("Store the wake token in Supabase Vault as hq_github_dispatch_token")
+    fi
+  else
+    SKIPPED+=("Wake token was rejected by GitHub (HTTP ${code}): check repository access and Contents read/write, then rerun")
+    warn "GitHub answered ${code}, not 204. The token is missing access to ${AGENTS_REPO} or the Contents permission."
+  fi
+else
+  SKIPPED+=("Create the wake token and store it in Supabase Vault as hq_github_dispatch_token")
+  warn "Nothing pasted; skipped. Cards you send back will wait for the six-hour backstop."
+fi
+unset HQ_WAKE_TOKEN
 pause
 
 stage "Check: run the reviser once"

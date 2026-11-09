@@ -12,13 +12,13 @@ for m in supabase/migrations/*.sql; do echo "apply $m"; q -f "$m"; done
 q -c "insert into public.hq_settings(key, value) values ('owner_email', '\"seed@test.invalid\"') on conflict (key) do nothing"
 
 fail=0
-for t in rls_core scoring swipe revise; do
+for t in rls_core scoring swipe revise wake; do
   out="$(psql -X -q -At -v ON_ERROR_STOP=1 -f "supabase/tests/$t.sql" 2>&1)" || { echo "FAIL $t"; echo "$out" | tail -n 5; fail=1; continue; }
   if echo "$out" | grep -qx "$t ok"; then echo "pass $t"; else echo "FAIL $t: no '$t ok' line"; echo "$out" | tail -n 5; fail=1; fi
 done
 
 # Every suite rolls back: the database must be exactly as the migrations left it.
-left="$(psql -X -q -At -c "select (select count(*) from public.cards) + (select count(*) from public.actions) + (select count(*) from public.revisions)")"
+left="$(psql -X -q -At -c "select (select count(*) from public.cards) + (select count(*) from public.actions) + (select count(*) from public.revisions) + (select count(*) from public.wakes) + (select count(*) from pg_namespace where nspname in ('net','vault'))")"
 if [ "$left" = "0" ]; then echo "pass suites leave no rows behind"; else echo "FAIL suites left $left rows"; fail=1; fi
 
 # Anything in public without row security is a hole.
@@ -31,7 +31,7 @@ anon_f="$(psql -X -q -At -c "select string_agg(p.proname, ', ') from pg_proc p w
 if [ -z "$anon_t" ] && [ -z "$anon_f" ]; then echo "pass anon holds nothing"; else echo "FAIL anon can reach: tables [$anon_t] functions [$anon_f]"; fail=1; fi
 
 # The browser role must not be able to run agent-only functions.
-agent_only="$(psql -X -q -At -c "select string_agg(p.proname, ', ') from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname in ('hq_upsert_card','hq_return_revised','hq_to_todo') and has_function_privilege('authenticated', p.oid, 'execute')")"
+agent_only="$(psql -X -q -At -c "select string_agg(p.proname, ', ') from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname in ('hq_upsert_card','hq_return_revised','hq_to_todo','hq_wake','hq_wake_on_revision','hq_wake_on_action') and has_function_privilege('authenticated', p.oid, 'execute')")"
 if [ -z "$agent_only" ]; then echo "pass agent-only functions are closed to the browser"; else echo "FAIL browser can run: $agent_only"; fail=1; fi
 
 # Fingerprint of every function body, for comparing a clean build with the live project by hand.
