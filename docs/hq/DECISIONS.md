@@ -55,3 +55,9 @@ D-024 Card identity: stable key per source, upsert, dismissed stays dismissed un
 D-025 Markdown everywhere: card bodies, raw pulls in the agents repo, nightly export of the day and these logs into the Obsidian vault.
 
 D-026 Four append-only logs (decisions, devlog, findings, open questions) are the first deliverable; every PR appends to DEVLOG and the reviewer enforces it.
+
+## 2026-11-09 Schema details  (author: Claude Code on Fable 5.2, refs: #68)
+
+D-027 The owner email is stored as a row in `hq_settings`, not hardcoded in a policy. Context: the repo is public and policies are in migrations. Options: literal email in the policy, or a lookup. Chosen: lookup through a definer function `hq_is_owner()`. Consequence: one accepted advisor notice; changing the owner is a service-role operation only.
+
+D-028 The browser gets column-level update on cards (`status`, `snoozed_until`, `changed`) and nothing else. Context: D-004 says a swipe changes state; it never needs to edit content. Consequence: a stolen session cannot rewrite card bodies or forge executed actions; all content comes from collectors using the service role.
