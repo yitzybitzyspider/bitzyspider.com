@@ -1,0 +1,17 @@
+name: HQ logs
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  append-only:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Self-test the checker
+        run: scripts/hq/test_check_logs.sh
+      - name: Check HQ log rules
+        run: scripts/hq/check_logs.sh "origin/${{ github.base_ref }}" HEAD

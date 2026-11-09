@@ -15,3 +15,7 @@ F-004 bitzyspider.com has 66 merged PRs, so GitHub issue numbers do not start at
 F-005 Nothing anywhere reads Slack or WhatsApp today, and Ed Discussion threads are pasted by hand. Rule: treat chat sources as greenfield and put the Beeper research issue before any collector.
 
 F-006 A naive "unresolved placeholder" check that looks for any "(" fails on ordinary prose. Rule: match the exact placeholder pattern, never a bare delimiter.
+
+## 2026-11-09  (author: Claude Code on Fable 5.2, refs: #67)
+
+F-007 Parallel agents all append to the end of the same DEVLOG.md, so their PRs conflict with each other at the tail. `merge=union` in `.gitattributes` resolves this for local merges, but GitHub's merge button does not honor it. Rule for now: rebase onto main right before merge. If this bites more than twice, switch to one file per entry under `docs/hq/devlog/` (needs a decision; see OQ-006).
