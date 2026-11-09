@@ -31,3 +31,7 @@ F-009 `bitzy-hq-agents` is private, so GitHub-hosted workflow runs spend billed 
 F-010 The first deck treated a card as a reminder plus an optional action. Yitzy's first real use showed the unit is the finished artifact and the three verbs are approve, send back with a note, dismiss. Rule: show the thing that will be sent, not a description of it, and always give a way to answer back.
 
 F-011 A test suite with a held promise that is never released makes node exit silently with no failure line. Rule: every test run must end by printing its own "all pass" line, and the runner checks for that line, not for the absence of FAIL.
+
+## 2026-11-09  (author: Claude Code on Fable 5.2)
+
+F-012 Migrations were applied to the live project by pasting SQL into a tool call, so nothing proved the committed files matched what ran. Rule: the clean-database CI job builds from the files alone and prints a fingerprint of every function body; after any hand-applied migration, compare it with the live project.
