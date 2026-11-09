@@ -67,3 +67,11 @@ D-028 The browser gets column-level update on cards (`status`, `snoozed_until`, 
 D-029 `supabase-js` is vendored at a pinned version under `hq/vendor/` instead of loaded from a CDN. Context: the rest of the site has no dependencies and uses plain fetch, but OAuth with PKCE and token refresh is not worth hand-rolling. Consequence: /hq loads no third-party script; upgrades are a deliberate file swap.
 
 D-030 Three independent gates on /hq: Google consent screen kept in Testing with one test user, the page signing out non-owners, and RLS. Any one failing alone leaks nothing.
+
+## 2026-11-09 Swipe details  (author: Claude Code on Fable 5.2, refs: #71)
+
+D-031 A swipe is one database call (`hq_swipe`), not a status update plus an action insert from the browser. Context: two requests can half-fail and leave an approved card with no action, or a retried request with two. Consequence: the action count per approved card is exactly one, enforced in the database.
+
+D-032 Undo exists for dismiss, snooze and done, and not for an approval that filed an action. Context: an executor may already hold the action. Consequence: the approve toast offers no Undo; stopping a sent action is a later, explicit feature.
+
+D-033 Snooze means tomorrow 06:00 in the phone's time zone, computed on the device and validated as a future time by the database.

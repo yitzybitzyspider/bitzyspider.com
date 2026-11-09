@@ -24,7 +24,62 @@
     .primary:focus-visible, .link:focus-visible { outline: 2px solid var(--red); outline-offset: 3px; }
     .link { background: none; border: 0; color: var(--dim); font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.16em;
             text-transform: uppercase; padding: 12px; margin-top: 1.5rem; }
-    .count { font-size: 3.5rem; font-weight: 700; margin: 0; }
+    /* ---- deck ---- */
+    body.deck-on { display: block; padding: 0; overflow: hidden; overscroll-behavior: none; }
+    body.deck-on main { max-width: 480px; height: 100dvh; margin: 0 auto; display: flex; text-align: left; }
+    #v-deck { flex: 1; display: flex; flex-direction: column; min-height: 0; padding: max(12px, env(safe-area-inset-top)) 16px max(12px, env(safe-area-inset-bottom)); }
+    .bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; }
+    .bar .eyebrow { margin: 0; }
+    .bar .meta { font-family: var(--mono); font-size: 0.68rem; color: var(--dim); letter-spacing: 0.06em; flex: 1; text-align: right; }
+    .bar .link { margin: 0; padding: 12px 0 12px 12px; }
+    .stack { position: relative; flex: 1; min-height: 0; margin: 22px 0 12px; }
+    .card { position: absolute; inset: 0; display: flex; flex-direction: column; gap: 12px; padding: 20px; overflow: hidden;
+            background: #0c0c0f; border: 1px solid var(--line); border-radius: 18px; touch-action: none; user-select: none; -webkit-user-select: none;
+            transform: translateY(calc(var(--depth, 0) * -9px)) scale(calc(1 - var(--depth, 0) * 0.04)); transform-origin: 50% 0;
+            transition: transform 0.2s ease, opacity 0.2s ease; box-shadow: 0 10px 40px rgba(0,0,0,0.6); cursor: grab; }
+    .card.dragging { transition: none; cursor: grabbing; }
+    .card.alert { border-color: #7f1d1d; background: #140a0a; }
+    .card:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+    .card[data-bucket="startup"] { --tint: #f97316; } .card[data-bucket="hackathon"] { --tint: #a78bfa; }
+    .card[data-bucket="community"] { --tint: #38bdf8; } .card[data-bucket="inputs"] { --tint: #a1a1aa; } .card { --tint: #71717a; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; padding: 4px 8px; border-radius: 999px;
+            border: 1px solid var(--line); color: #a1a1aa; }
+    .chip.bucket { color: var(--tint); border-color: color-mix(in srgb, var(--tint) 45%, transparent); }
+    .chip.hot { color: #fca5a5; border-color: #7f1d1d; }
+    .card h2 { margin: 0; font-size: 1.35rem; line-height: 1.25; font-weight: 650; overflow-wrap: anywhere; }
+    .body { flex: 1; min-height: 0; overflow: hidden; color: #d4d4d8; font-size: 1rem; line-height: 1.55; overflow-wrap: anywhere;
+            -webkit-mask-image: linear-gradient(#000 calc(100% - 40px), transparent); mask-image: linear-gradient(#000 calc(100% - 40px), transparent); }
+    .card.expanded .body { overflow-y: auto; touch-action: pan-y; user-select: text; -webkit-user-select: text; -webkit-mask-image: none; mask-image: none; }
+    .md p, .md ul, .md ol, .md blockquote, .md pre { margin: 0 0 0.7em; } .md ul, .md ol { padding-left: 1.2em; }
+    .md h3, .md h4, .md h5 { margin: 0 0 0.4em; font-size: 1rem; }
+    .md a, .open { color: #93c5fd; } .md code { font-family: var(--mono); font-size: 0.85em; background: #18181b; padding: 1px 5px; border-radius: 4px; }
+    .md pre { background: #18181b; padding: 10px; border-radius: 8px; overflow-x: auto; } .md pre code { padding: 0; }
+    .md blockquote { border-left: 2px solid #3f3f46; padding-left: 12px; color: #a1a1aa; }
+    .will { margin: 0; font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.04em; color: #86efac; }
+    .open { font-family: var(--mono); font-size: 0.72rem; align-self: flex-start; padding: 8px 0; }
+    .rows { display: none; list-style: none; margin: 0; padding: 0; overflow-y: auto; touch-action: pan-y; max-height: 45%; }
+    .card.expanded .rows { display: block; }
+    .rows label { display: flex; align-items: center; gap: 12px; min-height: 44px; border-top: 1px solid var(--line); }
+    .rows input { width: 20px; height: 20px; accent-color: #22c55e; } .rows small { margin-left: auto; color: var(--dim); font-family: var(--mono); }
+    .stamp { position: absolute; top: 18px; font-family: var(--mono); font-weight: 700; font-size: 0.8rem; letter-spacing: 0.2em; text-transform: uppercase;
+             padding: 6px 10px; border: 2px solid; border-radius: 8px; opacity: 0; pointer-events: none; background: #0c0c0f; }
+    .stamp.right { left: 18px; color: #22c55e; transform: rotate(-8deg); } .stamp.left { right: 18px; color: #ef4444; transform: rotate(8deg); }
+    .stamp.up { left: 50%; top: auto; bottom: 18px; transform: translateX(-50%); color: #FDB515; }
+    .actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+    .act { min-height: 52px; border-radius: 14px; border: 1px solid var(--line); background: #0c0c0f; color: #fff; font-family: var(--mono);
+           font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase; }
+    .act:active { transform: scale(0.97); } .act:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+    .act[data-dir="left"] { color: #fca5a5; } .act[data-dir="up"] { color: #fde68a; } .act[data-dir="right"] { color: #000; background: #22c55e; border-color: #22c55e; font-weight: 700; }
+    .toast { position: fixed; left: 50%; bottom: calc(84px + env(safe-area-inset-bottom)); transform: translateX(-50%); width: min(448px, calc(100vw - 32px));
+             display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 6px 4px 16px; min-height: 48px;
+             background: #18181b; border: 1px solid #3f3f46; border-radius: 12px; font-size: 0.9rem; z-index: 5; }
+    .toast.error { border-color: #7f1d1d; color: #fca5a5; padding-right: 16px; }
+    .toast button { background: none; border: 0; color: #93c5fd; font-weight: 600; min-height: 44px; padding: 0 12px; }
+    .empty { flex: 1; display: grid; place-content: center; text-align: center; gap: 4px; }
+    .empty h2 { margin: 0; font-size: 1.6rem; }
+    .loading .bar .meta { opacity: 0.6; }
+    @media (prefers-reduced-motion: reduce) { .card, .act { transition: none; } }
   </style>
 </head>
 <body>
@@ -47,37 +102,72 @@
       <button class="link" id="reload" type="button">Try again</button>
     </section>
     <section id="v-deck" hidden>
-      <p class="eyebrow">HQ</p>
-      <p class="count" id="count">0</p>
-      <p class="note" id="count-label">cards in today's deck</p>
-      <button class="link" id="signout" type="button">Sign out</button>
+      <header class="bar">
+        <p class="eyebrow">HQ</p>
+        <span class="meta" data-cleared role="status" aria-live="polite"></span>
+        <button class="link" id="signout" type="button">Sign out</button>
+      </header>
+      <div class="stack" data-stack></div>
+      <div class="empty" data-empty hidden>
+        <h2 data-empty-title>Deck clear</h2>
+        <p class="note" data-empty-note></p>
+        <button class="link" data-reload type="button">Check again</button>
+      </div>
+      <div class="actions" data-actions hidden>
+        <button class="act" data-dir="left" type="button">Dismiss</button>
+        <button class="act" data-dir="up" type="button">Snooze</button>
+        <button class="act" data-dir="right" type="button">Approve</button>
+      </div>
+      <div class="toast" data-toast role="status" aria-live="polite" hidden>
+        <span data-toast-text></span><button data-undo type="button">Undo</button>
+      </div>
     </section>
     <noscript><p class="note">HQ needs JavaScript.</p></noscript>
   </main>
   <script src="vendor/supabase-2.45.4.js"></script>
   <script src="config.js"></script>
   <script src="auth.js"></script>
+  <script src="md.js"></script>
+  <script src="deck.js"></script>
+  <script src="deck-ui.js"></script>
+  <script src="demo.js"></script>
   <script>
     (function () {
       var views = ["signin", "checking", "denied", "error", "deck"];
       var $ = function (id) { return document.getElementById(id); };
       var sb = supabase.createClient(HQ_CONFIG.url, HQ_CONFIG.key, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: "pkce" } });
+      var deck = null;
+      function startDeck(source) {
+        if (!deck) { deck = new HQDeck.Deck(source); HQDeckUI.mount($("v-deck"), deck); }
+        deck.load();
+      }
+      function must(r) { if (r.error) throw new Error(r.error.message); return r; }
+      var api = {
+        deck: async function () { return must(await sb.from("today_deck").select("*")).data; },
+        cleared: async function () {
+          var d = new Date(); d.setHours(0, 0, 0, 0);
+          return must(await sb.from("cards").select("id", { count: "exact", head: true }).in("status", ["done", "approved", "dismissed"]).gte("updated_at", d.toISOString())).count;
+        },
+        sources: async function () { return must(await sb.from("sources").select("name,enabled,last_ok_at,expected_interval")).data; },
+        swipe: async function (id, dir, until, veto) { must(await sb.rpc("hq_swipe", { p_card: id, p_dir: dir, p_snooze_until: until, p_veto: veto })); },
+        unswipe: async function (id) { must(await sb.rpc("hq_unswipe", { p_card: id })); }
+      };
       var ui = {
         show: function (view, state) {
           views.forEach(function (v) { $("v-" + v).hidden = v !== view; });
           if (view === "error") $("error-text").textContent = state.error;
-          if (view === "deck") {
-            // Placeholder until the swipe deck (#71): prove the owner can read the deck.
-            sb.from("today_deck").select("id", { count: "exact", head: true }).then(function (r) {
-              $("count").textContent = r.error ? "?" : String(r.count || 0);
-              $("count-label").textContent = r.error ? r.error.message : (r.count === 1 ? "card in today's deck" : "cards in today's deck");
-            });
-          }
+          document.body.classList.toggle("deck-on", view === "deck");
+          if (view === "deck") startDeck(api);
         },
         onSignIn: function (fn) { $("signin").addEventListener("click", fn); $("retry").addEventListener("click", fn); },
         onSignOut: function (fn) { $("signout").addEventListener("click", fn); }
       };
       $("reload").addEventListener("click", function () { location.replace("/hq/"); });
+      if (window.HQ_DEMO) {   // localhost only, see demo.js
+        views.forEach(function (v) { $("v-" + v).hidden = v !== "deck"; });
+        document.body.classList.add("deck-on"); $("signout").hidden = true;
+        return startDeck(HQ_DEMO.api);
+      }
       HQAuth.boot(sb, ui, location).catch(function (e) { ui.show("error", { error: String(e && e.message || e) }); });
     })();
   </script>
