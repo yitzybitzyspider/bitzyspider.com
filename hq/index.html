@@ -7,6 +7,12 @@
   <meta name="theme-color" content="#000000">
   <title>HQ</title>
   <link rel="icon" href="/favicon.svg">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/apple-touch-180.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="HQ">
   <style>
     :root { --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; --red: #dc2626; --dim: #71717a; --line: #1f1f23; }
     * { box-sizing: border-box; }
@@ -108,6 +114,7 @@
     .sheet textarea { min-height: 120px; resize: none; line-height: 1.5; }
     .sheet .btns { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; margin-top: 12px; }
     .sheet .act.send { background: #93c5fd; border-color: #93c5fd; color: #000; font-weight: 700; } .sheet .act:disabled { opacity: 0.4; }
+    .stale { margin: 6px 0 0; padding: 8px 12px; border: 1px solid #713f12; background: #1a1205; color: #fde68a; border-radius: 10px; font-size: 0.8rem; line-height: 1.4; }
     .empty { flex: 1; display: grid; place-content: center; text-align: center; gap: 4px; }
     .empty h2 { margin: 0; font-size: 1.6rem; }
     .loading .bar .meta { opacity: 0.6; }
@@ -139,6 +146,7 @@
         <span class="meta" data-cleared role="status" aria-live="polite"></span>
         <button class="link" id="signout" type="button">Sign out</button>
       </header>
+      <p class="stale" data-stale role="status" hidden></p>
       <div class="stack" data-stack></div>
       <div class="empty" data-empty hidden>
         <h2 data-empty-title>Deck clear</h2>
@@ -174,15 +182,17 @@
   <script src="md.js"></script>
   <script src="deck.js"></script>
   <script src="deck-ui.js"></script>
+  <script src="offline.js"></script>
   <script src="demo.js"></script>
   <script>
     (function () {
       var views = ["signin", "checking", "denied", "error", "deck"];
       var $ = function (id) { return document.getElementById(id); };
       var sb = supabase.createClient(HQ_CONFIG.url, HQ_CONFIG.key, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: "pkce" } });
-      var deck = null;
+      var deck = null, lastDeck = HQOffline.make(window.localStorage);
+      if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js", { scope: "/hq/" }).catch(function () {});
       function startDeck(source) {
-        if (!deck) { deck = new HQDeck.Deck(source); HQDeckUI.mount($("v-deck"), deck); }
+        if (!deck) { deck = new HQDeck.Deck(source, null, null, window.HQ_DEMO ? HQ_DEMO.cache : lastDeck); HQDeckUI.mount($("v-deck"), deck); }
         deck.load();
       }
       function must(r) { if (r.error) throw new Error(r.error.message); return r; }
@@ -202,6 +212,7 @@
           views.forEach(function (v) { $("v-" + v).hidden = v !== view; });
           if (view === "error") $("error-text").textContent = state.error;
           document.body.classList.toggle("deck-on", view === "deck");
+          if (view === "signin" || view === "denied") lastDeck.clear();     // nothing of the deck stays on a signed-out device
           if (view === "deck") startDeck(api);
         },
         onSignIn: function (fn) { $("signin").addEventListener("click", fn); $("retry").addEventListener("click", fn); },

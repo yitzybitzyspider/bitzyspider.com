@@ -131,9 +131,34 @@ const ok = (name, cond, extra) => { console.log((cond ? "pass " : "FAIL ") + nam
   f = fake({ fail: true }); d = new D.Deck(f.api); await d.load(); await d.revise("keep this note");
   ok("failed revise puts the card back and keeps the note", d.top().id === 1 && /Not sent/.test(d.state.toast.text) && d.state.toast.keepNote === "keep this note");
 
+  // ----- offline: last synced deck -----
+  const O = require(path.join(__dirname, "..", "hq", "offline.js"));
+  const mem = {}; const storage = { getItem: k => (k in mem ? mem[k] : null), setItem: (k, v) => { mem[k] = v; }, removeItem: k => { delete mem[k]; } };
+  const cache = O.make(storage), t0 = new Date(2026, 10, 9, 8, 0);
+  let up = true;
+  const flaky = { deck: async () => { if (!up) throw new Error("Failed to fetch"); return [{ id: 1, title: "a" }, { id: 2, title: "b" }]; }, cleared: async () => 3, sources: async () => [],
+                  swipe: async () => { if (!up) throw new Error("Failed to fetch"); }, unswipe: async () => {}, revise: async () => {} };
+  d = new D.Deck(flaky, null, () => t0, cache); await d.load();
+  ok("a good load stores the deck and is not stale", d.state.stale === null && cache.get(t0).cards.length === 2);
+  up = false; d = new D.Deck(flaky, null, () => new Date(2026, 10, 9, 20, 0), cache); await d.load();
+  ok("offline load shows the last deck, marked stale, with no error", d.state.cards.length === 2 && d.state.stale === t0.toISOString() && d.state.error === null && d.state.cleared === 3);
+  await d.swipe("left");
+  ok("an offline swipe comes back with a message", d.top().id === 1 && /Not saved/.test(d.state.toast.text));
+  up = true; await d.load();
+  ok("back online clears the stale mark", d.state.stale === null);
+  up = false; d = new D.Deck(flaky, null, () => new Date(2026, 10, 20, 8, 0), cache); await d.load();
+  ok("a deck older than a week is dropped, not shown", d.state.cards.length === 0 && d.state.error === "Failed to fetch" && storage.getItem(O.KEY) === null);
+  storage.setItem(O.KEY, "{not json"); ok("corrupt stored deck is ignored", cache.get(t0) === null);
+  storage.setItem(O.KEY, JSON.stringify({ at: "nope", cards: [] })); ok("stored deck with a bad date is ignored", cache.get(t0) === null);
+  const full = O.make({ getItem: () => null, setItem: () => { throw new Error("QuotaExceeded"); }, removeItem: () => {} });
+  ok("storage that refuses writes is not an error", full.put([], 0, t0) === false);
+  cache.put([{ id: 9 }], 0, t0); cache.clear(); ok("clear removes the stored deck", cache.get(t0) === null);
+  d = new D.Deck(flaky, null, () => t0); await d.load();
+  ok("without a cache an offline load is a plain error", d.state.error === "Failed to fetch" && d.state.stale === null);
+
   // ----- demo mode can only switch on from a local host -----
   const demoSrc = require("fs").readFileSync(path.join(__dirname, "..", "hq", "demo.js"), "utf8");
-  const demoOn = (hostname, search) => { const w = {}; new Function("window", "location", demoSrc)(w, { hostname, search }); return !!w.HQ_DEMO; };
+  const demoOn = (hostname, search) => { const w = {}; w.HQOffline = require(path.join(__dirname, "..", "hq", "offline.js")); new Function("window", "location", demoSrc)(w, { hostname, search }); return !!w.HQ_DEMO; };
   ok("demo off on the real site even with ?demo=1", !demoOn("bitzyspider.com", "?demo=1") && !demoOn("www.bitzyspider.com", "?demo=1"));
   ok("demo off for lookalike hosts", !demoOn("localhost.evil.com", "?demo=1") && !demoOn("evil-localhost", "?demo=1") && !demoOn("127.0.0.1.evil.com", "?demo=1"));
   ok("demo off locally without the flag", !demoOn("localhost", "") && !demoOn("localhost", "?demo=10"));

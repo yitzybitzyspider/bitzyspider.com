@@ -11,7 +11,7 @@
   function mount(host, deck) {
     var q = function (s) { return host.querySelector(s); };
     var stack = q("[data-stack]"), empty = q("[data-empty]"), actions = q("[data-actions]"), toast = q("[data-toast]"),
-        cleared = q("[data-cleared]"), sheet = q("[data-sheet]"), noteBox = q("[data-note]"), approveBtn = q('[data-dir="right"]'),
+        cleared = q("[data-cleared]"), stale = q("[data-stale]"), sheet = q("[data-sheet]"), noteBox = q("[data-note]"), approveBtn = q('[data-dir="right"]'),
         ui = {}, toastTimer = null, dragging = false,
         reduce = root.matchMedia && root.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -181,6 +181,8 @@
       stack.hidden = !has; actions.hidden = !has; empty.hidden = has || s.loading;
       host.classList.toggle("loading", !!s.loading);
       if (has) approveBtn.textContent = D.approveLabel(show[0]);
+      stale.hidden = !s.stale;
+      if (s.stale) stale.textContent = "Offline. Showing the deck from " + new Date(s.stale).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" }) + ". Swipes need a connection.";
       cleared.textContent = s.loading && !has ? "Loading" : s.cards.length + (s.cards.length === 1 ? " card" : " cards") + " left, " + s.cleared + " cleared today";
       if (!has && !s.loading) {
         q("[data-empty-title]").textContent = s.error ? "Could not load the deck" : "Deck clear";

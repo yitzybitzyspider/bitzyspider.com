@@ -97,3 +97,7 @@ D-040 If Yitzy takes a card back while the reviser is working, his action wins: 
 D-041 The reviser treats only Yitzy's notes as instructions. Card content (other people's messages, scraped pages) goes to the model as data in its own block, and routing fields such as thread ids are never shown to it. An in-place edit by Yitzy can change only string fields the draft already has.
 
 D-042 The reviser uses `claude-opus-5-5` at medium effort with a strict JSON schema built from the card's own draft fields, and the API's default refusal fallback. A refusal, a missing fact, or two broken answers in a row turn the card into a to-do with the reason; rate limits and server errors leave it waiting.
+
+## 2026-11-09 Offline behavior  (author: Claude Code on Fable 5.2, refs: #70)
+
+D-043 Offline, HQ is read-only: it shows the last synced deck under a banner and refuses swipes with a message, rather than queueing them. Context: a queued approval could send an email hours later against a card that has since changed. Consequence: no background sync; the service worker caches only the app's own files and the last deck lives in localStorage for at most a week, cleared on sign-out.
