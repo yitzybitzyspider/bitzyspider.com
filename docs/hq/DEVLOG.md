@@ -103,3 +103,7 @@ Not covered by code, by design: looks, feel, real devices, real accounts, live s
 The `HQ tests` workflow ran on the tests pull request. Clean database: all five migrations applied to an empty Postgres 17, `rls_core`, `scoring`, `swipe` and `revise` passed, no rows left behind, every table has row security, anon holds nothing, agent-only functions closed to the browser. Code job: 5 suites pass (the agents cross-check is skipped in CI because that private repo is not checked out there; it runs locally).
 
 Compared the md5 of every function body from the clean build with the live `bitzy-hq` project: all ten match (`hq_is_owner`, `hq_return_revised`, `hq_revise`, `hq_score`, `hq_swipe`, `hq_to_todo`, `hq_touch`, `hq_unswipe`, `hq_upsert_card`, `hq_urgency`). The hand-applied migrations are the committed files.
+
+## 2026-11-09 Reviser agent merged  (author: Claude Code on Fable 5.2, refs: #102)
+
+Yitzy approved and the reviser pull request in `bitzy-hq-agents` was merged with its pytest check green. The `reviser` workflow is now on the default branch: it runs on `hq-revise` dispatch, by hand, and every six hours, and exits quietly until the three secrets exist. Issue #102 stays open until a live rewrite is seen after the setup wizard and the webhook (#87).
