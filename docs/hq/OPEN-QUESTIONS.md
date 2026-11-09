@@ -27,3 +27,7 @@ OQ-008 With default weights an overdue input (2 x 3 = 6) outranks an undated sta
 OQ-009 Should the warden turn a card stuck in `revising` (say 15 minutes) into an alert, or put it back in the deck with a "rewrite did not arrive" badge?
 
 OQ-010 Should the reviser learn Yitzy's standing preferences from past notes (for example "always shorter") and apply them to first drafts, so fewer cards come back?
+
+## 2026-11-09  (author: Claude Code, refs: D-048)
+
+OQ-001 closed by D-048: all three agents browse, act in Yitzy's sessions, run on the box and open PRs.

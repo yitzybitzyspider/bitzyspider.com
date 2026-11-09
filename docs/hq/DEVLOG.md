@@ -161,3 +161,11 @@ Verified: 71 pytest cases in the agents repo (24 for the command line); `scripts
 At 23:30:00 UTC pg_cron ran `hq-warden` on its own: `cron.job_run_details` shows `succeeded`, and `runs` has a second `warden` row (host `database`, zero findings) after the hand-run one at 23:11. The supervisor is live and independent of the box, GitHub and any secret. Appended a status snapshot to `ISSUES.md`: 11 issues done, 1 in progress, 5 blocked, 14 ready.
 
 What is left before real cards flow is on Yitzy's side and is one script: `scripts/hq/setup-wizard.sh` (Google sign-in, service key, Anthropic key, wake token). After it, the collectors in M1 can be built and verified against the live project.
+
+## 2026-11-09 Blocked issues routed to Grok, Instinct and Muse  (author: Claude Code, refs: D-048, OQ-001, #69, #76, #84, #87, #89, #91)
+
+Surfaced why each blocked issue is blocked and who can clear it. Yitzy confirmed the three agents' capabilities, recorded as D-048, closing OQ-001. Created labels `agent:grok` and `agent:instinct`, relabeled #84 and #89 to Grok (#84 moved to in-progress), added Instinct to #69, #76 and #87, and left a routing comment on each plus #91 for Muse. #94 and #103 stay blocked by design (dependency chain, and parked by D-038).
+
+Verified: labels and comments visible on GitHub. Not verified: no agent has picked anything up yet.
+
+Left: Yitzy runs the setup wizard; Grok's #84 unblocks #85 and #86; Instinct's #76 unblocks the executor listener in #87.
