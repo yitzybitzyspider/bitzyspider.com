@@ -39,3 +39,11 @@ Wrote and applied `supabase/migrations/0001_core.sql` to `bitzy-hq`: `cards`, `a
 Verified: `rls_core.sql` returned `rls_core ok` against the live project (anon denied, a signed-in stranger sees zero rows and cannot write, the owner can swipe and file a pending action but cannot retitle a card, insert a card, forge a finished action, or change the owner). Six REST probes with only the publishable key all returned 401. Security advisor shows one notice, the intended `hq_is_owner` definer function. Tables are empty.
 
 Left: Google sign-in is not configured (#69), so nobody can sign in yet. Scoring weights and the inputs cap are #72. The service key has not been copied into `bitzy-hq-agents` secrets; that is a manual step for Yitzy or the box wizard (#76).
+
+## 2026-11-09 #72 scoring, inputs cap, collector upsert  (author: Claude Code on Fable 5.2, refs: #72, D-007, D-024)
+
+Wrote and applied `supabase/migrations/0002_scoring.sql`: `hq_urgency` (overdue 3, within a day 2.5, three days 2, a week 1.5, otherwise 1), `hq_score` (bucket weight x urgency + the card's boost), default weights 5/4/3/2/1 and an inputs cap of 5 as rows in `hq_settings`, and the real `today_deck` view (alerts and plan pinned, then live score, inputs limited to the cap). Added `cards.fingerprint` and `hq_upsert_card(jsonb)`, the single write path for collectors: same fingerprint is a quiet refresh, a new fingerprint bumps `changed_at` and brings a cleared card back once with `changed = true`; snoozed cards stay snoozed. The upsert is executable by the service role only.
+
+Verified: `supabase/tests/scoring.sql` returned `scoring ok` on the live project (pinning, order, cap of 5 keeping the urgent inputs, cap and weights read from settings, resurfacing rules, no duplicates, browser cannot call the upsert). It ran inside a rolled-back transaction.
+
+Left: the cap is "visible at once", not "per calendar day"; see OQ-007. The test deletes cards inside its transaction, so run it only where a brief lock on `cards` is fine.
