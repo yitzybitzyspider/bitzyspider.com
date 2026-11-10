@@ -37,7 +37,7 @@ allRpcs.forEach(r => {
   ok(r.name + ": page arguments match the SQL signature", unknown.length === 0 && missing.length === 0, { unknown, missing, sql: names });
   ok(r.name + ": the signed-in browser may run it, anonymous may not", S.exec[r.name].has("authenticated") && !S.exec[r.name].has("anon"), [...S.exec[r.name]]);
 });
-["hq_wake", "hq_wake_on_revision", "hq_wake_on_action", "hq_warden", "hq_schedule_warden", "hq_has_function"].forEach(f =>
+["hq_wake", "hq_wake_on_revision", "hq_wake_on_action", "hq_warden", "hq_schedule_warden", "hq_has_function", "hq_source_defaults"].forEach(f =>
   ok(f + ": callable by no role at all (triggers only)", S.exec[f] && S.exec[f].size === 0, S.exec[f] && [...S.exec[f]]));
 const wakeSql = read("supabase/migrations/" + S.files.filter(f => /wake/.test(f))[0]);
 const allSql = S.files.map(f => read("supabase/migrations/" + f).replace(/--.*$/gm, "")).join("\n");
@@ -55,8 +55,27 @@ froms.forEach(f => {
   const cols = f.cols === "*" ? [] : f.cols.split(",").map(x => x.trim());
   ok("select from " + f.t + " uses columns that exist", !!known && cols.every(c => known.includes(c)), { cols, known });
 });
-const filters = [...inline.matchAll(/\.in\("status",\s*\[([^\]]*)\]\)/g)].flatMap(m => m[1].match(/"(\w+)"/g).map(x => x.slice(1, -1)));
-ok("status values the page filters on are allowed by the database", filters.length > 0 && filters.every(v => S.checks["cards.status"].includes(v)), filters);
+const filters = [...inline.matchAll(/sb\.from\("(\w+)"\)[^;]*?\.in\("status",\s*\[([^\]]*)\]\)/g)].flatMap(m => m[2].match(/"(\w+)"/g).map(x => ({ t: m[1], v: x.slice(1, -1) })));
+ok("status values the page filters on are allowed by that table (" + filters.length + ")", filters.length >= 5 && filters.every(f => (S.checks[f.t + ".status"] || []).includes(f.v)), filters.filter(f => !(S.checks[f.t + ".status"] || []).includes(f.v)));
+
+// ----- 2b. the agents view agrees with the agent_status view -----
+const AG = require("../hq/agents.js"), agJs = read("hq/agents.js"), agUi = read("hq/agents-ui.js"), agSql = read("supabase/migrations/" + S.files.filter(f => /agents/.test(f))[0]).replace(/--.*$/gm, "");
+const agHooks = [...new Set([...agUi.matchAll(/q\("(\[data-[\w-]+\])"\)/g)].map(m => m[1].slice(1, -1)))];
+const agSection = html.slice(html.indexOf('<section id="v-agents"'), html.indexOf("<noscript>"));
+ok("every data hook agents-ui queries exists in the agents section (" + agHooks.length + ")", agHooks.length >= 8 && agHooks.every(h => new RegExp(h + "(?=[\\s>=])").test(agSection)), agHooks.filter(h => !new RegExp(h + "(?=[\\s>=])").test(agSection)));
+const statusCols = /returns table \(([\s\S]*?)\)\s*language/.exec(agSql)[1].split(",").map(x => x.trim().split(/\s+/)[0]);
+const readCols = [...new Set([...(agJs + agUi).matchAll(/\b(?:a|r)\.(\w+)\b/g)].map(m => m[1]))].filter(c => !["issue", "created_at", "status"].includes(c));
+ok("every agent field the page reads is a column of agent_status (" + readCols.length + ")", readCols.length >= 10 && readCols.every(c => statusCols.includes(c)), readCols.filter(c => !statusCols.includes(c)));
+ok("the page's four kinds are the database's four kinds", AG.KINDS.map(k => k.key).sort().join() === S.checks["sources.kind"].slice().sort().join(), S.checks["sources.kind"]);
+const sqlStates = [...new Set([.../case when not s\.enabled([\s\S]*?)end\s+from/.exec(agSql)[0].matchAll(/then '(\w+)'|else '(\w+)'/g)].map(m => m[1] || m[2]))].sort();
+ok("every state the database can report has a label, and the page invents none", sqlStates.join() === Object.keys(AG.STATE).filter(k => k !== "planned").sort().join(), sqlStates);
+ok("the states the page treats as trouble are real states", Object.keys(AG.BAD).every(k => sqlStates.includes(k)));
+const issueIndex = read("docs/hq/ISSUES.md");
+ok("every planned agent has a real kind and an indexed issue (" + AG.PLANNED.length + ")", AG.PLANNED.length >= 10 && AG.PLANNED.every(p => S.checks["sources.kind"].includes(p.kind) && issueIndex.includes("issues/" + p.issue + ")")) && new Set(AG.PLANNED.map(p => p.name)).size === AG.PLANNED.length, AG.PLANNED.filter(p => !issueIndex.includes("issues/" + p.issue + ")")));
+ok("hq_agent_status: the signed-in browser may run it, anonymous may not", S.exec.hq_agent_status.has("authenticated") && !S.exec.hq_agent_status.has("anon"), [...S.exec.hq_agent_status]);
+ok("agent_status is a security invoker view closed to anon", /create view public\.agent_status with \(security_invoker = true\)/.test(agSql) && /revoke all on public\.agent_status from anon/.test(agSql) && !/security definer/.test(agSql));
+ok("the agents view never writes HTML from data", !/innerHTML|insertAdjacentHTML|outerHTML/.test(agUi.replace(/\/\/.*$/gm, "")));
+ok("the page asks for live updates on tables the migration publishes", [...inline.matchAll(/postgres_changes",\s*\{[^}]*table:\s*"(\w+)"/g)].map(m => m[1]).every(t => new RegExp("add table public\\." + t + ";").test(agSql)) && /postgres_changes/.test(inline));
 
 // ----- 3. the vocabulary is the same on both sides -----
 const outcomes = ["right", "left", "up"].flatMap(d => [D.outcome({ proposed_action: { type: "x" } }, d).status, D.outcome({}, d).status]);
@@ -104,7 +123,7 @@ ok("the validator rejects a placeholder draft", contractErrors({ key: "k", sourc
 
 // ----- 5. the agents repo agrees with the database (when it is checked out next door) -----
 const agents = path.join(repo, "..", "bitzy-hq-agents");
-function agentFile(rel) { for (const ref of ["cli", "HEAD"]) { try { return cp.execSync("git show " + ref + ":" + rel, { cwd: agents, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }); } catch (e) {} } return null; }
+function agentFile(rel) { for (const ref of ["HEAD", "cli"]) { try { return cp.execSync("git show " + ref + ":" + rel, { cwd: agents, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }); } catch (e) {} } return null; }
 const store = fs.existsSync(agents) ? agentFile("reviser/store.py") : null, shared = fs.existsSync(agents) ? agentFile("hq_heartbeat/supabase.py") : null;
 if (!store || !shared) skip("agents repo calls match the SQL signatures", "bitzy-hq-agents with reviser/store.py and hq_heartbeat/supabase.py not found next to this repo");
 else {
@@ -132,6 +151,19 @@ else {
   ok("the heartbeat writes to runs and sources (" + writes.length + " calls)", writes.length === 4 && writes.some(w => w.t === "runs") && writes.some(w => w.t === "sources"), writes);
   writes.forEach(w => ok("heartbeat write to " + w.t + " uses columns that exist: " + w.cols.join(", "), w.cols.length > 0 && w.cols.every(c => S.tables[w.t].includes(c)), w.cols.filter(c => !S.tables[w.t].includes(c))));
   ok("registering a source never sends the enabled flag", !/register_source[\s\S]{0,400}"enabled"\s*:/.test(shared.split("def start_run")[0].split("def register_source")[1].split("prefer=")[0]));
+  // agent-ping (#115): outside agents write the same rows, with the same vocabulary.
+  if (!/def cmd_ping/.test(cli)) skip("agent-ping matches the database", "the agents checkout next door predates agent-ping");
+  else {
+    const tuple = n => (new RegExp("^" + n + " = \\(([^)]*)\\)", "m").exec(cli) || [, ""])[1].match(/"(\w+)"/g).map(x => x.slice(1, -1)).sort().join();
+    ok("agent-ping offers exactly the database's kinds and hosts", tuple("KINDS") === S.checks["sources.kind"].slice().sort().join() && tuple("RUNS_ON") === S.checks["sources.runs_on"].slice().sort().join(), [tuple("KINDS"), tuple("RUNS_ON")]);
+    const pingWrites = [...cli.matchAll(/_call\("(?:POST|PATCH)",\s*f?"(runs|sources)[^"]*",\s*\{([^}]*)\}/g)].map(m => ({ t: m[1], cols: [...m[2].matchAll(/"(\w+)"\s*:/g)].map(k => k[1]) }));
+    const patchCols = [...(/changes = \{[^}]*\}/.exec(cli) || [""])[0].matchAll(/\("(\w+)",/g)].map(m => m[1]);
+    ok("agent-ping writes only columns that exist (" + pingWrites.length + " inserts, " + patchCols.length + " patchable)", pingWrites.length === 2 && pingWrites.every(w => w.cols.every(c => S.tables[w.t].includes(c))) && patchCols.length === 4 && patchCols.every(c => S.tables.sources.includes(c)), pingWrites);
+    ok("agent-ping never sends the enabled flag", !/"enabled"\s*:/.test(cli));
+    ok("the on-demand interval is one the view reads as on demand", /^ON_DEMAND = "(\d+) years?"/m.test(cli) && />= interval '1 year'/.test(agSql));
+    const labelUses = [...((agentFile("reviser/run.py") || "") + (agentFile("collectors/beeper_dump/cli.py") || "")).matchAll(/kind="(\w+)"/g)].map(m => m[1]);
+    ok("kinds the agents register with are real kinds", labelUses.length > 0 && labelUses.every(k => S.checks["sources.kind"].includes(k)), labelUses);
+  }
   const usesOn = [...(agentFile("reviser/run.py") || "").matchAll(/runs_on="(\w+)"/g)].map(m => m[1]);
   ok("runs_on values the agents use are allowed by the database", usesOn.length > 0 && usesOn.every(v => S.checks["sources.runs_on"].includes(v)), usesOn);
 }

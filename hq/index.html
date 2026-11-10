@@ -118,7 +118,52 @@
     .empty { flex: 1; display: grid; place-content: center; text-align: center; gap: 4px; }
     .empty h2 { margin: 0; font-size: 1.6rem; }
     .loading .bar .meta { opacity: 0.6; }
-    @media (prefers-reduced-motion: reduce) { .card, .act { transition: none; } }
+    /* ---- agents ---- */
+    .navdot { display: inline-flex; align-items: center; gap: 7px; }
+    .navdot::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #3f3f46; }
+    .navdot[data-level="ok"]::before { background: #22c55e; } .navdot[data-level="bad"]::before { background: #ef4444; }
+    .navdot[data-level="running"]::before { background: #22c55e; animation: pulse 1.4s ease-in-out infinite; }
+    #v-agents { flex: 1; display: flex; flex-direction: column; min-height: 0; padding: max(12px, env(safe-area-inset-top)) 16px 0; }
+    .ag-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 10px 0 max(16px, env(safe-area-inset-bottom)); }
+    .ag-h { margin: 22px 0 8px; font-family: var(--mono); font-size: 0.68rem; letter-spacing: 0.2em; text-transform: uppercase; color: #a1a1aa; font-weight: 600;
+            display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+    .ag-h small { font-size: 0.62rem; letter-spacing: 0.04em; text-transform: none; color: var(--dim); font-weight: 400; text-align: right; }
+    .ag-sum { margin: 22px 0 -8px; font-size: 0.9rem; color: #d4d4d8; }
+    .red { display: block; width: 100%; text-align: left; margin: 0 0 8px; padding: 12px 14px; min-height: 48px; border-radius: 12px; border: 1px solid #7f1d1d;
+           background: #140a0a; color: #fca5a5; font-size: 0.92rem; line-height: 1.35; overflow-wrap: anywhere; }
+    .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .tile { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; min-height: 76px; padding: 12px 14px; border-radius: 14px;
+            border: 1px solid var(--line); background: #0c0c0f; color: #71717a; }
+    .tile strong { font-size: 1.7rem; line-height: 1; font-weight: 650; font-variant-numeric: tabular-nums; }
+    .tile.has strong { color: #fff; } .tile.has .k { color: #a1a1aa; }
+    .tile small { font-family: var(--mono); font-size: 0.62rem; color: #fde68a; }
+    .wlist, .agents { list-style: none; margin: 8px 0 0; padding: 0; }
+    .wrow { display: flex; align-items: baseline; gap: 10px; width: 100%; min-height: 44px; padding: 10px 0; text-align: left; background: none; border: 0;
+            border-top: 1px solid var(--line); color: #e4e4e7; font-size: 0.95rem; line-height: 1.35; }
+    .wrow .k { min-width: 52px; flex-shrink: 0; } .wrow .wt { overflow-wrap: anywhere; }
+    .more { padding: 10px 0; border-top: 1px solid var(--line); color: var(--dim); font-family: var(--mono); font-size: 0.7rem; }
+    .agent { display: flex; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); }
+    .agent .dot { flex-shrink: 0; width: 10px; height: 10px; margin-top: 6px; border-radius: 50%; background: #3f3f46; }
+    .abody { flex: 1; min-width: 0; } .atop { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .atop strong { font-size: 1rem; font-weight: 600; overflow-wrap: anywhere; }
+    .adetail { margin: 3px 0 0; font-size: 0.82rem; line-height: 1.4; color: #a1a1aa; overflow-wrap: anywhere; }
+    .agent .open { display: inline-block; padding: 6px 0 0; }
+    .chip.st { flex-shrink: 0; }
+    .agent[data-state="ok"] .dot { background: #22c55e; } .agent[data-state="ok"] .st { color: #86efac; border-color: #14532d; }
+    .agent[data-state="running"] .dot { background: #22c55e; animation: pulse 1.4s ease-in-out infinite; }
+    .agent[data-state="running"] .st { color: #000; background: #22c55e; border-color: #22c55e; font-weight: 700; }
+    .agent[data-state="running"] .adetail { color: #86efac; font-variant-numeric: tabular-nums; }
+    .agent[data-state="failed"] .dot, .agent[data-state="hung"] .dot { background: #ef4444; }
+    .agent[data-state="failed"] .st, .agent[data-state="hung"] .st { color: #fca5a5; border-color: #7f1d1d; }
+    .agent[data-state="failed"] .adetail, .agent[data-state="hung"] .adetail { color: #fca5a5; }
+    .agent[data-state="late"] .dot { background: #FDB515; } .agent[data-state="late"] .st { color: #fde68a; border-color: #713f12; }
+    .agent[data-state="planned"], .agent[data-state="off"] { opacity: 0.55; }
+    .agent[data-state="planned"] .dot { background: none; border: 1px dashed #52525b; }
+    .ag-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 28px; padding-top: 8px; border-top: 1px solid var(--line);
+               font-family: var(--mono); font-size: 0.66rem; color: var(--dim); }
+    .ag-foot .link { margin: 0; padding: 12px 0 12px 12px; }
+    @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0.55); } 50% { box-shadow: 0 0 0 7px rgba(34,197,94,0); } }
+    @media (prefers-reduced-motion: reduce) { .card, .act { transition: none; } .navdot::before, .agent .dot { animation: none !important; } }
   </style>
 </head>
 <body>
@@ -144,7 +189,7 @@
       <header class="bar">
         <p class="eyebrow">HQ</p>
         <span class="meta" data-cleared role="status" aria-live="polite"></span>
-        <button class="link" id="signout" type="button">Sign out</button>
+        <button class="link navdot" id="to-agents" type="button" data-level="none">Agents</button>
       </header>
       <p class="stale" data-stale role="status" hidden></p>
       <div class="stack" data-stack></div>
@@ -174,6 +219,26 @@
         <span data-toast-text></span><button data-undo type="button">Undo</button>
       </div>
     </section>
+    <section id="v-agents" hidden>
+      <header class="bar">
+        <p class="eyebrow">HQ agents</p>
+        <span class="meta" data-agents-meta role="status" aria-live="polite"></span>
+        <button class="link" data-open-deck type="button">Deck</button>
+      </header>
+      <p class="stale" data-agents-error role="status" hidden></p>
+      <div class="ag-scroll">
+        <div data-reds hidden></div>
+        <h3 class="ag-h">Waiting on you</h3>
+        <div class="tiles" data-waiting></div>
+        <ul class="wlist" data-waiting-list></ul>
+        <p class="ag-sum" data-agents-headline role="status"></p>
+        <div data-groups></div>
+        <footer class="ag-foot">
+          <span data-version></span>
+          <button class="link" id="signout" type="button">Sign out</button>
+        </footer>
+      </div>
+    </section>
     <noscript><p class="note">HQ needs JavaScript.</p></noscript>
   </main>
   <script src="vendor/supabase-2.45.4.js"></script>
@@ -182,6 +247,8 @@
   <script src="md.js"></script>
   <script src="deck.js"></script>
   <script src="deck-ui.js"></script>
+  <script src="agents.js"></script>
+  <script src="agents-ui.js"></script>
   <script src="offline.js"></script>
   <script src="demo.js"></script>
   <script>
@@ -189,11 +256,29 @@
       var views = ["signin", "checking", "denied", "error", "deck"];
       var $ = function (id) { return document.getElementById(id); };
       var sb = supabase.createClient(HQ_CONFIG.url, HQ_CONFIG.key, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: "pkce" } });
-      var deck = null, lastDeck = HQOffline.make(window.localStorage);
+      var deck = null, board = null, agentsUi = null, stopLive = null, lastDeck = HQOffline.make(window.localStorage);
       if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js", { scope: "/hq/" }).catch(function () {});
       function startDeck(source) {
         if (!deck) { deck = new HQDeck.Deck(source, null, null, window.HQ_DEMO ? HQ_DEMO.cache : lastDeck); HQDeckUI.mount($("v-deck"), deck); }
         deck.load();
+        if (!board) {
+          board = new HQAgents.Board(source);
+          agentsUi = HQAgentsUI.mount($("v-agents"), board, { openDeck: function () { showAgents(false); }, badge: $("to-agents"), version: HQ_CONFIG.version });
+        }
+        // Live: a run starting or finishing reaches the page in about a second. Without it, the view polls.
+        if (source.live && !stopLive) stopLive = source.live(function () { agentsUi.changed(); }, function (on) { board.setLive(on); });
+        board.load();
+      }
+      // The deck and the agents view share the signed-in shell; exactly one of the two is on screen.
+      function showAgents(on) {
+        $("v-deck").hidden = on; $("v-agents").hidden = !on;
+        if (on && board) board.load();
+        if (!on) window.dispatchEvent(new Event("hq-refresh"));
+      }
+      // Signed out: stop listening and keep nothing about the agents in memory.
+      function stopAgents() {
+        if (stopLive) stopLive(); stopLive = null;
+        board.state.rows = []; board.state.actions = []; board.state.cards = []; board.state.at = null; board.state.live = false;
       }
       function must(r) { if (r.error) throw new Error(r.error.message); return r; }
       var api = {
@@ -205,11 +290,22 @@
         sources: async function () { return must(await sb.from("sources").select("name,enabled,last_ok_at,expected_interval")).data; },
         swipe: async function (id, dir, until, veto, edit) { must(await sb.rpc("hq_swipe", { p_card: id, p_dir: dir, p_snooze_until: until, p_veto: veto, p_edit: edit })); },
         revise: async function (id, note) { must(await sb.rpc("hq_revise", { p_card: id, p_note: note })); },
-        unswipe: async function (id) { must(await sb.rpc("hq_unswipe", { p_card: id })); }
+        unswipe: async function (id) { must(await sb.rpc("hq_unswipe", { p_card: id })); },
+        agents: async function () { return must(await sb.from("agent_status").select("*")).data; },
+        pendingActions: async function () { return must(await sb.from("actions").select("id,type,status,created_at,card_id").in("status", ["pending", "claimed"]).order("created_at")).data; },
+        live: function (onEvent, onStatus) {
+          var ch = sb.channel("hq-agents")
+            .on("postgres_changes", { event: "*", schema: "public", table: "runs" }, onEvent)
+            .on("postgres_changes", { event: "*", schema: "public", table: "sources" }, onEvent)
+            .subscribe(function (status) { onStatus(status === "SUBSCRIBED"); });
+          return function () { sb.removeChannel(ch); };
+        }
       };
       var ui = {
         show: function (view, state) {
           views.forEach(function (v) { $("v-" + v).hidden = v !== view; });
+          $("v-agents").hidden = true;
+          if (view !== "deck" && board) stopAgents();
           if (view === "error") $("error-text").textContent = state.error;
           document.body.classList.toggle("deck-on", view === "deck");
           if (view === "signin" || view === "denied") lastDeck.clear();     // nothing of the deck stays on a signed-out device
@@ -219,6 +315,7 @@
         onSignOut: function (fn) { $("signout").addEventListener("click", fn); }
       };
       $("reload").addEventListener("click", function () { location.replace("/hq/"); });
+      $("to-agents").addEventListener("click", function () { showAgents(true); });
       if (window.HQ_DEMO) {   // localhost only, see demo.js
         views.forEach(function (v) { $("v-" + v).hidden = v !== "deck"; });
         document.body.classList.add("deck-on"); $("signout").hidden = true;

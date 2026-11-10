@@ -27,6 +27,25 @@
       body_md: "<script>window.__pwned = 1</script> [click](javascript:window.__pwned=1) <b onmouseover=\"window.__pwned=1\">x</b>",
       proposed_action: { type: "reply", draft: { to: "<img src=x onerror=window.__pwned=1>", text: "<script>window.__pwned=1</script>" } }, raw: { revision_count: 1, last_note: "<img src=x onerror=window.__pwned=1>", revision_summary: "<b>x</b>" } }
   ];
+  // Sample agents for the Agents view. "beeper" starts and finishes a run every few seconds so the live path can be seen.
+  var m = function (n) { return new Date(Date.now() + n * 60e3).toISOString(); };
+  var agents = [
+    { name: "beeper", title: "Beeper chat dump", kind: "collector", runs_on: "mac", enabled: true, on_demand: false, state: "ok", last_ok_at: m(-12), next_due_at: m(18), last_started_at: m(-12), last_finished_at: m(-12), last_cards: 0, last_host: "mac" },
+    { name: "haas", title: "Haas calendar and Canvas", kind: "collector", runs_on: "box", enabled: true, on_demand: false, state: "ok", last_ok_at: m(-20), next_due_at: m(10), last_finished_at: m(-20), last_cards: 4, last_host: "box" },
+    { name: "cmg", title: "CMG Bears scout", kind: "collector", runs_on: "box", enabled: true, on_demand: false, state: "late", last_ok_at: m(-420), next_due_at: m(-180), last_finished_at: m(-420), last_cards: 2, last_host: "box" },
+    { name: "email", title: "Email triage", kind: "collector", runs_on: "box", enabled: true, on_demand: false, state: "failed", last_ok_at: m(-200), next_due_at: m(-185), last_started_at: m(-9), last_finished_at: m(-9), last_error: "HTTP 401 token_revoked <img src=x onerror=window.__pwned=1>", last_host: "box" },
+    { name: "reviser", title: "Reviser", kind: "worker", runs_on: "hosted", enabled: true, on_demand: true, state: "ok", last_ok_at: m(-95), last_finished_at: m(-95), last_host: "github" },
+    { name: "grok", title: "Grok research", kind: "worker", runs_on: "box", enabled: true, on_demand: true, state: "hung", last_started_at: m(-64), last_host: "box" },
+    { name: "executor-beeper", title: "Send approved chat replies", kind: "executor", runs_on: "box", enabled: false, on_demand: true, state: "off", last_host: "box" },
+    { name: "warden", title: "Warden", kind: "auditor", runs_on: "hosted", enabled: true, on_demand: false, state: "ok", last_ok_at: m(-7), next_due_at: m(23), last_finished_at: m(-7), last_cards: 1, last_host: "database" }
+  ];
+  var liveFn = null;
+  function cycle() {
+    var b = agents[0];
+    if (b.state === "running") { b.state = "ok"; b.last_finished_at = b.last_ok_at = m(0); b.next_due_at = m(30); }
+    else { b.state = "running"; b.last_started_at = m(0); b.last_finished_at = null; }
+    if (liveFn) liveFn();
+  }
   var log = [];
   var offline = /[?&]offline=1/.test(location.search), mem = {};
   root.HQ_DEMO = {
@@ -43,7 +62,7 @@
       sources: async function () { return [{ name: "canvas", enabled: true, last_ok_at: h(-0.2), expected_interval: "00:30:00" }]; },
       swipe: async function (id, dir, until, veto, edit) {
         if (/[?&]fail=1/.test(location.search)) throw new Error("offline (demo)");
-        log.push({ id: id, dir: dir, until: until, veto: veto, edit: edit }); cards.forEach(function (c) { if (c.id === id) c._gone = true; });
+        log.push({ id: id, dir: dir, until: until, veto: veto, edit: edit, at: new Date().toISOString() }); cards.forEach(function (c) { if (c.id === id) c._gone = true; });
       },
       // Stands in for the reviser agent: after a moment the card comes back rewritten.
       revise: async function (id, note) {
@@ -60,7 +79,24 @@
           root.dispatchEvent(new Event("hq-refresh"));
         }, 2500);
       },
-      unswipe: async function (id) { log.push({ undo: id }); cards.forEach(function (c) { if (c.id === id) { clearTimeout(c._timer); c._gone = false; } }); }
+      unswipe: async function (id) { log.push({ undo: id }); cards.forEach(function (c) { if (c.id === id) { clearTimeout(c._timer); c._gone = false; } }); },
+      agents: async function () {
+        if (offline && root.HQ_DEMO.loads > 1) throw new Error("Failed to fetch");
+        return agents.map(function (a) { return Object.assign({}, a); });
+      },
+      // An approved card with an action sits here until an executor runs it; the demo has no executor.
+      pendingActions: async function () {
+        return log.filter(function (l) { return l.dir === "right"; }).map(function (l, i) {
+          var c = cards.filter(function (x) { return x.id === l.id; })[0];
+          return c && c.proposed_action ? { id: i + 1, card_id: c.id, type: c.proposed_action.type, status: "pending", created_at: l.at } : null;
+        }).filter(Boolean);
+      },
+      // ?nolive=1 shows the polling fallback.
+      live: function (onEvent, onStatus) {
+        if (/[?&]nolive=1/.test(location.search)) { onStatus(false); return function () {}; }
+        liveFn = onEvent; onStatus(true); var t = setInterval(cycle, 7000);
+        return function () { clearInterval(t); liveFn = null; };
+      }
     }
   };
 })(window);

@@ -3,8 +3,8 @@
 // the cache is only the fallback. It never touches cross-origin requests, so nothing from
 // Supabase (cards, tokens) is ever stored here. The last deck is kept by the page itself.
 "use strict";
-var CACHE = "hq-shell-v1";
-var SHELL = ["./", "config.js", "auth.js", "md.js", "deck.js", "deck-ui.js", "demo.js", "offline.js", "vendor/supabase-2.45.4.js",
+var CACHE = "hq-shell-v2";
+var SHELL = ["./", "config.js", "auth.js", "md.js", "deck.js", "deck-ui.js", "agents.js", "agents-ui.js", "demo.js", "offline.js", "vendor/supabase-2.45.4.js",
              "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/maskable-512.png", "icons/apple-touch-180.png"];
 
 self.addEventListener("install", function (e) {

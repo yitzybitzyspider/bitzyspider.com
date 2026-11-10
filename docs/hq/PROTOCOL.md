@@ -19,6 +19,28 @@ For any agent (Claude Code, Muse, Instinct, Grokbot, or a person) picking up an 
 7. **If two branches both appended to a log,** merge main into yours and run `scripts/hq/rebase_logs.sh <your-branch-tip>`; it rebuilds each log as main's version plus your additions.
 8. **Database changes:** a numbered migration in `supabase/migrations/` plus a suite in `supabase/tests/` listed in `scripts/hq/test-db.sh`. Apply it to the live project only after the clean-database CI job passes, then verify its effect on the live project (not just that it ran) and compare the function fingerprints CI prints with the live ones. Never edit an applied migration: fix forward with a new one.
 
+## Report in while you work (D-051)
+
+Yitzy watches the Agents view on /hq to see who is doing what. If your work runs inside `hq_heartbeat.run(...)`, pass `kind` and `title` and you are done. If it does not (Grok, Instinct, Muse, a Claude Code session, anything by hand), ping from the `bitzy-hq-agents` checkout:
+
+```bash
+hq agent-ping grok --kind worker --title "Grok research" --status start
+```
+
+```bash
+hq agent-ping grok --status ok --cards 3
+```
+
+```bash
+hq agent-ping grok --status fail --error "12twenty login expired"
+```
+
+- `--kind` is `collector` (gathers information), `worker` (drafts or does the work), `executor` (carries out what Yitzy approved) or `auditor` (checks the others). Send it on the first ping; it is kept afterwards.
+- Use the name the agent has in the planned list in `hq/agents.js` if it is there, so it does not show twice.
+- Add `--every "30 minutes"` only if you run on a schedule. Without it you are "on demand" and never count as late.
+- A `start` with no `ok` or `fail` after it shows as hung after 30 minutes and the warden raises an alert. Always close what you open.
+- The ping always exits 0 and prints what happened. If it prints `off:`, Yitzy switched you off in HQ: stop.
+
 ## When to bring Yitzy in
 
 Only two cases (D-046):
