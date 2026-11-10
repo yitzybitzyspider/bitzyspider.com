@@ -166,6 +166,27 @@ set_var() {
   warn "skipped GitHub variable $name, gh not ready; set it later"
 }
 
+# ask_vetted KIND KEY "Prompt" [URL]: ask for a secret and prove it works before anything is saved
+# (F-018). Up to three tries. On success VETTED holds the value to save; on giving up it is empty.
+# shellcheck source=/dev/null
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/secret-checks.sh"
+ask_vetted() {
+  local kind="$1" key="$2" prompt="$3" url="${4:-}" try
+  VETTED=""
+  for try in 1 2 3; do
+    ask_secret "$key" "$prompt"
+    [[ -z "${!key}" ]] && return 1
+    if vet_secret "$kind" "${!key}" "$url"; then
+      [[ -n "$VET_NOTE" ]] && warn "Heads up: $VET_NOTE."
+      printf '  %s✓ tested%s the key works\n' "$GREEN" "$RESET"
+      return 0
+    fi
+    warn "Not saved: $VET_WHY."
+    (( try < 3 )) && note "Copy it again and paste it once, then press Enter."
+  done
+  return 1
+}
+
 # finish clears, then shows a closing summary of everything configured.
 finish() {
   _clear
@@ -240,25 +261,24 @@ say "as a GitHub Actions secret on ${AGENTS_REPO} (and later on the box)."
 open_url "https://supabase.com/dashboard/project/${REF}/settings/api-keys"
 step "Find the service_role key. If the page has a Legacy API keys tab, it is there. Reveal and copy it."
 note "I am not certain of the current tab names on this page. You want the key labeled service_role, not anon and not publishable."
-ask_secret SUPABASE_SERVICE_KEY "Paste the service_role key (input hidden):"
 export GH_REPO="$AGENTS_REPO"
-if [[ -n "${SUPABASE_SERVICE_KEY}" ]]; then
-  set_secret SUPABASE_SERVICE_KEY "$SUPABASE_SERVICE_KEY"
+if ask_vetted supabase SUPABASE_SERVICE_KEY "Paste the service_role key (input hidden):" "$SUPA_URL"; then
+  set_secret SUPABASE_SERVICE_KEY "$VETTED"
   set_secret SUPABASE_URL "$SUPA_URL"
   # The hq command line on this Mac reads the same two values from the agents repo's .env (gitignored, private repo).
   if [[ -d "$AGENTS_DIR" ]]; then
     ENV_FILE="$AGENTS_DIR/.env"
     write_env SUPABASE_URL "$SUPA_URL"
-    write_env SUPABASE_SERVICE_KEY "$SUPABASE_SERVICE_KEY"
+    write_env SUPABASE_SERVICE_KEY "$VETTED"
     chmod 600 "$ENV_FILE"
   else
     SKIPPED+=("Local .env for the hq command: clone ${AGENTS_REPO} to ${AGENTS_DIR} and rerun")
   fi
 else
   SKIPPED+=("GitHub secret SUPABASE_SERVICE_KEY on ${AGENTS_REPO}")
-  warn "Nothing pasted; skipped."
+  warn "No working key saved; skipped."
 fi
-unset SUPABASE_SERVICE_KEY
+unset SUPABASE_SERVICE_KEY VETTED
 pause
 
 stage "Anthropic API key for the reviser"
@@ -266,14 +286,13 @@ say "The reviser makes one Claude call each time you send a card back with a not
 open_url "https://console.anthropic.com/settings/keys"
 step "Create a key named bitzy-hq-reviser so its spend shows up on its own line."
 step "Copy it now; it is shown once."
-ask_secret ANTHROPIC_API_KEY "Paste the Anthropic API key (input hidden):"
-if [[ -n "${ANTHROPIC_API_KEY}" ]]; then
-  set_secret ANTHROPIC_API_KEY "$ANTHROPIC_API_KEY"
+if ask_vetted anthropic ANTHROPIC_API_KEY "Paste the Anthropic API key (input hidden):"; then
+  set_secret ANTHROPIC_API_KEY "$VETTED"
 else
   SKIPPED+=("GitHub secret ANTHROPIC_API_KEY on ${AGENTS_REPO}")
-  warn "Nothing pasted; skipped."
+  warn "No working key saved; skipped."
 fi
-unset ANTHROPIC_API_KEY
+unset ANTHROPIC_API_KEY VETTED
 pause
 
 stage "GitHub token so the database can wake the agents"
@@ -286,6 +305,7 @@ step "Permissions, Repository permissions, Contents: Read and write. Nothing els
 note "Contents write is what GitHub requires for a repository_dispatch. The token cannot reach any other repo."
 step "Generate token and copy it."
 ask_secret HQ_WAKE_TOKEN "Paste the token to test it (input hidden; it is not saved by this script):"
+HQ_WAKE_TOKEN=$(one_copy "$(clean_secret "$HQ_WAKE_TOKEN")")
 if [[ -n "${HQ_WAKE_TOKEN}" ]]; then
   code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "https://api.github.com/repos/${AGENTS_REPO}/dispatches" \
     -H "Authorization: Bearer ${HQ_WAKE_TOKEN}" -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" \

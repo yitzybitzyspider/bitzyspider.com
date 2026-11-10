@@ -128,9 +128,10 @@ const store = fs.existsSync(agents) ? agentFile("reviser/store.py") : null, shar
 if (!store || !shared) skip("agents repo calls match the SQL signatures", "bitzy-hq-agents with reviser/store.py and hq_heartbeat/supabase.py not found next to this repo");
 else {
   const cli = agentFile("cli/hq.py") || "";
-  const py = store + "\n" + shared + "\n" + cli;
+  const doctorPy = agentFile("cli/doctor.py") || "";
+  const py = store + "\n" + shared + "\n" + cli + "\n" + doctorPy;
   const calls = [...py.matchAll(/"rpc\/(\w+)",\s*\{([^}]*)\}/g)].map(m => ({ name: m[1], keys: [...m[2].matchAll(/"(p_?\w*)"\s*:/g)].map(k => k[1]) }));
-  ok("the agents call only functions we know about", [...new Set(calls.map(c => c.name))].sort().join() === "hq_return_revised,hq_swipe,hq_to_todo,hq_upsert_card", calls);
+  ok("the agents call only functions we know about", [...new Set(calls.map(c => c.name))].sort().join() === (doctorPy ? "hq_return_revised,hq_revise,hq_swipe,hq_to_todo,hq_upsert_card" : "hq_return_revised,hq_swipe,hq_to_todo,hq_upsert_card"), calls);
   ok("every function the agents call is open to the service role", calls.every(c => S.exec[c.name] && S.exec[c.name].has("service_role")), calls.filter(c => !(S.exec[c.name] && S.exec[c.name].has("service_role"))));
   const deckCols = S.tables.cards.concat(["live_score", "pinned", "inputs_rank"]);
   const cliSelects = [...cli.matchAll(/(today_deck|cards)\?[^"]*select=([\w,]+)|"select":\s*"([\w,]+)"/g)].map(m => (m[2] || m[3]).split(","));
@@ -151,6 +152,24 @@ else {
   ok("the heartbeat writes to runs and sources (" + writes.length + " calls)", writes.length === 4 && writes.some(w => w.t === "runs") && writes.some(w => w.t === "sources"), writes);
   writes.forEach(w => ok("heartbeat write to " + w.t + " uses columns that exist: " + w.cols.join(", "), w.cols.length > 0 && w.cols.every(c => S.tables[w.t].includes(c)), w.cols.filter(c => !S.tables[w.t].includes(c))));
   ok("registering a source never sends the enabled flag", !/register_source[\s\S]{0,400}"enabled"\s*:/.test(shared.split("def start_run")[0].split("def register_source")[1].split("prefer=")[0]));
+  // hq doctor: the live end-to-end check reads and deletes only what exists, and only its own test card.
+  if (!doctorPy) skip("hq doctor matches the database", "the agents checkout next door predates hq doctor");
+  else {
+    const statusColsD = /returns table \(([\s\S]*?)\)\s*language/.exec(agSql)[1].split(",").map(x => x.trim().split(/\s+/)[0]);
+    const wakeCols = S.tables.wakes || [];
+    const dSel = [...doctorPy.matchAll(/"(agent_status|wakes)\?[^"]*select=([\w,]+)/g)].map(m => ({ t: m[1], cols: m[2].split(",") }));
+    ok("hq doctor selects columns that exist (" + dSel.length + " queries)", dSel.length >= 3 && dSel.every(q => q.cols.every(c => (q.t === "agent_status" ? statusColsD : wakeCols).includes(c))), dSel);
+    const dCard = /"select":\s*"([\w,]+)"/.exec(doctorPy);
+    ok("hq doctor reads card columns that exist", !!dCard && dCard[1].split(",").every(c => S.tables.cards.includes(c)), dCard && dCard[1]);
+    const dels = [...doctorPy.matchAll(/_call\("DELETE",\s*f"(\w+)\?([^"]*)"/g)].map(m => ({ t: m[1], filter: m[2] }));
+    ok("hq doctor deletes only its own test card's rows, always filtered by id", dels.length === 3 && dels.map(d => d.t).sort().join() === "actions,cards,revisions" && dels.every(d => /^(card_id|id)=eq\.\{int\(card_id\)\}$/.test(d.filter)), dels);
+    ok("hq doctor's wake statuses and card states are real ones", /"sent", "debounced"/.test(doctorPy) && /'debounced'/.test(allSql) && /"revising"/.test(doctorPy) && S.checks["cards.status"].includes("revising"));
+    const trouble = (/TROUBLE = \(([^)]*)\)/.exec(doctorPy) || [, ""])[1].match(/"(\w+)"/g).map(x => x.slice(1, -1)).sort().join();
+    ok("hq doctor and the page agree on which states are trouble", trouble === Object.keys(AG.BAD).sort().join(), trouble);
+    ok("hq doctor checks the same page markers the page really has", /id="v-agents"/.test(doctorPy) && html.includes('id="v-agents"') && html.includes('id="v-deck"') && /url:\s*"/.test(read("hq/config.js")));
+    const dCardKind = /"kind": "(\w+)", "bucket": "(\w+)"/.exec(doctorPy);
+    ok("hq doctor's test card uses a real kind and bucket", !!dCardKind && S.checks["cards.kind"].includes(dCardKind[1]) && S.checks["cards.bucket"].includes(dCardKind[2]));
+  }
   // agent-ping (#115): outside agents write the same rows, with the same vocabulary.
   if (!/def cmd_ping/.test(cli)) skip("agent-ping matches the database", "the agents checkout next door predates agent-ping");
   else {
