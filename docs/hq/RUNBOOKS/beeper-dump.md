@@ -17,7 +17,7 @@ What it is: every 30 minutes, new messages from the ticked Haas chats are append
 
 1. Beeper Desktop installed, signed in, running. Check: `curl http://localhost:23373/v1/info` answers.
 2. In the checkout: `python -m venv .venv && .venv/bin/pip install -e ".[dev]" && .venv/bin/python -m pytest -q`.
-3. `.venv/bin/python -m collectors.beeper_dump login` and approve in Beeper. If it says write scope was granted, see "The write-scope question" below.
+3. `.venv/bin/python -m collectors.beeper_dump login --allow-write-token` and approve in Beeper, then add `BEEPER_ALLOW_WRITE_TOKEN=1` to `.env` (D-050).
 4. Put machine settings in `.env`: `HQ_BEEPER_MIRROR=<vault>/Sync/HQ/Beeper`, optionally `HQ_DATA_DIR` and `HQ_TZ`.
 5. `.venv/bin/python -m collectors.beeper_dump run` once by hand. The first run pulls everything Beeper has for each chat; add `--since-days 90` to limit it.
 6. Schedule it (next section) and add the row in the vault's `Sync/Ops/Registry.md`.
@@ -38,12 +38,22 @@ What it is: every 30 minutes, new messages from the ticked Haas chats are append
 
 Not yet proven on real hardware: step 2 to 4 are covered by `test_moving_to_another_computer_keeps_one_file_and_no_doubles`, not by an actual move.
 
-## The write-scope question
+## The write-scope question (settled by D-050)
 
-The tool asks Beeper for `read` only. On 2026-11-09 Beeper returned a token that can also write (F-014), so nothing was saved. Two ways forward, Yitzy's call:
+The tool asks Beeper for `read` only, and Beeper returns a token that can also write (F-014). Yitzy accepted that on 2026-11-09 (D-050). So on every machine:
 
-- If Beeper's approval dialog has a read-only choice, pick it and run `login` again.
-- Otherwise accept the token on purpose: `login --allow-write-token`, and add `BEEPER_ALLOW_WRITE_TOKEN=1` to `.env`. The code still cannot send: the client has no method other than GET and a test asserts it. What changes is that a token able to send sits in `.env` on that machine.
+- `login --allow-write-token`
+- `BEEPER_ALLOW_WRITE_TOKEN=1` in that machine's `.env`
+
+The code still cannot send: the client has no method other than GET and a test asserts it. If Beeper ever offers a read-only choice in its approval dialog, pick it, drop the flag and the setting.
+
+## Token renewal
+
+The token lasts 30 days (F-015). First issued 2026-11-09 on the Mac, so it lapses about 2026-12-09. When the error log shows `Beeper refused the token (401)`, run `login --allow-write-token` again and approve in Beeper. Nothing is lost: the next run picks up where the last good one stopped.
+
+## State on 2026-11-09
+
+Running on the Mac from launchd as `com.yitzy.hq-beeper-dump`, every 30 minutes. First run 13,129 messages across 45 chats in about two minutes; later runs take seconds. Mirror: vault `Sync/HQ/Beeper/`. Registered in `Sync/Ops/Registry.md`. Not yet recorded in HQ `runs`: that starts by itself once `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` are in the checkout's `.env`.
 
 ## When it goes wrong
 

@@ -19,6 +19,7 @@ Generated 2026-11-09 from the planning session. Milestone, number, title, repo.
 - M1 [#81](https://github.com/yitzybitzyspider/bitzyspider.com/issues/81) Birthdays collector from Google Contacts and calendar feeds with drafted messages (`bitzy-hq-agents`)
 - M1 [#82](https://github.com/yitzybitzyspider/bitzyspider.com/issues/82) Morning plan card: agent proposes today's top 3 (`bitzy-hq-agents`)
 - M1 [#83](https://github.com/yitzybitzyspider/bitzyspider.com/issues/83) Web push for plan-ready and warden-red, ntfy fallback (`bitzyspider.com`)
+- M1 [#115](https://github.com/yitzybitzyspider/bitzyspider.com/issues/115) Agents view on /hq: status of every collector, worker, executor and auditor, plus what waits on Yitzy (`bitzyspider.com`)
 - M2 [#84](https://github.com/yitzybitzyspider/bitzyspider.com/issues/84) Research: Beeper API coverage for WhatsApp and Slack read and send (`bitzyspider.com`)
 - M2 [#85](https://github.com/yitzybitzyspider/bitzyspider.com/issues/85) Beeper collector: threads needing a reply become approve cards with drafts (`bitzy-hq-agents`)
 - M2 [#86](https://github.com/yitzybitzyspider/bitzyspider.com/issues/86) Beeper executor: send approved replies and write result cards (`bitzy-hq-agents`)

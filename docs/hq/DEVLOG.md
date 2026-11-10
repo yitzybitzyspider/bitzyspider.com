@@ -186,3 +186,15 @@ Not verified: no live run. Yitzy approved the login, Beeper granted `read write`
 
 Left: Yitzy decides the write-scope question (runbook), then first live run, launchd load, Registry row, and a check of the vault copy. This PR also carries the two earlier log PRs (D-048 routing, #113 index) merged together so the logs do not conflict.
 
+## 2026-11-09 #113 beeper_dump live on the Mac; #115 agents view filed  (author: Claude Code on Fable 5.2, refs: #113, #115, D-050, F-015, bitzy-hq-agents PR 4)
+
+Yitzy accepted the write-capable Beeper token (D-050) and approved the login. A three-day trial run into a scratch folder showed message text arrives as HTML, so the renderer gained a rich-text to Markdown pass and system notices (joins, leaves) stopped being attributed to a person (F-015). Then the full first run: 13,129 messages across all 45 ticked chats in about two minutes, written to `data/beeper/` and mirrored to the vault at `Sync/HQ/Beeper/` (46 notes, state file not mirrored).
+
+Scheduled: `com.yitzy.hq-beeper-dump` loaded in launchd, every 30 minutes, through launchd-runner. Row added to the vault's `Ops/Registry.md` and a title in `~/Sites/ops-dashboard/refresh.py`.
+
+Verified: a second run by hand added 0 messages and the Markdown line count was identical before and after (21,470). The launchd-started run exited 0 with an empty error log and wrote to the vault. 89 tests pass in the agents repo, CI green on PR 4. No HTML tags, entities or raw mention links remain in the trial output.
+
+Not verified: the run is not recorded in HQ `runs` and the warden cannot see it, because Supabase settings are not on the Mac yet (setup wizard). So #113 stays open on that one criterion. The move to the other computer is tested only in simulation. Token renewal in 30 days has not happened yet.
+
+Also filed #115 from Yitzy's request during this session: an Agents view on /hq showing every collector, worker, executor and auditor with live state, plus what waits on him. Not started.
+
