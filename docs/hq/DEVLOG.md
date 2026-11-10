@@ -216,6 +216,12 @@ Verified. 32 new pytest cases in the agents repo (147 in the suite) against a ma
 
 Not verified, not done. The `claude` drafter with a working login (its login on the Mac had expired; only the fallback and a stand-in were exercised). Page fit is an arithmetic estimate, not a render: the card tells Yitzy to open the file before submitting. No PDF. No title overrides. A note on the deck rewrites the card text through the reviser but does not rebuild the Word file. Still open on #90: the `job_pipeline` view, stage changes after `drafted`, and the collectors that find openings.
 
+## 2026-11-10 #90 applier merged and running from main  (author: Claude Code on Fable 5.2, refs: #90, #118, D-046, bitzy-hq-agents PR 7)
+
+Yitzy said to merge without asking (D-046 stands for this work too). Merged bitzy-hq-agents pull request 7 and #118 here, both squash, both green. The main agents checkout on the Mac was fast-forwarded, the Word renderer package installed there (`npm install --prefix applier`), and verified from it: 147 pytest cases pass, a dry run of a real posting with the pool drafter wrote its files with no card, and `python -m applier push` reports nothing waiting. The session's worktrees and branches were removed. The applier has a row in the vault's Ops Registry.
+
+Still true from the earlier entry: the `claude` drafter has not run with a working login, page fit is an estimate, and the rest of #90 (pipeline view, stages after `drafted`, the collectors that find openings) is not built. #90 stays open and `ready` for that half.
+
 ## 2026-11-10 #88 CMG Bears scout reading again, on request through regular Chrome, cards in HQ  (author: Claude Code on Fable 5.2, refs: #88, D-054, F-017, D-014, D-019, bitzy-hq-agents PR 6)
 
 What broke. The scout's 12twenty session expired on 2026-09-26 and every later sign-in attempt died on Cloudflare. Today that was pinned down: no browser driven by a script gets through, signed in or not (F-017). Yitzy pointed at his own Chrome with the Claude extension, and a read there, at his request, worked.
