@@ -19,6 +19,7 @@ suite() { # name, command...
 suite "sign-in gate"        node tests/hq-auth.js
 suite "deck logic"          node tests/hq-deck.js
 suite "deck UI behavior"    node tests/hq-ui.js
+suite "agents view"         node tests/hq-agents.js
 suite "wiring and contract" node tests/hq-wiring.js
 suite "log rules checker"   scripts/hq/test_check_logs.sh
 if bash -n scripts/hq/setup-wizard.sh 2>/dev/null; then echo "pass  setup wizard parses"; else echo "FAIL  setup wizard has a syntax error"; fail=1; fi
