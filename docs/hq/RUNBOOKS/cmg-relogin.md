@@ -6,9 +6,9 @@ When: HQ shows the to-do card "Sign in to CMG Bears so the scout can read again"
 
 1. In everyday Chrome (the profile that has the Claude extension) open https://mba-haas-berkeley.12twenty.com/events
 2. Sign in with CalNet and approve Duo if asked.
-3. When the events list shows, that is all. Swipe the card away. The next scheduled run reads the pages.
+3. When the events list shows, swipe the card away and ask a Claude session for a CMG scan.
 
-While signed out the scout looks again at most once every 20 hours, so after signing in the next run may be a few hours off. To scan now, press "Run now" on the task `cmg-bears-scan` in the Claude app.
+Nothing reads the portal by itself (D-054), so signing in alone changes nothing until a scan is asked for.
 
 ## On the box
 
@@ -17,10 +17,10 @@ While signed out the scout looks again at most once every 20 hours, so after sig
 
 ## If it still fails after signing in
 
-- **The run says "Just a moment" or a Cloudflare check**: the check appeared in everyday Chrome too. Open the events page by hand once and pass the check yourself. If it comes back on every run, stop the task and write it up in `FINDINGS.md`: it would mean the last working path is closing.
-- **The run says `ERROR list-not-found`**: the page changed how it keeps its list. That is a code fix in the scout's page script, not a sign-in problem.
-- **The run says the scout is backing off**: the scout saw a missing field and stopped itself for 24 hours. Read the scout's `FINDINGS.md`; `./cmg resume` in the scout folder clears it once the cause is understood.
-- **Nothing runs at all**: the Claude desktop app must be open, the task must be in Auto mode, and Chrome must be running with the Claude extension connected.
+- **The scan says "Just a moment" or a Cloudflare check**: the check appeared in everyday Chrome too. The session stops there; it never waits out or solves a check. Open the events page yourself and deal with it. If it keeps coming back, write it up in `FINDINGS.md`: it would mean reading through the portal is closing and the email-only fallback is what is left.
+- **The scan says `ERROR list-not-found`**: the page changed how it keeps its list. That is a code fix in the scout's page script, not a sign-in problem.
+- **The scan says the scout is backing off**: the scout saw a missing field and stopped itself for 24 hours. Read the scout's `FINDINGS.md`; `./cmg resume` in the scout folder clears it once the cause is understood.
+- **The session cannot reach Chrome**: Chrome must be running with the Claude extension connected.
 
 ## Do not use `cmg login`
 
