@@ -71,3 +71,8 @@ Regenerate with `gh issue list --state all`. This snapshot is appended, not edit
 - #101 done: Revise loop: send a card back with notes, edit a draft in place, to-do cards
 - #102 ready: Reviser agent: rewrite drafts from Yitzy's notes and return the card
 - #103 blocked: 80/20 ranking rework, parked
+
+## Status change 2026-11-10
+
+- #115 done: Agents view on /hq, merged and live in the database
+- #113 in progress: Beeper chat dump runs every 30 minutes; open only on being recorded in HQ runs (needs the setup wizard)
