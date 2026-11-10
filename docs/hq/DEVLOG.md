@@ -161,3 +161,7 @@ Verified: 71 pytest cases in the agents repo (24 for the command line); `scripts
 At 23:30:00 UTC pg_cron ran `hq-warden` on its own: `cron.job_run_details` shows `succeeded`, and `runs` has a second `warden` row (host `database`, zero findings) after the hand-run one at 23:11. The supervisor is live and independent of the box, GitHub and any secret. Appended a status snapshot to `ISSUES.md`: 11 issues done, 1 in progress, 5 blocked, 14 ready.
 
 What is left before real cards flow is on Yitzy's side and is one script: `scripts/hq/setup-wizard.sh` (Google sign-in, service key, Anthropic key, wake token). After it, the collectors in M1 can be built and verified against the live project.
+
+## 2026-11-09 Beeper live; #113 Beeper chat dump CLI filed  (author: Claude Code, refs: #113, #84, #85, D-025)
+
+Yitzy reports Beeper Desktop is set up and working. Filed #113: a read-only CLI in bitzy-hq-agents that every 30 minutes pulls every message from an allowlisted set of Haas chats through the Beeper Desktop API and writes append-only, deduped Markdown per chat plus an index, into data/ and a copy into the Obsidian vault. It is the raw input for the #85 collector and feeds findings back to #84; comments left on both. Host (Mac via launchd-runner, or the box) is left for a decision entry when the work starts. Added #113 to ISSUES.md.

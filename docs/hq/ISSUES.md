@@ -25,6 +25,7 @@ Generated 2026-11-09 from the planning session. Milestone, number, title, repo.
 - M2 [#87](https://github.com/yitzybitzyspider/bitzyspider.com/issues/87) Executor trigger: database webhook to repository_dispatch with polling backstop (`bitzy-hq-agents`)
 - M2 [#88](https://github.com/yitzybitzyspider/bitzyspider.com/issues/88) CMG Bears repair: run the scout on the box behind a persistent 12twenty profile (`bitzy-hq-agents`)
 - M2 [#89](https://github.com/yitzybitzyspider/bitzyspider.com/issues/89) Email triage collector replacing the switched-off Claude task (`bitzy-hq-agents`)
+- M2 [#113](https://github.com/yitzybitzyspider/bitzyspider.com/issues/113) Beeper chat dump CLI: every 20 to 30 minutes, all Haas chats into Markdown (`bitzy-hq-agents`)
 - M3 [#90](https://github.com/yitzybitzyspider/bitzyspider.com/issues/90) Job pipeline view, stages, and drafted materials (`bitzy-hq-agents`)
 - M3 [#91](https://github.com/yitzybitzyspider/bitzyspider.com/issues/91) Facebook birthdays and relationship data via Muse, batched enrichment cards (`bitzy-hq-agents`)
 - M3 [#92](https://github.com/yitzybitzyspider/bitzyspider.com/issues/92) Google Contacts write-back executor for approved enrichment rows (`bitzy-hq-agents`)
