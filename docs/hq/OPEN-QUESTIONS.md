@@ -30,4 +30,4 @@ OQ-010 Should the reviser learn Yitzy's standing preferences from past notes (fo
 
 ## 2026-11-09  (author: Claude Code, refs: D-048)
 
-OQ-001 closed by D-048: all three agents browse, act in Yitzy's sessions, run on the box and open PRs.
+Closed: OQ-001, by D-048. All three agents browse, act in Yitzy's sessions, run on the box and open PRs.
