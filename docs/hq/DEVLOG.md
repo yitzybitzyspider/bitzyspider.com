@@ -243,3 +243,15 @@ What changed. Issue template gains Touches, Must not touch, Settled choices and 
 Verified. Log and test suite as CI runs them. The first real run through the router is recorded in its own issue's entry.
 
 Not verified at the time of this entry: a full run of a worker session from start to finish.
+
+## 2026-11-10 #123 hq board  (author: Claude Code on Opus 5.5, worker session under the router, refs: #123, D-055, bitzy-hq-agents PR for hq/123-board)
+
+What changed. `hq board` in `bitzy-hq-agents` prints which open issues labeled `queued` can start and which are waiting and on what; `--all` adds `ready`. `depends_on` and `board_lines` in `cli/hq.py` are pure and take the list `gh issue list` returns. The command skips the Supabase check in `main`, so it runs with no keys. The other subcommands are unchanged.
+
+Choices the issue left open. Lines come out in issue number order. A "Depends on" section only counts when it is a real heading, so one quoted in a code block is ignored. An issue with both `blocked` and open dependencies says `(blocked)`.
+
+Verified. `pytest -q` in the agents repo: 210 passed, 3 skipped. Each acceptance criterion and edge case has a case in `tests/test_cli.py`, and two run the real command in a separate process with no keys in the environment, one with a stand-in `gh` and one with no `gh` on PATH. The tests caught a real bug during the build: a number repeated on one line was listed twice. Three deliberate breaks each failed the suite and were restored: comments not stripped, open dependencies dropped, the Supabase check put back. Live against the real issue list with no keys set: `hq board` printed `board: nothing queued` because no issue is labeled `queued` yet, and `--all` listed the `ready` issues, with #83 waiting on #82 and #92 on #87 and #81, all three confirmed open with `gh issue view`.
+
+Not verified. A live `run` or `wait` line for an issue actually labeled `queued`: none existed, so the `queued` path is proven only against test data.
+
+Worth knowing. Every `#number` inside the section counts, including in prose. #113's section reads "#73 (done). Informs #84 and #85.", so it would wait on #84 and #85 if it were ever queued. New tickets should list only real dependencies there.
