@@ -11,9 +11,22 @@ labels: ["ready"]
 ## Repo
 <!-- bitzyspider.com (UI, schema, docs) or bitzy-hq-agents (collectors, executors) -->
 
+## Touches
+<!-- Files or folders this changes. The router keeps parallel workers apart with this. -->
+
+## Must not touch
+<!-- What stays as it is. -->
+
+## Settled choices
+<!-- Every decision already made, one line each, so the worker has nothing to ask. -->
+
 ## Acceptance criteria
 - [ ] 
 - [ ] Follows docs/hq/CARD-CONTRACT.md (cards arrive with the work done, or as a to-do with the reason)
+
+## Edge cases
+<!-- How it should break, each with a test. -->
+- [ ] 
 
 ## Test command
 ```

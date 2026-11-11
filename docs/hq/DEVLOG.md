@@ -235,3 +235,11 @@ Verified. Live on the Mac at 11:00 PT, by this session at Yitzy's request: both 
 Not done, and why. There is no schedule, by decision (D-054), so two things the task asked for are not met: "runs on a schedule" and the launchd and ops-dashboard registration (the Registry row now says scans are on request). #88's "runs on the box 4x daily" is not met either. Not verified: a scan requested in a fresh session following `TASK.md`; the backslash fix on a live page (proven in the node test only); the sign-in card on a phone; anything on the box.
 
 Open in the scout's own findings: the events list shows only its first 50 entries and the script never pages (about five weeks ahead today). The scout folder is still not under version control.
+
+## 2026-11-10 Router and ticket skills  (author: Claude Code on Opus 5.5, refs: D-055)
+
+What changed. Issue template gains Touches, Must not touch, Settled choices and Edge cases. PROTOCOL describes the router. New `queued` label. The `router` and `ticket` skills are in bitzy-hq-agents under `skills/`.
+
+Verified. Log and test suite as CI runs them. The first real run through the router is recorded in its own issue's entry.
+
+Not verified at the time of this entry: a full run of a worker session from start to finish.

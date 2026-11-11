@@ -19,6 +19,10 @@ For any agent (Claude Code, Muse, Instinct, Grokbot, or a person) picking up an 
 7. **If two branches both appended to a log,** merge main into yours and run `scripts/hq/rebase_logs.sh <your-branch-tip>`; it rebuilds each log as main's version plus your additions.
 8. **Database changes:** a numbered migration in `supabase/migrations/` plus a suite in `supabase/tests/` listed in `scripts/hq/test-db.sh`. Apply it to the live project only after the clean-database CI job passes, then verify its effect on the live project (not just that it ran) and compare the function fingerprints CI prints with the live ones. Never edit an applied migration: fix forward with a new one.
 
+## The router (D-055)
+
+Yitzy can run HQ work through one Claude session using the `router` skill. It starts one worker session per issue and checks the results; it writes no code itself. The `ticket` skill writes issues complete enough for that. `ready` means an issue is fully written; `queued` means Yitzy said to build it. A worker follows this protocol unchanged, from its own git worktree.
+
 ## Report in while you work (D-051)
 
 Yitzy watches the Agents view on /hq to see who is doing what. If your work runs inside `hq_heartbeat.run(...)`, pass `kind` and `title` and you are done. If it does not (Grok, Instinct, Muse, a Claude Code session, anything by hand), ping from the `bitzy-hq-agents` checkout:
